@@ -12,7 +12,7 @@
 - `docs/roadmap.md` — 今どこまでできているか
 
 ## 技術スタック
-Next.js 16 (App Router, `src/`, Turbopack) / React 19 / TypeScript / Tailwind v4 / shadcn/ui ・ Supabase (Postgres, Auth, Storage, Realtime, pg_cron) ・ Gemini API（`@google/genai`、モデルは `GEMINI_MODEL`） ・ Web Push（`web-push` + `public/sw.js`） ・ 画像の知覚ハッシュ（`sharp`、サーバー側） ・ Vercel Hobby
+Next.js 16 (App Router, `src/`, Turbopack) / React 19 / TypeScript / Tailwind v4 / shadcn/ui ・ Supabase (Postgres, Auth, Storage, Realtime, pg_cron) ・ Gemini API（`@google/genai`、モデルは `GEMINI_MODEL`） ・ Web Push（`web-push` + `public/sw.js`） ・ Vercel Hobby
 
 ## コマンド
 ```bash

@@ -18,30 +18,31 @@
 - [ ] ログイン / 招待コードつきサインアップ（ADR-006）
 - [ ] profile の自動作成トリガー、最初のユーザーを admin にする
 - [ ] プロフィール編集（表示名・アバター・PayPay リンク）
+- [ ] お試し期間（`trial_ends_at`）
+- [ ] 管理者による仮パスワードの発行
 
 ## M3. 通知基盤（後の機能はすべてこれを使うので先に作る）
 - [ ] `activity_events` → `notifications` の配信 (`lib/notify`)
 - [ ] ベル・未読バッジ・通知一覧（Realtime）
 - [ ] PWA: `app/manifest.ts`、アイコン、`public/sw.js`
-- [ ] Web Push の購読登録・解除、種類ごとの ON/OFF、iOS 向けのホーム画面追加の案内
+- [ ] Web Push の購読登録・解除
+- [ ] **通知ゲート (F0)**: ホーム画面追加（iOS）→ 許可 → 購読 → テスト通知 → バナー・サウンドの確認。開くたびに再確認
 
 ## M4. 宣言・休息日
-- [ ] RPC `declare_goal` / `register_rest_day` / `cancel_rest_day`
+- [ ] RPC `declare_goal`（合言葉の発行、`next_deadline` などの共通関数を含む） / `register_rest_day` / `cancel_rest_day`
 - [ ] 宣言フォーム・休息日カレンダー
 - [ ] 宣言への指摘: RPC `flag_declaration` / `revise_declaration` / `expire_revisions`、書き直しフォーム
-- [ ] 休会: RPC `request_leave` / `cancel_leave` / `expire_leave_reviews`、申請・審査画面
+- [ ] 休会: RPC `request_leave` / `cancel_leave`、申請・審査画面
 
 ## M5. 証拠・提出・AI 判定
-- [ ] 合言葉の発行（宣言時）
-- [ ] クライアントでの画像圧縮とアップロード、サーバーでの知覚ハッシュ (`sharp`) と使い回し検出
-- [ ] 学習開始: 開始時の写真、合言葉の確認、RPC `start_study`
+- [ ] クライアントでの画像圧縮とアップロード
 - [ ] RPC `create_submission` / `record_judgement` / `record_judge_error`
-- [ ] `/api/judge`（Gemini、structured output、合言葉・進み具合の確認）
-- [ ] 結果の表示・再提出・再判定
-- [ ] 「怪しい」指摘: RPC `flag_submission` / `submit_extra_evidence` / `expire_disputes`
+- [ ] `/api/judge`（Gemini、structured output、合言葉の確認）
+- [ ] 結果の表示・再提出・再判定・経過時間の表示
+- [ ] 「怪しい」指摘: RPC `flag_submission` / `resend_evidence` / `withdraw_flag`、最終審査
 
 ## M6. 定期実行・宣言なし
-- [ ] RPC `run_declaration_reminders` / `close_declarations` / `close_overdue_logs` / `due_submit_reminders`
+- [ ] RPC `run_declaration_reminders` / `close_declarations` / `expire_revisions` / `close_overdue_logs` / `due_submit_reminders` / `confirm_passed_logs` / `advance_disputes` / `due_deadline_reminders`
 - [ ] `/api/cron/tick`
 - [ ] pg_cron + pg_net + Vault の設定（マイグレーションと手順書）
 
@@ -49,7 +50,7 @@
 - [ ] RPC `file_failure_report` / `cast_review`（理由・休会・疑義で共通） / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
 - [ ] 理由申告フォーム、審査画面（納得 / 納得できない）
 - [ ] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement`
-- [ ] 支払先の設定、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
+- [ ] 支払先の割り当て（管理者が入力）、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
 
 ## M8. ダッシュボード・履歴
 - [ ] 本日のステータスカード、ランキング、タイムライン

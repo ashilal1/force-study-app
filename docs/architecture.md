@@ -13,7 +13,7 @@ flowchart LR
     end
 
     subgraph Vercel["Vercel Hobby"]
-        SA["Server Actions<br/>(宣言・提出・休息日・理由申告・審査・精算・設定)"]
+        SA["Server Actions<br/>(宣言・提出・送り直し・休み・理由申告・審査・精算・設定)"]
         JUDGE["Route Handler<br/>/api/judge"]
         TICK["Route Handler<br/>/api/cron/tick"]
         NOTIFY["lib/notify<br/>アプリ内通知 + web-push"]
@@ -71,7 +71,7 @@ sequenceDiagram
     N-->>U: (他のメンバーへ Push / Realtime)
 ```
 
-### 2.2 開始・提出と AI 判定
+### 2.2 提出と AI 判定
 ```mermaid
 sequenceDiagram
     actor U as ユーザー
@@ -81,40 +81,62 @@ sequenceDiagram
     participant J as /api/judge
     participant G as Gemini
     participant DB as Postgres
-    Note over U,C: 宣言時に今日の合言葉が発行されている
-    U->>C: 開始時の写真（合言葉入り）
+    Note over U,C: 宣言時に今日の合言葉が発行されている（全員に見える）
+    U->>C: 提出写真 1〜3 枚（1 枚以上に合言葉）+ 振り返り
     C->>C: 圧縮 (WebP, 長辺1200px, ~200KB)
-    C->>ST: upload {user_id}/{date}/start/{uuid}.webp
-    C->>SA: startStudy(path)
-    SA->>ST: 画像を取得 → 知覚ハッシュを計算 (sharp)
-    SA->>G: 合言葉が写っているか（軽い確認）
-    SA->>DB: rpc start_study()（合言葉なし・使い回しなら撮り直し）
-    U->>C: 提出写真 1〜3 枚 + 振り返り
-    C->>ST: upload {user_id}/{date}/result/{uuid}.webp
+    C->>ST: upload {user_id}/{date}/{uuid}.webp
     C->>SA: createSubmission(paths, text, rating)
-    SA->>ST: 画像を取得 → 知覚ハッシュ
     SA->>DB: rpc create_submission()
-    Note over DB: 開始済み / 締切前 / 試行回数 / 使い回し を検査<br/>使い回しなら rejected(duplicate) で終わり
+    Note over DB: pending / 締切前 / 試行回数 を検査<br/>経過時間（宣言→提出）を記録
     SA-->>C: submission_id
     C->>J: POST { submission_id }
-    J->>ST: 開始時の写真・提出写真を取得
-    J->>G: 宣言 + 合言葉 + 写真(inline base64) + テキスト + 経過時間<br/>responseSchema = {score, passphrase_found, progress_ok, feedback}
+    J->>ST: 提出写真を取得
+    J->>G: 宣言 + 合言葉 + 写真(inline base64) + テキスト + 経過時間<br/>responseSchema = {score, passphrase_found, feedback}
     alt Gemini 成功
         G-->>J: 結果
         J->>DB: rpc record_judgement()
-        Note over DB: 合格 = 70 点以上 かつ 合言葉あり
+        Note over DB: 合格 = 70 点以上 かつ 合言葉あり<br/>→ passed（3 時間の「怪しい」受付）
     else Gemini エラー
         J->>DB: submission.status = error (試行回数に数えない)
     end
     J->>J: lib/notify で通知
     J-->>C: 結果
 ```
-- 知覚ハッシュは**サーバーで計算する**（クライアントで計算すると値を偽れるため）。`sharp` で 9×8 のグレースケールに縮めて dHash を取る。
 - 判定は `/api/judge` で同期実行する（Gemini Flash は数秒。Vercel Hobby の関数時間の上限に収まる）。
 - `error` の提出は、本人が「再判定」を押すか、次の cron tick が再実行する。
-- 合格後の「怪しい」指摘 → 追加の証拠 → 審査は、2.3 の理由申告の審査と同じ流れ（`peer_reviews` を `subject_type = 'dispute'` で使う）。
 
-### 2.3 未達成 → 理由申告 → 審査
+### 2.3 「怪しい」指摘
+```mermaid
+sequenceDiagram
+    actor U as 本人
+    actor F as 指摘した人
+    actor M as 審査者（ほかの全員）
+    participant SA as Server Actions
+    participant T as tick
+    participant DB as Postgres
+    Note over DB: passed（合格から 3 時間）
+    F->>SA: 怪しい（理由）
+    SA->>DB: rpc flag_submission() → dispute(resending, 1 時間)
+    SA-->>U: 「〇〇が怪しいと指摘。1 時間以内なら何度でも送り直せます」
+    loop 1 時間以内なら何度でも
+        U->>SA: 証拠を送り直す（写真 + 説明）
+        SA->>DB: rpc resend_evidence() → /api/judge で合言葉・内容を確認
+        SA-->>F: 「送り直しました」
+    end
+    alt 指摘した全員が取り下げ
+        F->>SA: 取り下げる
+        SA->>DB: rpc withdraw_flag() → upheld → completed
+    else 1 時間たっても取り下げがそろわない
+        T->>DB: rpc advance_disputes() → final_review（期限: 次の宣言締切）
+        T-->>M: 「最終審査して」
+        M->>SA: 認める / 却下（理由必須）
+        SA->>DB: rpc cast_review('dispute')
+        Note over DB: 却下 1 件 → invalidated, 200pt (P8)<br/>全員認める or 期限まで却下なし → completed
+    end
+```
+誰も押さないまま 3 時間たったら、tick の `confirm_passed_logs()` が `completed` にする。
+
+### 2.4 未達成 → 理由申告 → 審査
 ```mermaid
 sequenceDiagram
     actor U as 本人
@@ -123,7 +145,7 @@ sequenceDiagram
     participant SA as Server Actions
     participant DB as Postgres
     T->>DB: rpc close_overdue_logs()
-    Note over DB: 提出締切を過ぎた pending → missed<br/>failure_reports(awaiting_report, 期限 5h)
+    Note over DB: 提出締切を過ぎた pending → missed<br/>failure_reports(awaiting_report, 期限: 次の宣言締切)
     T-->>U: 「理由を申告して」
     U->>SA: 理由（カテゴリ + テキスト）
     SA->>DB: rpc file_failure_report()
@@ -138,13 +160,13 @@ sequenceDiagram
         SA->>DB: rpc cast_review('excuse')
         Note over DB: reject → 即却下 500pt<br/>全員 accept → 承認 0pt
         T->>DB: rpc expire_reviews()
-        Note over DB: 5h でそろわなければ却下 500pt
+        Note over DB: 次の宣言締切までにそろわなければ却下 500pt
     end
     T->>DB: rpc expire_reports()
-    Note over DB: 5h 申告なし → not_reported 700pt
+    Note over DB: 次の宣言締切までに申告なし → not_reported 700pt
 ```
 
-### 2.4 定期実行 (`/api/cron/tick`)
+### 2.5 定期実行 (`/api/cron/tick`)
 Supabase の `pg_cron` が 5 分ごとに `pg_net` で `POST /api/cron/tick` を呼ぶ（`Authorization: Bearer <CRON_SECRET>`。シークレットは Supabase Vault に保存）。
 
 tick は以下を順に実行する。各ステップは冪等なので、重複・遅延・取りこぼしがあっても次の tick で回復する。
@@ -154,30 +176,38 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 1 | 判定待ち・エラーの提出を再判定（最大 N 件） | `/api/judge` と同じロジック |
 | 2 | 0:00・11:00 の宣言リマインド | `rpc run_declaration_reminders()` |
 | 3 | 12:00 の宣言なしを確定 (P1) | `rpc close_declarations()` |
-| 4 | 提出締切超過を未達成にする（判定待ちには 60 分の猶予） | `rpc close_overdue_logs()` |
-| 5 | 理由申告の期限切れ (P5) と 3 時間前リマインド | `rpc expire_reports()` |
-| 6 | 審査の期限切れ (P4) と 3 時間前リマインド | `rpc expire_reviews()` |
-| 7 | 提出締切 1 時間前のリマインド | `rpc due_submit_reminders()` |
-| 8 | 毎週土曜 23:00 の精算と、未払いへの P7 | `rpc run_weekly_settlement()` |
-| 8b | 指摘の書き直し期限 (P6)、休会の審査期限、「怪しい」の追加証拠・審査の期限 (P8) | `rpc expire_revisions()` / `rpc expire_leave_reviews()` / `rpc expire_disputes()` |
-| 9 | 保持期間を過ぎた画像、800MB を超えたぶんの古い画像を削除（知覚ハッシュは残す） | Storage API |
-| 10 | 2〜8 で返ってきたイベントを通知に回す | `lib/notify` |
+| 4 | 書き直しの期限 (P6) と残り 15 分のリマインド | `rpc expire_revisions()` |
+| 5 | 提出締切 1 時間前のリマインド | `rpc due_submit_reminders()` |
+| 6 | 提出締切超過を未達成にする（判定待ちには 60 分の猶予） | `rpc close_overdue_logs()` |
+| 7 | 「怪しい」の受付終了 → 達成で確定 | `rpc confirm_passed_logs()` |
+| 8 | 送り直しの期限 → 最終審査、最終審査の期限 → 確定 | `rpc advance_disputes()` |
+| 9 | 理由申告の期限 (P5)、審査の期限（理由 P4・休会） | `rpc expire_reports()` / `rpc expire_reviews()` |
+| 10 | 8:00・11:00・11:45 の期限前リマインド | `rpc due_deadline_reminders()` |
+| 11 | 毎週土曜 23:00 の精算と、未払いへの P7 | `rpc run_weekly_settlement()` |
+| 12 | 保持期間を過ぎた画像、800MB を超えたぶんの古い画像を削除 | Storage API |
+| 13 | 2〜11 で返ってきたイベントを通知に回す | `lib/notify` |
 
 5 分ごとなので、リマインドは最大 5 分遅れる（0:00 のリマインドは 0:00〜0:05 の間に届く）。期限ちょうどの確定も最大 5 分遅れるが、判定は記録された時刻で行うので結果は変わらない。
 
 > Vercel Hobby の Cron は 1 日 1 回までなので使わない。GitHub Actions を使わない理由は ADR-003。
 
-### 2.5 通知
+### 2.6 通知
 ```mermaid
 flowchart LR
     E["activity_events<br/>(グループのタイムライン)"] --> R{"受信者を決める<br/>(種類ごとのルール)"}
     R --> NT["notifications<br/>(受信者ごと・既読管理)"]
     NT -- Realtime --> BELL["ベル / 未読バッジ"]
-    NT --> P{"本人の Push 設定で<br/>この種類が ON?"}
-    P -- yes --> WP["web-push → push_subscriptions<br/>(404/410 なら購読を削除)"]
+    NT --> WP["web-push → 本人の全端末<br/>(404/410 なら購読を削除 → 次に開いたとき F0 へ)"]
 ```
 - `notifications` は Realtime（`postgres_changes`、`recipient_id = 自分` で絞る）でベルに即時反映する。
 - Push の本文は短くし、タップで該当ページ（`/logs/{id}` など）を開く。
+- 本人の対応が必要な通知は `requireInteraction: true`（タップするまで消えない。Android・PC で有効）。同じ件のリマインドは `tag` をそろえて `renotify: true` で鳴らし直す。音は OS の通知音（Web からは変えられない）。
+
+### 2.7 通知の強制 (F0)
+`src/app/(app)/layout.tsx` で、ログイン済みの全画面の手前に「通知ゲート」を置く。
+1. サーバー側: `profiles.notifications_verified_at` と、有効な `push_subscriptions`（`verified_at` あり）があるかを見る。なければ `/onboarding/notifications` へリダイレクト。
+2. クライアント側: 開くたびに `Notification.permission === 'granted'` と `pushManager.getSubscription()` を確かめ、だめなら同じ画面へ。iOS は `display-mode: standalone`（ホーム画面から開いたか）も確かめる。
+3. オンボーディング画面: 許可 → 購読登録 → テスト通知の送信 → OS ごとのバナー・サウンド設定の手順 → 本人が「表示され、音も鳴った」を押す → `verified_at` を記録。
 
 ## 3. 認証とアクセス制御
 
@@ -210,10 +240,10 @@ flowchart LR
     ├── app/
     │   ├── manifest.ts            # PWA manifest
     │   ├── (auth)/login, signup/
+    │   ├── onboarding/notifications/  # 通知ゲート (F0)
     │   ├── (app)/
     │   │   ├── page.tsx           # ダッシュボード
     │   │   ├── declare/           # 宣言
-    │   │   ├── start/             # 学習開始（開始時の写真）
     │   │   ├── submit/            # 提出
     │   │   ├── logs/[id]/         # 学習ログ詳細
     │   │   ├── members/[id]/      # メンバー履歴
@@ -229,8 +259,8 @@ flowchart LR
     │   └── ui/                    # shadcn/ui
     ├── lib/
     │   ├── supabase/              # client.ts / server.ts / admin.ts / proxy.ts
-    │   ├── gemini/                # judge() / checkPassphrase(): プロンプト・スキーマ
-    │   ├── evidence/              # 知覚ハッシュ (sharp)・使い回し検出・合言葉の生成
+    │   ├── gemini/                # judge(): プロンプト・スキーマ
+    │   ├── passphrase.ts          # 合言葉の単語リストと生成
     │   ├── notify/                # dispatch(): 受信者ルール・web-push
     │   ├── time.ts                # JST の日付計算
     │   └── env.ts                 # 環境変数の検証 (zod)
@@ -244,10 +274,10 @@ flowchart LR
 |---|---|---|
 | Vercel Hobby | 関数の呼び出し・帯域とも十分 | tick 8,640 回/月 + 画面操作 |
 | Supabase DB | 500MB | 数 MB/年 |
-| Supabase Storage | 1GB | 通常 ~300MB、最悪 ~850MB（800MB 超で古い順に削除） |
+| Supabase Storage | 1GB | 通常 ~220MB、最悪 ~600MB（800MB 超で古い順に削除） |
 | Supabase Realtime | 同時接続 200 | 最大 6 人 × 端末数 |
 | Supabase Auth | MAU 50,000 | 6 |
-| Gemini（Flash 系） | 1 日あたり数百〜1,500 リクエスト（モデルによる） | 最大 ~30 回/日（開始時の確認 + 判定） |
+| Gemini（Flash 系） | 1 日あたり数百〜1,500 リクエスト（モデルによる） | 最大 ~30 回/日（判定 + 送り直し） |
 | Web Push | 無料（ブラウザベンダーが提供） | 最大 ~100 通/日 |
 
 注意: Supabase Free は **API アクセスのない状態が 7 日続くとプロジェクトが一時停止**する。毎日使っていれば問題ない。
