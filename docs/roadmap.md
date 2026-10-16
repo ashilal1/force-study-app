@@ -28,6 +28,8 @@
 ## M4. 宣言・休息日
 - [ ] RPC `declare_goal` / `register_rest_day` / `cancel_rest_day`
 - [ ] 宣言フォーム・休息日カレンダー
+- [ ] 宣言への指摘: RPC `flag_declaration` / `revise_declaration` / `expire_revisions`、書き直しフォーム
+- [ ] 休会: RPC `request_leave` / `review_leave` / `cancel_leave` / `expire_leave_reviews`、申請・審査画面
 
 ## M5. 提出・AI 判定
 - [ ] クライアントでの画像圧縮とアップロード
@@ -44,7 +46,7 @@
 - [ ] RPC `file_failure_report` / `review_excuse` / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
 - [ ] 理由申告フォーム、審査画面（納得 / 納得できない）
 - [ ] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement`
-- [ ] 支払先の設定、精算ページ（PayPay ボタン、送金した・受け取った）
+- [ ] 支払先の設定、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
 
 ## M8. ダッシュボード・履歴
 - [ ] 本日のステータスカード、ランキング、タイムライン

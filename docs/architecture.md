@@ -149,7 +149,8 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 5 | 理由申告の期限切れ (P5) と 3 時間前リマインド | `rpc expire_reports()` |
 | 6 | 審査の期限切れ (P4) と 3 時間前リマインド | `rpc expire_reviews()` |
 | 7 | 提出締切 1 時間前のリマインド | `rpc due_submit_reminders()` |
-| 8 | 毎週土曜 23:00 の精算 | `rpc run_weekly_settlement()` |
+| 8 | 毎週土曜 23:00 の精算と、未払いへの P7 | `rpc run_weekly_settlement()` |
+| 8b | 指摘の書き直し期限 (P6)、休会の審査期限 | `rpc expire_revisions()` / `rpc expire_leave_reviews()` |
 | 9 | 保持期間を過ぎた画像を削除 | Storage API |
 | 10 | 2〜8 で返ってきたイベントを通知に回す | `lib/notify` |
 
@@ -207,6 +208,7 @@ flowchart LR
     │   │   ├── logs/[id]/         # 学習ログ詳細
     │   │   ├── members/[id]/      # メンバー履歴
     │   │   ├── reports/[logId]/   # 理由申告・審査
+    │   │   ├── leave/             # 休会の申請・審査
     │   │   ├── settlements/       # 毎週の精算
     │   │   ├── notifications/     # 通知一覧
     │   │   └── settings/          # プロフィール・Push・グループ設定
