@@ -2,14 +2,29 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-zen), "Hiragino Sans", "Noto Sans JP", sans-serif;
+  --font-mono: var(--font-biz), "Osaka-Mono", monospace;
+  --font-heading: var(--font-dela), "Hiragino Sans", sans-serif;
+  --font-en: var(--font-archivo), var(--font-dela), sans-serif;
+  --font-receipt: var(--font-biz), "Osaka-Mono", monospace;
+  --font-hand: var(--font-klee), "Hiragino Maru Gothic ProN", cursive;
+  --color-paper: var(--paper);
+  --color-ink: var(--ink);
+  --color-mint: var(--mint);
+  --color-mint-ink: var(--mint-ink);
+  --color-red: var(--red);
+  --color-orange: var(--orange);
+  --color-tape: var(--tape);
+  --color-sky: var(--sky);
+  --color-lilac: var(--lilac);
+  --color-peach: var(--peach);
+  --color-sub: var(--sub);
+  --shadow-hard: 6px 6px 0 var(--ink);
+  --shadow-hard-sm: 4px 4px 0 var(--ink);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -49,72 +64,55 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
+  /* Commit or Treat: paper + ink + stickers (design/chosen/NOTES.md). Single light look. */
+  --font-dela: "Dela Gothic One";
+  --font-zen: "Zen Kaku Gothic New";
+  --font-biz: "BIZ UDGothic";
+  --font-klee: "Klee One";
+  --paper: #f4efe8;
+  --ink: #141416;
+  --mint: #a9dcc6;
+  --mint-ink: #3f9b7b;
+  --red: #e5534b;
+  --orange: #ff6a00;
+  --tape: #f5e27d;
+  --sky: #9cc9f0;
+  --lilac: #d6c6f2;
+  --peach: #f2b8a8;
+  --sub: #6b6560;
 
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  --background: var(--paper);
+  --foreground: var(--ink);
+  --card: #ffffff;
+  --card-foreground: var(--ink);
+  --popover: #ffffff;
+  --popover-foreground: var(--ink);
+  --primary: var(--mint);
+  --primary-foreground: var(--ink);
+  --secondary: #ffffff;
+  --secondary-foreground: var(--ink);
+  --muted: #ebe5dc;
+  --muted-foreground: var(--sub);
+  --accent: var(--tape);
+  --accent-foreground: var(--ink);
+  --destructive: var(--red);
+  --border: var(--ink);
+  --input: var(--ink);
+  --ring: var(--ink);
+  --chart-1: var(--mint-ink);
+  --chart-2: var(--red);
+  --chart-3: #3d7fc4;
+  --chart-4: #c9a227;
+  --chart-5: var(--sub);
+  --radius: 0.875rem;
+  --sidebar: var(--paper);
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--ink);
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: var(--muted);
+  --sidebar-accent-foreground: var(--ink);
+  --sidebar-border: var(--ink);
+  --sidebar-ring: var(--ink);
 }
 
 @layer base {
@@ -123,8 +121,50 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-synthesis: none;
   }
   html {
     @apply font-sans;
+  }
+}
+
+@layer components {
+  /* Receipt: zigzag top edge drawn with two offset triangle gradients. */
+  .receipt-edge {
+    position: relative;
+    border-top: 0;
+  }
+  .receipt-edge::before {
+    content: "";
+    position: absolute;
+    left: -3px;
+    right: -3px;
+    top: -14px;
+    height: 16px;
+    background:
+      linear-gradient(135deg, transparent 50%, var(--ink) 50% calc(50% + 3px), var(--card) calc(50% + 3px)) 0 0 / 22px 16px repeat-x,
+      linear-gradient(225deg, transparent 50%, var(--ink) 50% calc(50% + 3px), var(--card) calc(50% + 3px)) 11px 0 / 22px 16px repeat-x;
+  }
+  .barcode {
+    background: repeating-linear-gradient(
+      90deg,
+      var(--ink) 0 2px,
+      transparent 2px 4px,
+      var(--ink) 4px 7px,
+      transparent 7px 8px,
+      var(--ink) 8px 9px,
+      transparent 9px 12px
+    );
+  }
+  /* Rubber-stamp wear: a soft mask so the ink looks pressed, not printed. */
+  .stamp-ink {
+    -webkit-mask-image:
+      radial-gradient(circle at 20% 30%, #000 0 60%, rgba(0, 0, 0, 0.78) 61%),
+      radial-gradient(circle at 70% 80%, #000 0 55%, rgba(0, 0, 0, 0.82) 56%);
+    -webkit-mask-composite: source-in;
+    mask-composite: intersect;
+  }
+  .tape-edge {
+    clip-path: polygon(0 10%, 6% 0, 12% 12%, 18% 0, 82% 0, 88% 14%, 94% 0, 100% 10%, 100% 90%, 94% 100%, 88% 86%, 82% 100%, 18% 100%, 12% 88%, 6% 100%, 0 90%);
   }
 }
