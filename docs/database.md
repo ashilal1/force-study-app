@@ -60,7 +60,7 @@ erDiagram
 | penalty_fake_evidence | int | 200 | P8 |
 | min_explanation_chars | int | 30 | 次の計画・理由の最小文字数 |
 | settlement_weekday | int | 6 | 精算する曜日（0 = 日曜 … 6 = 土曜） |
-| settlement_time | time | `23:00` | 精算する時刻 |
+| settlement_time | time | `23:59` | 精算する時刻（その日の決着のあと） |
 | image_retention_days | int | 60 | 証拠画像の保持日数 |
 | storage_soft_limit_mb | int | 800 | これを超えたら古い画像から消す |
 
@@ -291,7 +291,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | verified_at | timestamptz null | この端末でテスト通知を確認した時刻 |
 | created_at, last_success_at | timestamptz | |
 
-### weekly_reviews（週の振り返り。土曜 23:00 に 1 人 1 件）
+### weekly_reviews（週の振り返り。土曜 23:59 に 1 人 1 件）
 | 列 | 型 | 説明 |
 |---|---|---|
 | user_id | uuid → profiles | PK (user_id, week_end) |
@@ -377,8 +377,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5) |
 | `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は penalty） |
 | `due_deadline_reminders()` | `report_reminder_times`・`review_reminder_times` に、その日の理由申告・審査・最終審査で未対応の人へリマインドを作る |
-| `create_weekly_reviews()` | 土曜 23:00 以降、その週に 1 回だけ。全員の `weekly_reviews` を `stats` 付きで作る（`ai_summary` は tick が Gemini で埋める） |
-| `run_weekly_settlement()` | 土曜 23:00 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
+| `create_weekly_reviews()` | 土曜 23:59 以降、その週に 1 回だけ。全員の `weekly_reviews` を `stats` 付きで作る（`ai_summary` は tick が Gemini で埋める） |
+| `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
 
 **P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed','invalidated')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed`（達成）かほかの理由の未達成で止まる。理由申告待ち・審査中・確定待ちの日があればそこでも止める（確定していないため）。
 
