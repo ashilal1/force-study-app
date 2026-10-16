@@ -29,7 +29,7 @@
 - [ ] **通知ゲート (F0)**: ホーム画面追加（iOS）→ 許可 → 購読 → テスト通知 → バナー・サウンドの確認。開くたびに再確認
 
 ## M4. 宣言・休息日
-- [ ] RPC `declare_goal`（合言葉の発行、`next_deadline` などの共通関数を含む） / `register_rest_day` / `cancel_rest_day`
+- [ ] RPC `declare_goal`（合言葉の発行、`day_at` などの共通関数を含む） / `register_rest_day` / `cancel_rest_day`
 - [ ] 宣言フォーム・休息日カレンダー
 - [ ] 宣言への指摘: RPC `flag_declaration` / `revise_declaration` / `expire_revisions`、書き直しフォーム
 - [ ] 休会: RPC `request_leave` / `cancel_leave`、申請・審査画面

@@ -127,7 +127,7 @@ sequenceDiagram
         F->>SA: 取り下げる
         SA->>DB: rpc withdraw_flag() → upheld → completed
     else 1 時間たっても取り下げがそろわない
-        T->>DB: rpc advance_disputes() → final_review（期限: 次の宣言締切）
+        T->>DB: rpc advance_disputes() → final_review（期限: 今日 23:59）
         T-->>M: 「最終審査して」
         M->>SA: 認める / 却下（理由必須）
         SA->>DB: rpc cast_review('dispute')
@@ -145,7 +145,7 @@ sequenceDiagram
     participant SA as Server Actions
     participant DB as Postgres
     T->>DB: rpc close_overdue_logs()
-    Note over DB: 提出締切を過ぎた pending → missed<br/>failure_reports(awaiting_report, 期限: 次の宣言締切)
+    Note over DB: 提出締切を過ぎた pending → missed<br/>failure_reports(awaiting_report, 期限: 今日 23:00)
     T-->>U: 「理由を申告して」
     U->>SA: 理由（カテゴリ + テキスト）
     SA->>DB: rpc file_failure_report()
@@ -160,10 +160,10 @@ sequenceDiagram
         SA->>DB: rpc cast_review('excuse')
         Note over DB: reject → 即却下 500pt<br/>全員 accept → 承認 0pt
         T->>DB: rpc expire_reviews()
-        Note over DB: 次の宣言締切までにそろわなければ却下 500pt
+        Note over DB: 23:59 までにそろわなければ却下 500pt
     end
     T->>DB: rpc expire_reports()
-    Note over DB: 次の宣言締切までに申告なし → not_reported 700pt
+    Note over DB: 23:00 までに申告なし → not_reported 700pt
 ```
 
 ### 2.5 定期実行 (`/api/cron/tick`)
@@ -182,7 +182,7 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 7 | 「怪しい」の受付終了 → 達成で確定 | `rpc confirm_passed_logs()` |
 | 8 | 送り直しの期限 → 最終審査、最終審査の期限 → 確定 | `rpc advance_disputes()` |
 | 9 | 理由申告の期限 (P5)、審査の期限（理由 P4・休会） | `rpc expire_reports()` / `rpc expire_reviews()` |
-| 10 | 8:00・11:00・11:45 の期限前リマインド | `rpc due_deadline_reminders()` |
+| 10 | 理由申告（22:00・22:45）と審査（22:00・23:00・23:30）のリマインド | `rpc due_deadline_reminders()` |
 | 11 | 毎週土曜 23:00 の精算と、未払いへの P7 | `rpc run_weekly_settlement()` |
 | 11b | 週の振り返りを作り、Gemini で要約を書く（失敗したら次の tick で再試行） | `rpc create_weekly_reviews()` + `lib/gemini/weeklySummary` |
 | 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す） | Storage API |

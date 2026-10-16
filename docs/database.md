@@ -33,10 +33,15 @@ erDiagram
 | 列 | 型 | 既定 | 説明 |
 |---|---|---|---|
 | id | boolean PK | `true`, `check (id)` | 1 行に固定するためのダミー |
-| declaration_cutoff | time | `12:00` | 宣言締切 (JST)。「次の宣言締切」の基準にもなる |
+| declaration_cutoff | time | `12:00` | 宣言締切 (JST) |
 | last_declaration_reminder | time | `11:00` | 2 回目の宣言リマインド |
-| deadline_min_hours | int | 6 | 「次の宣言締切」までの最低時間。足りなければ翌日の 12:00 |
-| deadline_reminder_times | time[] | `{08:00,11:00,11:45}` | 「次の宣言締切」が期限のものを、まだ対応していない人へ知らせる時刻 |
+| submit_deadline_max | time | `21:00` | 提出締切の上限 |
+| dispute_cutoff | time | `22:00` | 「怪しい」を押せる最終時刻 |
+| resend_cutoff | time | `23:00` | 証拠を送り直せる最終時刻 |
+| report_deadline | time | `23:00` | 理由申告の期限 |
+| review_deadline | time | `23:59` | 審査（理由・休会・最終審査）の期限 = その日の決着 |
+| report_reminder_times | time[] | `{22:00,22:45}` | 理由申告のリマインド |
+| review_reminder_times | time[] | `{22:00,23:00,23:30}` | 審査のリマインド（未回答の人へ） |
 | rest_days_per_week | int | 1 | 週あたりの休息日上限（週は日曜〜土曜） |
 | passing_score | int | 70 | 合格点 |
 | max_attempts | int | 3 | 1 学習日の最大提出回数（送り直しは数えない） |
@@ -90,7 +95,7 @@ erDiagram
 | start_date, end_date | date | 長さの上限なし。開始日は申請日の翌日以降 |
 | reason | text | 30 字以上 |
 | status | text | `under_review` / `approved` / `rejected` / `cancelled` |
-| review_due_at | timestamptz | 申請時刻の「次の宣言締切」 |
+| review_due_at | timestamptz | 申請した日の 23:59 |
 | approved_at, resolved_at | timestamptz | |
 | cancelled_from | date | 途中でやめたとき、この日以降は休会でない |
 
@@ -104,14 +109,14 @@ erDiagram
 | date | date | JST。**`current_date` を既定値にしない**（UTC になるため）。RPC が決める |
 | status | text | `pending`（進行中） / `passed`（合格・確定待ち。疑義中もここ） / `completed`（達成で確定） / `missed`（未達成） / `no_declaration`（宣言なし。P6 で無効になった宣言も含む） / `invalidated`（証拠不認定, P8） |
 | declaration | text | `no_declaration` のときは null |
-| target_end_time | timestamptz | 同上。宣言時刻 + 30 分〜翌日 12:00 |
+| target_end_time | timestamptz | 同上。宣言時刻 + 30 分〜当日 21:00 |
 | passphrase | text | 今日の合言葉。宣言時に発行し、書き直しても変えない |
 | original_declaration | text | 書き直す前の宣言（指摘されたときだけ） |
 | revision_due_at | timestamptz | 「軽すぎる」が押されたとき `now() + revision_minutes` |
 | revised_at | timestamptz | |
 | declared_at | timestamptz | 経過時間の起点 |
 | passed_at | timestamptz | AI が合格にした時刻 |
-| dispute_window_ends_at | timestamptz | `passed_at + dispute_window_hours`。過ぎて疑義がなければ `completed` |
+| dispute_window_ends_at | timestamptz | `least(passed_at + dispute_window_hours, 当日の dispute_cutoff)`。過ぎて疑義がなければ `completed` |
 | completed_at, missed_at | timestamptz | |
 
 制約: `unique (user_id, date)`、`check` で status と declaration の組み合わせを検査。
@@ -169,8 +174,8 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 | study_log_id | uuid PK → study_logs | |
 | status | text | `resending`（送り直し受付中） / `final_review`（最終審査） / `upheld`（達成で確定） / `invalidated`（P8） |
 | first_flagged_at | timestamptz | |
-| resend_due_at | timestamptz | `first_flagged_at + resend_minutes` |
-| review_due_at | timestamptz | 最終審査が始まった時刻の「次の宣言締切」 |
+| resend_due_at | timestamptz | `least(first_flagged_at + resend_minutes, 当日の resend_cutoff)` |
+| review_due_at | timestamptz | 学習日の 23:59 |
 | resolved_at | timestamptz | |
 
 - `resending` 中に全員の `withdrawn_at` が埋まったら `upheld`。
@@ -187,9 +192,9 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 | reason_text | text | 急遽予定・その他の理由、サボりのひとこと |
 | next_plan_text | text | 「宣言が妥当じゃなかった」ときの次の計画（必須） |
 | unrealistic_streak | int | `unrealistic` のとき、これを含めて何回連続か（申告時に計算して保存） |
-| report_due_at | timestamptz | `missed_at` の「次の宣言締切」 |
+| report_due_at | timestamptz | 学習日の 23:00 |
 | reported_at | timestamptz | |
-| review_due_at | timestamptz | `reported_at` の「次の宣言締切」（審査があるときだけ） |
+| review_due_at | timestamptz | 学習日の 23:59（審査があるときだけ） |
 | outcome | text null | `no_penalty` / `penalized` |
 | resolved_at | timestamptz | |
 
@@ -247,7 +252,7 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 | actor_id | uuid → profiles | |
 | study_log_id, submission_id, settlement_id, leave_request_id | uuid null | |
 | payload | jsonb | 表示用（スコア・講評・締切・理由・金額など） |
-| dedupe_key | text **unique** null | リマインドなどの重複防止（例: `reminder_review:{log}:{reviewer}:11:45`） |
+| dedupe_key | text **unique** null | リマインドなどの重複防止（例: `reminder_review:{log}:{reviewer}:23:30`） |
 | created_at | timestamptz | |
 
 type（requirements N1 の表の 1 行 = 1 種類）:
@@ -323,14 +328,14 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | 関数 | 処理 |
 |---|---|
 | `jst_today()` | `(now() at time zone 'Asia/Tokyo')::date` |
-| `next_deadline(ts)` | `ts` のあとに来る最初の宣言締切 (12:00 JST)。残りが `deadline_min_hours` 未満なら翌日の 12:00 |
+| `day_at(date, time)` | 学習日 + 時刻 → timestamptz (JST)。期限の計算はすべてこれを使う |
 | `add_penalty(user_id, study_log_id, reason, points)` | `dedupe_key` つきで insert。本人がお試し期間中なら `waived = 'trial'` |
 | `reviewers_for(user_id)` | 本人以外で、今日休会中でないメンバー |
 
 ### 宣言・休み
 | 関数 | 処理 |
 |---|---|
-| `declare_goal(user_id, declaration, end_time_hhmm)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。`target_end_time` を「今日 HH:mm、早ければ翌日」に変換して範囲（+30 分〜翌日 12:00）を検査。合言葉を発行して insert |
+| `declare_goal(user_id, declaration, end_time_hhmm)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。`target_end_time` を「今日 HH:mm」に変換して範囲（+30 分〜当日 `submit_deadline_max`）を検査。合言葉を発行して insert |
 | `register_rest_day(user_id, date)` / `cancel_rest_day` | 明日以降か、週の上限内か、その日に宣言していないか |
 | `request_leave(user_id, start, end, reason)` / `cancel_leave(...)` | 休会の申請と取り消し。審査は `cast_review('leave', ...)` |
 | `flag_declaration(flagger_id, study_log_id, comment)` | 本人以外か、宣言から `flag_window_hours` 以内かつ提出締切前か、まだ書き直していないかを検査。最初の指摘なら `revision_due_at` を入れる |
@@ -371,7 +376,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `advance_disputes()` | `resend_due_at` を過ぎた `resending` → `final_review`（`peer_reviews('dispute')` を作る）。`review_due_at` を過ぎた `final_review` → `upheld`。送り直しの残り 15 分のリマインドも作る |
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5) |
 | `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は penalty） |
-| `due_deadline_reminders()` | `deadline_reminder_times`（8:00・11:00・11:45）に、期限が「次の宣言締切」のもの（理由申告・審査・最終審査）で未対応の人へリマインドを作る |
+| `due_deadline_reminders()` | `report_reminder_times`・`review_reminder_times` に、その日の理由申告・審査・最終審査で未対応の人へリマインドを作る |
 | `create_weekly_reviews()` | 土曜 23:00 以降、その週に 1 回だけ。全員の `weekly_reviews` を `stats` 付きで作る（`ai_summary` は tick が Gemini で埋める） |
 | `run_weekly_settlement()` | 土曜 23:00 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
 
