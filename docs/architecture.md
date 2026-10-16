@@ -71,39 +71,48 @@ sequenceDiagram
     N-->>U: (他のメンバーへ Push / Realtime)
 ```
 
-### 2.2 提出と AI 判定
+### 2.2 開始・提出と AI 判定
 ```mermaid
 sequenceDiagram
     actor U as ユーザー
     participant C as Client
     participant ST as Storage
-    participant SA as Server Action createSubmission()
+    participant SA as Server Actions
     participant J as /api/judge
     participant G as Gemini
     participant DB as Postgres
-    U->>C: 画像 1〜3 枚 + 振り返り
+    Note over U,C: 宣言時に今日の合言葉が発行されている
+    U->>C: 開始時の写真（合言葉入り）
     C->>C: 圧縮 (WebP, 長辺1200px, ~200KB)
-    C->>ST: upload {user_id}/{date}/{uuid}/{n}.webp
-    C->>SA: 画像パス + テキスト + 自己評価
+    C->>ST: upload {user_id}/{date}/start/{uuid}.webp
+    C->>SA: startStudy(path)
+    SA->>ST: 画像を取得 → 知覚ハッシュを計算 (sharp)
+    SA->>G: 合言葉が写っているか（軽い確認）
+    SA->>DB: rpc start_study()（合言葉なし・使い回しなら撮り直し）
+    U->>C: 提出写真 1〜3 枚 + 振り返り
+    C->>ST: upload {user_id}/{date}/result/{uuid}.webp
+    C->>SA: createSubmission(paths, text, rating)
+    SA->>ST: 画像を取得 → 知覚ハッシュ
     SA->>DB: rpc create_submission()
-    Note over DB: pending か / submitted_at < target_end_time か<br/>試行回数 < 上限 か を検査 → status=judging
+    Note over DB: 開始済み / 締切前 / 試行回数 / 使い回し を検査<br/>使い回しなら rejected(duplicate) で終わり
     SA-->>C: submission_id
     C->>J: POST { submission_id }
-    J->>DB: 提出・宣言を取得
-    J->>ST: 画像をダウンロード
-    J->>G: 宣言 + 画像(inline base64) + テキスト<br/>responseSchema = {score, feedback}
+    J->>ST: 開始時の写真・提出写真を取得
+    J->>G: 宣言 + 合言葉 + 写真(inline base64) + テキスト + 経過時間<br/>responseSchema = {score, passphrase_found, progress_ok, feedback}
     alt Gemini 成功
-        G-->>J: { score, feedback }
-        J->>DB: rpc record_judgement(score >= 合格点 ?)
-        Note over DB: 合格 → log completed<br/>不合格 → log は pending のまま (残り回数を返す)
+        G-->>J: 結果
+        J->>DB: rpc record_judgement()
+        Note over DB: 合格 = 70 点以上 かつ 合言葉あり
     else Gemini エラー
         J->>DB: submission.status = error (試行回数に数えない)
     end
     J->>J: lib/notify で通知
     J-->>C: 結果
 ```
+- 知覚ハッシュは**サーバーで計算する**（クライアントで計算すると値を偽れるため）。`sharp` で 9×8 のグレースケールに縮めて dHash を取る。
 - 判定は `/api/judge` で同期実行する（Gemini Flash は数秒。Vercel Hobby の関数時間の上限に収まる）。
 - `error` の提出は、本人が「再判定」を押すか、次の cron tick が再実行する。
+- 合格後の「怪しい」指摘 → 追加の証拠 → 審査は、2.3 の理由申告の審査と同じ流れ（`peer_reviews` を `subject_type = 'dispute'` で使う）。
 
 ### 2.3 未達成 → 理由申告 → 審査
 ```mermaid
@@ -123,10 +132,10 @@ sequenceDiagram
     else 宣言が妥当じゃなかった
         Note over DB: 連続回数を計算。4 回目以降なら 500pt → resolved
     else 急遽予定 / その他
-        Note over DB: under_review。ほかの全員の excuse_reviews 行を作る
+        Note over DB: under_review。peer_reviews(excuse) の行を作る
         SA-->>F: 審査依頼
         F->>SA: 納得 / 納得できない
-        SA->>DB: rpc review_excuse()
+        SA->>DB: rpc cast_review('excuse')
         Note over DB: reject → 即却下 500pt<br/>全員 accept → 承認 0pt
         T->>DB: rpc expire_reviews()
         Note over DB: 5h でそろわなければ却下 500pt
@@ -150,8 +159,8 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 6 | 審査の期限切れ (P4) と 3 時間前リマインド | `rpc expire_reviews()` |
 | 7 | 提出締切 1 時間前のリマインド | `rpc due_submit_reminders()` |
 | 8 | 毎週土曜 23:00 の精算と、未払いへの P7 | `rpc run_weekly_settlement()` |
-| 8b | 指摘の書き直し期限 (P6)、休会の審査期限 | `rpc expire_revisions()` / `rpc expire_leave_reviews()` |
-| 9 | 保持期間を過ぎた画像を削除 | Storage API |
+| 8b | 指摘の書き直し期限 (P6)、休会の審査期限、「怪しい」の追加証拠・審査の期限 (P8) | `rpc expire_revisions()` / `rpc expire_leave_reviews()` / `rpc expire_disputes()` |
+| 9 | 保持期間を過ぎた画像、800MB を超えたぶんの古い画像を削除（知覚ハッシュは残す） | Storage API |
 | 10 | 2〜8 で返ってきたイベントを通知に回す | `lib/notify` |
 
 5 分ごとなので、リマインドは最大 5 分遅れる（0:00 のリマインドは 0:00〜0:05 の間に届く）。期限ちょうどの確定も最大 5 分遅れるが、判定は記録された時刻で行うので結果は変わらない。
@@ -204,6 +213,7 @@ flowchart LR
     │   ├── (app)/
     │   │   ├── page.tsx           # ダッシュボード
     │   │   ├── declare/           # 宣言
+    │   │   ├── start/             # 学習開始（開始時の写真）
     │   │   ├── submit/            # 提出
     │   │   ├── logs/[id]/         # 学習ログ詳細
     │   │   ├── members/[id]/      # メンバー履歴
@@ -219,7 +229,8 @@ flowchart LR
     │   └── ui/                    # shadcn/ui
     ├── lib/
     │   ├── supabase/              # client.ts / server.ts / admin.ts / proxy.ts
-    │   ├── gemini/                # judge(): プロンプト・スキーマ
+    │   ├── gemini/                # judge() / checkPassphrase(): プロンプト・スキーマ
+    │   ├── evidence/              # 知覚ハッシュ (sharp)・使い回し検出・合言葉の生成
     │   ├── notify/                # dispatch(): 受信者ルール・web-push
     │   ├── time.ts                # JST の日付計算
     │   └── env.ts                 # 環境変数の検証 (zod)
@@ -233,10 +244,10 @@ flowchart LR
 |---|---|---|
 | Vercel Hobby | 関数の呼び出し・帯域とも十分 | tick 8,640 回/月 + 画面操作 |
 | Supabase DB | 500MB | 数 MB/年 |
-| Supabase Storage | 1GB | 保持 60 日で最大 ~600MB |
+| Supabase Storage | 1GB | 通常 ~300MB、最悪 ~850MB（800MB 超で古い順に削除） |
 | Supabase Realtime | 同時接続 200 | 最大 6 人 × 端末数 |
 | Supabase Auth | MAU 50,000 | 6 |
-| Gemini（Flash 系） | 1 日あたり数百〜1,500 リクエスト（モデルによる） | 最大 ~20 回/日 |
+| Gemini（Flash 系） | 1 日あたり数百〜1,500 リクエスト（モデルによる） | 最大 ~30 回/日（開始時の確認 + 判定） |
 | Web Push | 無料（ブラウザベンダーが提供） | 最大 ~100 通/日 |
 
 注意: Supabase Free は **API アクセスのない状態が 7 日続くとプロジェクトが一時停止**する。毎日使っていれば問題ない。

@@ -29,13 +29,16 @@
 - [ ] RPC `declare_goal` / `register_rest_day` / `cancel_rest_day`
 - [ ] 宣言フォーム・休息日カレンダー
 - [ ] 宣言への指摘: RPC `flag_declaration` / `revise_declaration` / `expire_revisions`、書き直しフォーム
-- [ ] 休会: RPC `request_leave` / `review_leave` / `cancel_leave` / `expire_leave_reviews`、申請・審査画面
+- [ ] 休会: RPC `request_leave` / `cancel_leave` / `expire_leave_reviews`、申請・審査画面
 
-## M5. 提出・AI 判定
-- [ ] クライアントでの画像圧縮とアップロード
+## M5. 証拠・提出・AI 判定
+- [ ] 合言葉の発行（宣言時）
+- [ ] クライアントでの画像圧縮とアップロード、サーバーでの知覚ハッシュ (`sharp`) と使い回し検出
+- [ ] 学習開始: 開始時の写真、合言葉の確認、RPC `start_study`
 - [ ] RPC `create_submission` / `record_judgement` / `record_judge_error`
-- [ ] `/api/judge`（Gemini、structured output）
+- [ ] `/api/judge`（Gemini、structured output、合言葉・進み具合の確認）
 - [ ] 結果の表示・再提出・再判定
+- [ ] 「怪しい」指摘: RPC `flag_submission` / `submit_extra_evidence` / `expire_disputes`
 
 ## M6. 定期実行・宣言なし
 - [ ] RPC `run_declaration_reminders` / `close_declarations` / `close_overdue_logs` / `due_submit_reminders`
@@ -43,7 +46,7 @@
 - [ ] pg_cron + pg_net + Vault の設定（マイグレーションと手順書）
 
 ## M7. 理由申告・審査・精算
-- [ ] RPC `file_failure_report` / `review_excuse` / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
+- [ ] RPC `file_failure_report` / `cast_review`（理由・休会・疑義で共通） / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
 - [ ] 理由申告フォーム、審査画面（納得 / 納得できない）
 - [ ] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement`
 - [ ] 支払先の設定、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
