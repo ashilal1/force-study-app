@@ -70,7 +70,7 @@ erDiagram
 | is_admin | boolean default false | 最初のユーザーを true にする（トリガー） |
 | trial_ends_at | timestamptz | お試し期間の終わり = 登録後の最初の日曜 0:00 JST（日曜に登録したら翌週の日曜） |
 | notifications_verified_at | timestamptz null | テスト通知を本人が確認した時刻（F0）。null のあいだはアプリを使えない |
-| deactivated_at | timestamptz null | 抜けたメンバー。**行は消さない**（記録を残すため。`auth.users` を消しても profiles は残るよう、外部キーは `on delete set null` 相当で別に持つ） |
+| deactivated_at | timestamptz null | 抜けたメンバー。**profiles も `auth.users` も消さず**、ログインを止める（Auth の ban）だけにする。記録を残すため |
 | created_at | timestamptz | |
 
 `auth.users` の insert トリガーで作る（`display_name` は `raw_user_meta_data` から取る）。
