@@ -26,7 +26,6 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
-        {/* eslint-disable-next-line @next/next/no-page-custom-font -- App Router root layout; see comment above */}
         <link rel="stylesheet" href={JAPANESE_FONTS} />
       </head>
       <body className="min-h-full flex flex-col">{children}</body>
