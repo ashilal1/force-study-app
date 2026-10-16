@@ -114,7 +114,7 @@ sequenceDiagram
     participant SA as Server Actions
     participant DB as Postgres
     T->>DB: rpc close_overdue_logs()
-    Note over DB: 提出締切を過ぎた pending → missed<br/>failure_reports(awaiting_report, 期限 24h)
+    Note over DB: 提出締切を過ぎた pending → missed<br/>failure_reports(awaiting_report, 期限 5h)
     T-->>U: 「理由を申告して」
     U->>SA: 理由（カテゴリ + テキスト）
     SA->>DB: rpc file_failure_report()
@@ -129,10 +129,10 @@ sequenceDiagram
         SA->>DB: rpc review_excuse()
         Note over DB: reject → 即却下 500pt<br/>全員 accept → 承認 0pt
         T->>DB: rpc expire_reviews()
-        Note over DB: 24h でそろわなければ却下 500pt
+        Note over DB: 5h でそろわなければ却下 500pt
     end
     T->>DB: rpc expire_reports()
-    Note over DB: 24h 申告なし → not_reported 700pt
+    Note over DB: 5h 申告なし → not_reported 700pt
 ```
 
 ### 2.4 定期実行 (`/api/cron/tick`)
@@ -143,7 +143,7 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | # | 処理 | 実体 |
 |---|---|---|
 | 1 | 判定待ち・エラーの提出を再判定（最大 N 件） | `/api/judge` と同じロジック |
-| 2 | 1 日の始まり・11:00 の宣言リマインド | `rpc run_declaration_reminders()` |
+| 2 | 0:00・11:00 の宣言リマインド | `rpc run_declaration_reminders()` |
 | 3 | 12:00 の宣言なしを確定 (P1) | `rpc close_declarations()` |
 | 4 | 提出締切超過を未達成にする（判定待ちには 60 分の猶予） | `rpc close_overdue_logs()` |
 | 5 | 理由申告の期限切れ (P5) と 3 時間前リマインド | `rpc expire_reports()` |
@@ -154,7 +154,7 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 9 | 保持期間を過ぎた画像を削除 | Storage API |
 | 10 | 2〜8 で返ってきたイベントを通知に回す | `lib/notify` |
 
-5 分ごとなので、リマインドは最大 5 分遅れる（「1 日の始まりの瞬間」は 07:00〜07:05 の間に届く）。
+5 分ごとなので、リマインドは最大 5 分遅れる（0:00 のリマインドは 0:00〜0:05 の間に届く）。期限ちょうどの確定も最大 5 分遅れるが、判定は記録された時刻で行うので結果は変わらない。
 
 > Vercel Hobby の Cron は 1 日 1 回までなので使わない。GitHub Actions を使わない理由は ADR-003。
 

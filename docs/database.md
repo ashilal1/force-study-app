@@ -47,9 +47,8 @@ erDiagram
 | penalty_late_payment | int | 500 | P7（1 週ごと） |
 | flag_window_hours | int | 3 | 宣言から何時間「軽すぎる」を押せるか |
 | revision_minutes | int | 60 | 指摘されてから書き直すまでの期限 |
-| leave_max_days | int | 14 | 休会 1 回の最長日数 |
-| report_hours | int | 24 | 理由申告の期限 |
-| review_hours | int | 24 | 審査の期限 |
+| report_hours | int | 5 | 理由申告の期限 |
+| review_hours | int | 5 | 審査の期限（理由・休会） |
 | min_explanation_chars | int | 30 | 次の計画・理由の最小文字数 |
 | settlement_weekday | int | 6 | 精算する曜日（0 = 日曜 … 6 = 土曜） |
 | settlement_time | time | `23:00` | 精算する時刻 |
@@ -62,7 +61,6 @@ erDiagram
 | display_name | text not null | |
 | avatar_url | text | |
 | paypay_link | text | `https://` で始まるもの |
-| day_start_time | time default `07:00` | 1 日の始まり。宣言リマインドの時刻 |
 | payee_id | uuid → profiles null | 支払先。`check (payee_id <> id)`。null ならランダム |
 | is_admin | boolean default false | 最初のユーザーを true にする（トリガー） |
 | push_prefs | jsonb default `{}` | 通知の種類ごとの Push ON/OFF。キーがなければ既定値 |
@@ -109,7 +107,7 @@ erDiagram
 |---|---|---|
 | id | uuid PK | |
 | user_id | uuid → profiles | |
-| start_date, end_date | date | `end_date - start_date < leave_max_days`、開始日は申請日の翌日以降 |
+| start_date, end_date | date | 長さの上限なし。開始日は申請日の翌日以降 |
 | reason | text | 30 字以上 |
 | status | text | `under_review` / `approved` / `rejected` / `cancelled` |
 | review_due_at | timestamptz | |
@@ -205,12 +203,12 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 | actor_id | uuid → profiles | |
 | study_log_id, submission_id, settlement_id | uuid null | |
 | payload | jsonb | 表示用（スコア・講評・締切・理由・金額など） |
-| dedupe_key | text **unique** null | リマインドなどの重複防止（例: `reminder_day_start:{user}:{date}`） |
+| dedupe_key | text **unique** null | リマインドなどの重複防止（例: `reminder_review:{log}:{reviewer}:60m`） |
 | created_at | timestamptz | |
 
-type: `declared` / `declaration_flagged` / `declaration_revised` / `leave_requested` / `leave_approved` / `leave_rejected` / `settlement_not_received` / `late_payment` / `reminder_revision_due` / `reminder_late_payment` / `rest_day_registered` / `judged_passed` / `judged_rejected` / `no_declaration` / `missed` / `reported` / `review_requested` / `review_approved` / `review_rejected` / `penalized` / `settlement_created` / `settlement_sent` / `settlement_completed` / `reminder_day_start` / `reminder_last_call` / `reminder_submit` / `reminder_report_due` / `reminder_review_due`
+type: `declared` / `declaration_flagged` / `declaration_revised` / `leave_requested` / `leave_approved` / `leave_rejected` / `settlement_not_received` / `late_payment` / `reminder_revision_due` / `reminder_late_payment` / `rest_day_registered` / `judged_passed` / `judged_rejected` / `no_declaration` / `missed` / `reported` / `review_requested` / `review_approved` / `review_rejected` / `penalized` / `settlement_created` / `settlement_sent` / `settlement_completed` / `reminder_declare_midnight` / `reminder_declare_last_call` / `reminder_submit` / `reminder_report_due` / `reminder_review_due` / `review_vote_cast` / `leave_vote_cast` / `leave_ending`
 
-`reminder_*` は本人（または未回答者）にだけ届けるので、タイムラインには出さない。
+`reminder_*` と `*_vote_cast` は本人（または未回答者）にだけ届けるので、タイムラインには出さない。誰に届けるかは `lib/notify` の受信者ルール（requirements N1 の表）で決める。
 
 ### notifications（受信者ごと）
 | 列 | 型 | 説明 |
@@ -252,15 +250,15 @@ type: `declared` / `declaration_flagged` / `declaration_revised` / `leave_reques
 | `review_excuse(reviewer_id, study_log_id, verdict, comment)` | 審査者本人の未回答の行か、期限内かを検査。`reject` なら即却下 + penalty。全員 `accept` なら承認 |
 | `flag_declaration(flagger_id, study_log_id, comment)` | 本人以外か、宣言から `flag_window_hours` 以内かつ提出締切前か、まだ書き直していないかを検査。最初の指摘なら `revision_due_at` を入れる |
 | `revise_declaration(user_id, study_log_id, declaration)` | 本人の書き直し待ちか、期限内かを検査。`original_declaration` を残して上書き |
-| `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す。15 分前のリマインドもここで作る |
+| `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す。残り 15 分のリマインドもここで作る |
 | `request_leave(user_id, start, end, reason)` / `review_leave(...)` / `cancel_leave(...)` / `expire_leave_reviews()` | 休会。審査の仕組みは excuse と同じ |
 | `report_not_received(payee_id, settlement_id)` | 支払先本人の `sent` の精算を `open` に戻す |
-| `run_declaration_reminders()` | 各自の `day_start_time` と 11:00 を過ぎていて未宣言・休息日でも休会中でもない人に、`dedupe_key` つきでリマインドを作る |
+| `run_declaration_reminders()` | 0:00 と 11:00 を過ぎていて未宣言・休息日でも休会中でもない人に、`dedupe_key` つきでリマインドを作る |
 | `due_submit_reminders()` | 提出締切の 1 時間前で、まだ合格していない人にリマインドを作る |
 | `close_declarations()` | 12:00 を過ぎた今日、レコードも休息日も休会もないメンバー → `no_declaration` + penalty (P1) |
 | `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `missed` + `failure_reports(awaiting_report)` |
-| `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5)。締切 3 時間前のリマインドもここで作る |
-| `expire_reviews()` | `review_due_at` を過ぎた `under_review` → 却下 + penalty。締切 3 時間前のリマインドもここで作る |
+| `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5)。残り 1 時間・15 分のリマインドもここで作る |
+| `expire_reviews()` | `review_due_at` を過ぎた `under_review` → 却下 + penalty。残り 1 時間・15 分のリマインドもここで作る |
 | `run_weekly_settlement()` | 土曜 23:00 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、未精算の penalties を人ごとに束ね、支払先（`payee_id`、なければランダム）を決めて settlements を作る |
 | `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` | 本人確認つきで状態を進める |
 
@@ -273,7 +271,7 @@ type: `declared` / `declaration_flagged` / `declaration_revised` / `leave_reques
 | テーブル | authenticated の select | authenticated の書き込み |
 |---|---|---|
 | group_settings | 全行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
-| profiles | 全行 | update: 本人の行の `display_name, avatar_url, paypay_link, day_start_time, payee_id, push_prefs` **だけ**（列単位 GRANT） |
+| profiles | 全行 | update: 本人の行の `display_name, avatar_url, paypay_link, payee_id, push_prefs` **だけ**（列単位 GRANT） |
 | rest_days, study_logs, declaration_flags, submissions, failure_reports, excuse_reviews, leave_requests, leave_reviews, penalties, settlements, activity_events | 全行 | なし（申告・審査・送金の記録も Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・削除は Server Action） |
