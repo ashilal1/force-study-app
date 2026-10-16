@@ -12,8 +12,9 @@ create policy "members upload own evidence" on storage.objects
   with check (
     bucket_id = 'study-evidence'
     and (storage.foldername(name))[1] = (select auth.uid())::text
+    and (select private.is_member())
   );
 
 create policy "members read evidence" on storage.objects
   for select to authenticated
-  using (bucket_id = 'study-evidence');
+  using (bucket_id = 'study-evidence' and (select private.is_member()));

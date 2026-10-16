@@ -217,8 +217,9 @@ flowchart LR
 | 対象 | 方法 |
 |---|---|
 | セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ |
-| サインアップ | Supabase の公開サインアップは OFF。Server Action が招待コードを検証し、`auth.admin.createUser(email_confirm: true)` で作る。profile はトリガーで自動作成 |
-| DB 読み取り | RLS: 認証済みユーザーは全行を読める（ユーザーは全員メンバーなので）。ただし `notifications` と `push_subscriptions` は本人の行だけ |
+| ログイン | Google OAuth（Supabase Auth の Google プロバイダー、PKCE）。`signInWithOAuth` → Google → `/auth/callback` で `exchangeCodeForSession` |
+| 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action が `INVITE_CODE` と定数時間で比べ、`rpc join_group` で profile を作る（最初の 1 人が管理者）。profile のない人は、RLS の `private.is_member()` によって何も読めない |
+| DB 読み取り | RLS: **メンバー**（profile があり、抜けていない人）は全行を読める。`notifications` と `push_subscriptions` は本人の行だけ |
 | DB 書き込み | `authenticated` ロールには `profiles` の表示項目の update だけを許可（列単位の GRANT）。それ以外はサーバーの service role が書く |
 | Storage | private バケット。insert は `{auth.uid()}/` 配下だけ、select は認証済みユーザー。表示には署名付き URL を使う |
 | cron | `CRON_SECRET` との定数時間比較 |
@@ -242,7 +243,9 @@ flowchart LR
     ├── proxy.ts                   # セッション更新・認証ガード
     ├── app/
     │   ├── manifest.ts            # PWA manifest
-    │   ├── (auth)/login, signup/
+    │   ├── (auth)/login/          # 「Google でログイン」
+    │   ├── auth/callback/route.ts # OAuth のコード交換
+    │   ├── join/                  # 招待コードの入力（profile がない人はここへ）
     │   ├── onboarding/notifications/  # 通知ゲート (F0)
     │   ├── (app)/
     │   │   ├── page.tsx           # ダッシュボード

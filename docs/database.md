@@ -78,7 +78,7 @@ erDiagram
 | deactivated_at | timestamptz null | 抜けたメンバー。**profiles も `auth.users` も消さず**、ログインを止める（Auth の ban）だけにする。記録を残すため |
 | created_at | timestamptz | |
 
-`auth.users` の insert トリガーで作る（`display_name` は `raw_user_meta_data` から取る）。
+Google でログインしただけでは作らない。招待コードを確かめた Server Action が `join_group()` で作る（`display_name`・`avatar_url` は Google の情報を初期値にする）。**profile があり `deactivated_at` が null の人だけがメンバー**で、RLS はこれを `private.is_member()` で判定する。
 
 ### rest_days
 | 列 | 型 | 説明 |
@@ -329,6 +329,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 |---|---|
 | `jst_today()` | `(now() at time zone 'Asia/Tokyo')::date` |
 | `day_at(date, time)` | 学習日 + 時刻 → timestamptz (JST)。期限の計算はすべてこれを使う |
+| `is_member()` | 呼び出した人がメンバーか（RLS で使う。`authenticated` が実行できる唯一の関数） |
+| `join_group(user_id, display_name, avatar_url)` | 招待コードを確かめた後に profile を作る。最初の 1 人を管理者にする（advisory lock で同時実行を防ぐ） |
 | `add_penalty(user_id, study_log_id, reason, points)` | `dedupe_key` つきで insert。本人がお試し期間中なら `waived = 'trial'` |
 | `reviewers_for(user_id)` | 本人以外で、今日休会中でないメンバー |
 
@@ -402,11 +404,11 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
 
-`anon` ロールにはどのテーブルも許可しない。
+`anon` ロールにはどのテーブルも許可しない。上の「全行」はすべて「メンバーなら全行」（`private.is_member()`）。Google でログインしただけの人は何も読めない。
 
 ### Storage: `study-evidence`（private）
-- insert: `bucket_id = 'study-evidence' and (storage.foldername(name))[1] = auth.uid()::text`
-- select: 認証済みユーザー全員（表示は署名付き URL）
+- insert: `bucket_id = 'study-evidence' and (storage.foldername(name))[1] = auth.uid()::text and private.is_member()`
+- select: メンバー全員（表示は署名付き URL）
 - update / delete: なし（削除は cron が service role で行う）
 - バケットの制限: `file_size_limit = 1MB`、`allowed_mime_types = {image/webp, image/jpeg, image/png}`
 

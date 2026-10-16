@@ -40,7 +40,7 @@
 - **Consequences**: 二重ペナルティは一意制約で防げる。精算でどの失敗が消化されたかも追える。
 
 ## ADR-006: 招待コード + サーバー側でユーザーを作成する
-- **Status**: Accepted (2026-10-16)
+- **Status**: Superseded by ADR-025
 - **Decision**: Supabase の公開サインアップは OFF。サインアップ用の Server Action で `INVITE_CODE` を定数時間比較し、通ったら `auth.admin.createUser({ email_confirm: true })` で作る。
 - **Consequences**: anon key で Auth API を直接呼んでも登録できない。確認メールを送らないので、Supabase 無料枠のメール送信上限の影響も受けない。
 
@@ -162,3 +162,13 @@
 - **Context**: ローカルの Supabase は Docker で 10 前後のコンテナを動かし、開発機（メモリ 8GB）には重い。
 - **Decision**: Supabase の無料プラン（2 プロジェクトまで）で、開発用と本番用のプロジェクトを分ける。開発中は開発用プロジェクトに直接つなぎ、マイグレーションは `supabase db push` で反映する。キーは新形式（publishable / secret）を使う。
 - **Consequences**: Docker が不要。オフラインでは開発できない。データを作り直すときは `supabase db reset --linked`（開発用プロジェクトだけに使う）。7 日使わないと一時停止するので、再開してから作業する。pg_cron から開発機の tick は呼べないので、開発中は tick を手動で呼ぶ。
+
+## ADR-025: ログインは Google、メンバーになるには招待コード
+- **Status**: Accepted (2026-10-16)
+- **Context**: メール + パスワードだと、パスワードの管理とリセット（Supabase 無料枠のメール送信上限が厳しい）が手間になる。オーナーの提案で Google ログインにする。
+- **Decision**: Supabase Auth の Google プロバイダー（OAuth / OIDC、PKCE）でログインする。Google でログインしただけではメンバーにせず、`/join` で招待コードを入れた人だけに profile を作る（`join_group`）。RLS は `private.is_member()`（profile があり抜けていない）で判定する。
+- **Consequences**:
+  - パスワードとリセットの仕組みが要らなくなる。費用は 0 円（Google の OAuth クライアントは無料）。
+  - 招待コードを知らない人も auth のユーザーとしては登録されるが、何も読めない。
+  - Google Cloud での OAuth クライアントの作成と、Supabase での設定が初回だけ必要（README）。
+  - iPhone の PWA で OAuth から戻れるかは実機で確認する（M2）。だめならメールのワンタイムコードを予備にする。

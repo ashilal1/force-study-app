@@ -15,11 +15,10 @@
 - [ ] `supabase gen types` → `src/types/database.ts`
 
 ## M2. 認証・プロフィール
-- [ ] ログイン / 招待コードつきサインアップ（ADR-006）
-- [ ] profile の自動作成トリガー、最初のユーザーを admin にする
+- [ ] Google ログイン（`/login`、`/auth/callback`）と招待コードでの参加（`/join`、`rpc join_group`）（ADR-025）
+- [ ] iPhone の PWA で Google ログインが戻ってくるかを実機で確認。だめならメールのワンタイムコードを追加
 - [ ] プロフィール編集（表示名・アバター・PayPay リンク）
 - [ ] お試し期間（`trial_ends_at`）
-- [ ] 管理者による仮パスワードの発行
 
 ## M3. 通知基盤（後の機能はすべてこれを使うので先に作る）
 - [ ] `activity_events` → `notifications` の配信 (`lib/notify`)

@@ -10,8 +10,14 @@ alter default privileges for role postgres in schema public revoke all on sequen
 alter default privileges for role postgres in schema public revoke execute on functions from public, anon, authenticated;
 
 -- Helpers are internal; only service_role (RPCs run as definer) needs them.
+-- Exception: RLS policies call private.is_member() as the signed-in user.
 revoke all on all functions in schema private from public, anon, authenticated;
 grant execute on all functions in schema private to service_role;
+grant usage on schema private to authenticated;
+grant execute on function private.is_member() to authenticated;
+
+-- RPCs are called only by the server with the secret key.
+grant execute on function public.join_group(uuid, text, text) to service_role;
 
 do $$
 declare
@@ -27,6 +33,7 @@ begin
   end loop;
 
   -- Group-wide data: every member can read everything (it's a closed group of friends).
+  -- Signed-in Google users who haven't entered the invite code see nothing.
   foreach t in array array[
     'group_settings', 'profiles', 'rest_days', 'leave_requests', 'study_logs', 'declaration_flags',
     'submissions', 'submission_flags', 'submission_disputes', 'failure_reports', 'peer_reviews',
@@ -34,7 +41,7 @@ begin
   ] loop
     execute format('grant select on public.%I to authenticated', t);
     execute format(
-      'create policy "members can read" on public.%I for select to authenticated using (true)',
+      'create policy "members can read" on public.%I for select to authenticated using ((select private.is_member()))',
       t
     );
   end loop;
@@ -45,7 +52,7 @@ $$;
 grant update (display_name, avatar_url, paypay_link) on public.profiles to authenticated;
 create policy "members update own profile" on public.profiles
   for update to authenticated
-  using (id = (select auth.uid()))
+  using (id = (select auth.uid()) and (select private.is_member()))
   with check (id = (select auth.uid()));
 
 -- Notifications: only your own, and you may only mark them read.

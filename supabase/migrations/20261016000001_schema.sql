@@ -104,27 +104,51 @@ create table public.profiles (
   check (payee_id is null or payee_id <> id)
 );
 
-create function private.handle_new_user()
-returns trigger
+-- Anyone with a Google account can create an auth user, but only people who entered the invite
+-- code have a profile, and only profiles count as members (ADR-025).
+create function private.is_member()
+returns boolean
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select exists (
+    select 1 from public.profiles
+    where id = (select auth.uid()) and deactivated_at is null
+  );
+$$;
+
+-- Called by the join Server Action after it has checked the invite code. The first member is admin.
+create function public.join_group(p_user_id uuid, p_display_name text, p_avatar_url text)
+returns public.profiles
 language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  joined public.profiles;
 begin
-  insert into public.profiles (id, display_name, is_admin, trial_ends_at)
+  perform pg_advisory_xact_lock(hashtext('join_group'));
+
+  select * into joined from public.profiles where id = p_user_id;
+  if found then
+    return joined;
+  end if;
+
+  insert into public.profiles (id, display_name, avatar_url, is_admin, trial_ends_at)
   values (
-    new.id,
-    coalesce(nullif(btrim(new.raw_user_meta_data ->> 'display_name'), ''), split_part(new.email, '@', 1)),
+    p_user_id,
+    btrim(p_display_name),
+    p_avatar_url,
     not exists (select 1 from public.profiles),
     private.trial_end_for(now())
-  );
-  return new;
+  )
+  returning * into joined;
+
+  return joined;
 end;
 $$;
-
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function private.handle_new_user();
 
 create table public.rest_days (
   user_id uuid not null references public.profiles (id),

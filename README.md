@@ -44,6 +44,13 @@ npm run dev                         # http://localhost:3000
 | `CRON_SECRET` | `openssl rand -hex 32` |
 | `INVITE_CODE` | メンバーに配る招待コード（自分で決める） |
 
+### Google ログインの設定（無料）
+1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作る
+2. 「Google Auth Platform」（OAuth 同意画面）を設定する。対象は「外部」、スコープは `openid` / `email` / `profile` だけ（審査不要）。公開ステータスを「本番環境」にする（「テスト」のままだと登録したテストユーザーしかログインできない）
+3. 「クライアント」で OAuth クライアント ID を作る（種類: ウェブ アプリケーション）。承認済みのリダイレクト URI に `https://<project-ref>.supabase.co/auth/v1/callback` を入れる
+4. Supabase ダッシュボード → Authentication → Sign In / Providers → Google を有効にして、クライアント ID とシークレットを貼る
+5. Supabase ダッシュボード → Authentication → URL Configuration の Redirect URLs に `http://localhost:3000/auth/callback`（本番では本番の URL も）を追加する
+
 Web Push はローカルでも `localhost` なら試せる。iPhone で試すには HTTPS で公開し、ホーム画面に追加する必要がある。
 
 ## デプロイ
