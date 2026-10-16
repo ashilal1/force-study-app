@@ -35,14 +35,16 @@
 - [ ] `/api/judge`（Gemini、structured output）
 - [ ] 結果の表示・再提出・再判定
 
-## M6. 定期実行
-- [ ] RPC `fail_missing_declarations` / `fail_overdue_logs` / `due_reminders`
+## M6. 定期実行・宣言なし
+- [ ] RPC `run_declaration_reminders` / `close_declarations` / `close_overdue_logs` / `due_submit_reminders`
 - [ ] `/api/cron/tick`
 - [ ] pg_cron + pg_net + Vault の設定（マイグレーションと手順書）
 
-## M7. ペナルティ・精算
-- [ ] `penalty_summary` ビュー、RPC `create_due_settlements` / `mark_payment_sent` / `confirm_payment`
-- [ ] 精算ページ（PayPay ボタン、送金済み・受領確認）
+## M7. 理由申告・審査・精算
+- [ ] RPC `file_failure_report` / `review_excuse` / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
+- [ ] 理由申告フォーム、審査画面（納得 / 納得できない）
+- [ ] `penalty_summary` ビュー、RPC `run_monthly_settlement` / `mark_settlement_sent` / `confirm_settlement`
+- [ ] 支払先の設定、精算ページ（PayPay ボタン、送金した・受け取った）
 
 ## M8. ダッシュボード・履歴
 - [ ] 本日のステータスカード、ランキング、タイムライン

@@ -9,12 +9,13 @@ erDiagram
     profiles ||--o{ rest_days : "registers"
     profiles ||--o{ study_logs : "has"
     study_logs ||--o{ submissions : "has"
+    study_logs ||--o| failure_reports : "未達成なら"
+    failure_reports ||--o{ excuse_reviews : "審査"
+    profiles ||--o{ excuse_reviews : "reviewer"
     study_logs ||--o| penalties : "causes"
     profiles ||--o{ penalties : "owes"
     settlements ||--o{ penalties : "settles"
-    profiles ||--o{ settlements : "debtor"
-    settlements ||--o{ settlement_payments : "has"
-    profiles ||--o{ settlement_payments : "creditor"
+    profiles ||--o{ settlements : "debtor / payee"
     activity_events ||--o{ notifications : "fans out"
     profiles ||--o{ notifications : "receives"
     profiles ||--o{ push_subscriptions : "has"
@@ -22,20 +23,28 @@ erDiagram
 
 ## 2. テーブル
 
-型の表記は Postgres。`timestamptz` はすべて `default now()`。
+型の表記は Postgres。`timestamptz` はすべて `default now()`。**ポイントは円と同じ単位の整数**（1pt = 1 円）。
 
 ### group_settings（1 行だけ）
 | 列 | 型 | 既定 | 説明 |
 |---|---|---|---|
 | id | boolean PK | `true`, `check (id)` | 1 行に固定するためのダミー |
 | declaration_cutoff | time | `12:00` | 宣言締切 (JST) |
+| last_declaration_reminder | time | `11:00` | 2 回目の宣言リマインド |
 | rest_days_per_week | int | 1 | 週あたりの休息日上限（月曜始まり） |
 | passing_score | int | 70 | 合格点 |
 | max_attempts | int | 3 | 1 学習日の最大提出回数 |
-| settlement_threshold | int | 3 | 精算が発生するポイント |
-| settlement_amount_yen | int | 500 | 精算 1 件で 1 人に払う金額 |
-| image_retention_days | int | 60 | 証拠画像の保持日数 |
 | judge_grace_minutes | int | 60 | 締切後、判定待ちの提出を待つ時間 |
+| penalty_no_declaration | int | 500 | P1 |
+| penalty_slacked | int | 700 | P2・P5 |
+| penalty_unrealistic_streak | int | 500 | P3 |
+| unrealistic_streak_threshold | int | 4 | P3 が始まる連続回数 |
+| penalty_excuse_rejected | int | 500 | P4 |
+| report_hours | int | 24 | 理由申告の期限 |
+| review_hours | int | 24 | 審査の期限 |
+| min_explanation_chars | int | 30 | 次の計画・理由の最小文字数 |
+| settlement_time | time | `09:00` | 月の最終日に精算を作る時刻 |
+| image_retention_days | int | 60 | 証拠画像の保持日数 |
 
 ### profiles
 | 列 | 型 | 説明 |
@@ -44,6 +53,8 @@ erDiagram
 | display_name | text not null | |
 | avatar_url | text | |
 | paypay_link | text | `https://` で始まるもの |
+| day_start_time | time default `07:00` | 1 日の始まり。宣言リマインドの時刻 |
+| payee_id | uuid → profiles null | 支払先。`check (payee_id <> id)`。null ならランダム |
 | is_admin | boolean default false | 最初のユーザーを true にする（トリガー） |
 | push_prefs | jsonb default `{}` | 通知の種類ごとの Push ON/OFF。キーがなければ既定値 |
 | created_at | timestamptz | |
@@ -63,13 +74,13 @@ erDiagram
 | id | uuid PK | |
 | user_id | uuid → profiles | |
 | date | date | JST。**`current_date` を既定値にしない**（UTC になるため）。RPC が決める |
-| declaration | text | 宣言なしで失敗した場合は null |
+| status | text | `pending`（進行中） / `completed`（達成） / `missed`（未達成） / `no_declaration`（宣言なし） |
+| declaration | text | `no_declaration` のときは null |
 | target_end_time | timestamptz | 同上 |
-| status | text | `pending` / `completed` / `failed` |
-| fail_reason | text | `no_declaration` / `deadline_missed`（提出なし） / `not_passed`（提出したが不合格） |
-| declared_at, completed_at, failed_at | timestamptz | |
+| declared_at, completed_at, missed_at | timestamptz | |
 
-制約: `unique (user_id, date)`、`check` で status と fail_reason・declaration の組み合わせを検査。
+制約: `unique (user_id, date)`、`check` で status と declaration の組み合わせを検査。
+「理由申告待ち・審査中」などの細かい状態は `failure_reports` が持つ。
 
 ### submissions（提出 1 回分）
 | 列 | 型 | 説明 |
@@ -91,48 +102,74 @@ erDiagram
 
 Gemini がエラーのときは同じ提出を `error` → 再判定するので、新しい attempt は使わない。
 
-### penalties（ペナルティ台帳。1 行 = 1pt）
+### failure_reports（未達成の理由申告。study_log が `missed` になったときに作る）
+| 列 | 型 | 説明 |
+|---|---|---|
+| study_log_id | uuid PK → study_logs | |
+| user_id | uuid → profiles | |
+| status | text | `awaiting_report`（申告待ち） / `under_review`（審査中） / `resolved`（確定） |
+| category | text null | `unrealistic` / `slacked` / `sudden_plan` / `other` / `not_reported`（期限切れ） |
+| reason_text | text | 急遽予定・その他の理由、サボりのひとこと |
+| next_plan_text | text | 「宣言が妥当じゃなかった」ときの次の計画（必須） |
+| unrealistic_streak | int | `unrealistic` のとき、これを含めて何回連続か（申告時に計算して保存） |
+| report_due_at | timestamptz | `missed_at + report_hours` |
+| reported_at | timestamptz | |
+| review_due_at | timestamptz | `reported_at + review_hours`（審査があるときだけ） |
+| outcome | text null | `no_penalty` / `penalized` |
+| resolved_at | timestamptz | |
+
+`check` で category と必須テキストの組み合わせ、文字数を検査する。申告後は書き換えない。
+
+### excuse_reviews（審査。申告した時点のメンバーぶんの行を、申告と同時に作る）
+| 列 | 型 | 説明 |
+|---|---|---|
+| study_log_id | uuid → failure_reports | PK (study_log_id, reviewer_id) |
+| reviewer_id | uuid → profiles | `check` で申告者本人を除く（RPC で検査） |
+| verdict | text null | null = まだ押していない / `accept` / `reject` |
+| comment | text | 任意 |
+| decided_at | timestamptz | |
+
+全行が `accept` → 承認。`reject` が 1 行でもあれば即却下。`review_due_at` を過ぎて null が残っていれば却下。
+
+### penalties（ペナルティ台帳）
 | 列 | 型 | 説明 |
 |---|---|---|
 | id | uuid PK | |
 | user_id | uuid → profiles | |
-| study_log_id | uuid → study_logs **unique** | 1 学習日につき最大 1pt（二重ペナルティを DB で防ぐ） |
-| reason | text | study_logs.fail_reason と同じ |
+| study_log_id | uuid → study_logs **unique** | 1 学習日につき最大 1 件（二重ペナルティを DB で防ぐ） |
+| points | int `check (points > 0)` | = 円 |
+| reason | text | `no_declaration` / `slacked` / `not_reported` / `unrealistic_streak` / `excuse_rejected` / `excuse_expired` |
 | settlement_id | uuid → settlements null | null = 未精算 |
 | created_at | timestamptz | |
 
 ポイントは**カウンター列を持たず、台帳から集計する**（ずれない・あとから監査できる）。
 
-### settlements / settlement_payments
-| settlements | 型 | 説明 |
+### settlements（月末の精算。1 人 1 か月 1 件）
+| 列 | 型 | 説明 |
 |---|---|---|
 | id | uuid PK | |
 | debtor_id | uuid → profiles | 払う人 |
-| amount_per_member_yen | int | 発生時の金額をコピーして保存 |
-| status | text | `open` / `completed` |
-| created_at, completed_at | timestamptz | |
-
-| settlement_payments | 型 | 説明 |
-|---|---|---|
-| settlement_id | uuid → settlements | PK (settlement_id, creditor_id) |
-| creditor_id | uuid → profiles | 受け取る人（債務者以外の全員。発生時点のメンバー） |
-| sent_at | timestamptz | 債務者が「送金した」を押した時刻 |
-| confirmed_at | timestamptz | 受取人が「受け取った」を押した時刻 |
-
-全員の `confirmed_at` が埋まったら settlements を `completed` にする（RPC 内）。
+| payee_id | uuid → profiles | 支払先 |
+| payee_selection | text | `preset`（本人が決めていた） / `random` |
+| month | date | 対象月の 1 日。`unique (debtor_id, month)` |
+| amount_yen | int | 束ねた penalties の points の合計 |
+| status | text | `open` / `sent`（送金した） / `completed`（受け取った） |
+| created_at, sent_at, completed_at | timestamptz | |
 
 ### activity_events（グループのタイムライン ＝ 通知の元）
 | 列 | 型 | 説明 |
 |---|---|---|
 | id | uuid PK | |
-| type | text | `declared` / `rest_day_registered` / `judged_passed` / `judged_rejected` / `failed` / `reminder_declare` / `reminder_submit` / `settlement_created` / `payment_sent` / `payment_confirmed` / `settlement_completed` |
+| type | text | 下の一覧 |
 | actor_id | uuid → profiles | |
 | study_log_id, submission_id, settlement_id | uuid null | |
-| payload | jsonb | 表示用（スコア・講評・締切時刻など） |
-| dedupe_key | text **unique** null | リマインドなどの重複防止（例: `reminder_submit:{user}:{date}`） |
+| payload | jsonb | 表示用（スコア・講評・締切・理由・金額など） |
+| dedupe_key | text **unique** null | リマインドなどの重複防止（例: `reminder_day_start:{user}:{date}`） |
 | created_at | timestamptz | |
 
-リマインドは本人にだけ届けるので、タイムラインには出さない（type で除外）。
+type: `declared` / `rest_day_registered` / `judged_passed` / `judged_rejected` / `no_declaration` / `missed` / `reported` / `review_requested` / `review_approved` / `review_rejected` / `penalized` / `settlement_created` / `settlement_sent` / `settlement_completed` / `reminder_day_start` / `reminder_last_call` / `reminder_submit` / `reminder_report_due` / `reminder_review_due`
+
+`reminder_*` は本人（または未回答者）にだけ届けるので、タイムラインには出さない。
 
 ### notifications（受信者ごと）
 | 列 | 型 | 説明 |
@@ -156,7 +193,7 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 | created_at, last_success_at | timestamptz | |
 
 ### ビュー: penalty_summary
-`user_id, display_name, total_points, unsettled_points, open_settlement_count`
+`user_id, display_name, total_points, unsettled_points, this_month_points, open_settlement_id`
 ダッシュボードのランキングと「奢り確定」バッジに使う。`security_invoker = true` にする。
 
 ## 3. RPC（Postgres 関数）
@@ -170,21 +207,28 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 | `create_submission(user_id, paths[], ...)` | pending か、`now() < target_end_time` か、試行回数が上限未満か、パスが `{user_id}/` で始まるか → `judging` で insert |
 | `record_judgement(submission_id, score, feedback, model)` | 合格点で合否を決め、合格なら log を `completed` にする |
 | `record_judge_error(submission_id, message)` | `error` にする |
-| `fail_missing_declarations()` | 宣言締切を過ぎた今日、レコードも休息日もないメンバー → `failed(no_declaration)` + penalty |
-| `fail_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `failed` + penalty |
-| `create_due_settlements()` | 未精算 >= しきい値の人ごとに、古い順にしきい値ぶんの penalties を束ねて settlement と payments を作る（何件でも） |
-| `mark_payment_sent(debtor_id, settlement_id, creditor_id)` / `confirm_payment(creditor_id, settlement_id)` | 本人確認つき。最後の確認で settlement を完了する |
-| `due_reminders()` | 締切 1 時間前のリマインド対象に、`dedupe_key` つきでイベントを作る |
+| `file_failure_report(user_id, study_log_id, category, reason, next_plan)` | 本人の `awaiting_report` か、期限内か、必須テキストと文字数を検査。<br>・`unrealistic`: 連続回数を計算 → しきい値以上なら penalty、`resolved`<br>・`slacked`: penalty、`resolved`<br>・`sudden_plan` / `other`: `under_review` にして、ほかのメンバー全員の `excuse_reviews` 行を作る |
+| `review_excuse(reviewer_id, study_log_id, verdict, comment)` | 審査者本人の未回答の行か、期限内かを検査。`reject` なら即却下 + penalty。全員 `accept` なら承認 |
+| `run_declaration_reminders()` | 各自の `day_start_time` と 11:00 を過ぎていて未宣言・休息日でない人に、`dedupe_key` つきでリマインドを作る |
+| `due_submit_reminders()` | 提出締切の 1 時間前で、まだ合格していない人にリマインドを作る |
+| `close_declarations()` | 12:00 を過ぎた今日、レコードも休息日もないメンバー → `no_declaration` + penalty (P1) |
+| `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `missed` + `failure_reports(awaiting_report)` |
+| `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5)。締切 3 時間前のリマインドもここで作る |
+| `expire_reviews()` | `review_due_at` を過ぎた `under_review` → 却下 + penalty。締切 3 時間前のリマインドもここで作る |
+| `run_monthly_settlement()` | 月の最終日の `settlement_time` 以降に 1 回だけ。未精算の penalties を人ごとに束ね、支払先（`payee_id`、なければランダム）を決めて settlements を作る |
+| `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` | 本人確認つきで状態を進める |
 
-同時実行対策: 失敗確定系は `for update skip locked` で対象行をロックし、penalties の一意制約を最終防衛線にする。
+**P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed` かほかの理由で止まる。理由申告待ち・審査中の日があればそこでも止める（確定していないため）。
+
+同時実行対策: 確定系は `for update skip locked` で対象行をロックし、penalties・settlements の一意制約を最終防衛線にする。
 
 ## 4. RLS とアクセス権
 
 | テーブル | authenticated の select | authenticated の書き込み |
 |---|---|---|
 | group_settings | 全行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
-| profiles | 全行 | update: 本人の行の `display_name, avatar_url, paypay_link, push_prefs` **だけ**（列単位 GRANT） |
-| rest_days, study_logs, submissions, penalties, settlements, settlement_payments, activity_events | 全行 | なし |
+| profiles | 全行 | update: 本人の行の `display_name, avatar_url, paypay_link, day_start_time, payee_id, push_prefs` **だけ**（列単位 GRANT） |
+| rest_days, study_logs, submissions, failure_reports, excuse_reviews, penalties, settlements, activity_events | 全行 | なし（申告・審査・送金の記録も Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・削除は Server Action） |
 
@@ -213,4 +257,4 @@ $$);
 ```
 
 ## 6. Realtime
-`notifications`、`study_logs`、`activity_events` を `supabase_realtime` パブリケーションに追加する。RLS が効くので、クライアントには読める行だけが届く。
+`notifications`、`study_logs`、`failure_reports`、`excuse_reviews`、`activity_events` を `supabase_realtime` パブリケーションに追加する。RLS が効くので、クライアントには読める行だけが届く。
