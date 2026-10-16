@@ -7,7 +7,7 @@
 - [x] git / CLAUDE.md / .claude / docs / README / .env.example
 
 ## M1. 基盤
-- [ ] 依存関係を追加: `@supabase/ssr` `@supabase/supabase-js` `zod` `@google/genai` `web-push` `browser-image-compression`、shadcn/ui の初期化
+- [ ] 依存関係を追加: `@supabase/ssr` `@supabase/supabase-js` `zod` `@google/genai` `web-push` `browser-image-compression` `@tanstack/react-table`、shadcn/ui の初期化（Chart = Recharts を含む）
 - [ ] Supabase CLI でローカル開発環境（`supabase init` / `supabase start`）
 - [ ] `src/lib/env.ts`（環境変数を zod で検証）、`src/lib/time.ts`（JST）
 - [ ] `src/lib/supabase/{client,server,admin,proxy}.ts`、`src/proxy.ts`
@@ -55,8 +55,9 @@
 ## M8. ダッシュボード・振り返り
 - [ ] 本日のステータスカード、ランキング、タイムライン
 - [ ] 記録の保全: 履歴テーブルの DELETE 禁止・UPDATE 制限のトリガー（M1 のマイグレーションに含めてもよい）
-- [ ] ビュー `daily_history` / `user_stats` / `received_objections`
-- [ ] 振り返り画面: カレンダー、その日の詳細（1 日のタイムライン、署名付き URL / サムネイル）、統計、指摘・却下の一覧、次の計画の追跡
+- [ ] ビュー `daily_history` / `weekly_stats` / `user_stats` / `received_objections`
+- [ ] 振り返り画面: 数字のカードと G2〜G10 のグラフ・表、その日の詳細（1 日のタイムライン、署名付き URL / サムネイル）、次の計画の追跡
+- [ ] グループの比較画面: G11〜G14
 - [ ] 検索（`pg_trgm`）
 - [ ] 週の振り返り: RPC `create_weekly_reviews`、Gemini の要約、振り返りメモ
 - [ ] 書き出し `/api/export`（CSV / JSON）

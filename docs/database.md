@@ -301,6 +301,10 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 1 メンバー × 1 日 = 1 行（登録日から今日まで、`generate_series` で日付を埋める）。カレンダーと統計の元。
 `user_id, date, kind (completed / missed / no_declaration / invalidated / rest / leave / pending / trial), declaration, final_score, attempts, elapsed_minutes, penalty_points, failure_category`
 
+### ビュー: weekly_stats
+1 メンバー × 1 週 = 1 行。G3・G7・G11・G13 の元。
+`user_id, week_end, declared_days, completed_days, achievement_rate, avg_score, avg_elapsed_minutes, penalty_points, penalty_by_reason (jsonb)`
+
 ### ビュー: user_stats
 期間（週・月・全期間）ごとの達成率・連続達成日数（今と最長）・平均点・平均経過時間・ペナルティ合計。`daily_history` から集計する。
 

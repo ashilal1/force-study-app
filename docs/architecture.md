@@ -260,7 +260,8 @@ flowchart LR
     │       ├── export/route.ts    # 自分の記録の CSV / JSON 書き出し
     │       └── cron/tick/route.ts
     ├── components/
-    │   └── ui/                    # shadcn/ui
+    │   ├── ui/                    # shadcn/ui（Chart・Table を含む）
+    │   └── charts/                # G1〜G14 のグラフ（Client Components）と達成カレンダー
     ├── lib/
     │   ├── supabase/              # client.ts / server.ts / admin.ts / proxy.ts
     │   ├── gemini/                # judge(): プロンプト・スキーマ
@@ -272,7 +273,14 @@ flowchart LR
     └── types/database.ts          # supabase gen types で生成
 ```
 
-## 5. 無料枠の見積もり（6 人想定）
+## 5. 表とグラフの作り方
+- グラフは **shadcn/ui の Chart**（中身は Recharts）を使う。色はテーマの CSS 変数から取るので、ダークモードにもそのまま対応する。
+- 表は **shadcn/ui の Table + TanStack Table**（並べ替え・絞り込み）。
+- 達成カレンダー（G2・G12）はライブラリを使わず、CSS Grid のマス目で作る（軽くて、スマホでも崩れない）。
+- データの集計は DB のビュー（`daily_history`・`weekly_stats`・`user_stats`・`received_objections`）で行い、Server Component で取って、グラフの Client Component に渡す。ブラウザでは集計しない。
+- 結果の色（達成・未達成・宣言なし・休み）とペナルティ理由の色は 1 か所（`src/lib/chart-colors.ts`）で決め、全グラフで同じ色にする。
+
+## 6. 無料枠の見積もり（6 人想定）
 
 | サービス | 無料枠 | 想定使用量 |
 |---|---|---|
