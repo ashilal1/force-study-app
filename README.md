@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Commit or Treat (仮)
 
-## Getting Started
+友人どうしで学習をサボれなくするための、身内向け Web アプリ（PWA）。
 
-First, run the development server:
+1. **朝に宣言** — 今日やることと締切時刻を決める（12:00 まで。宣言しなければ失敗扱い）
+2. **成果物を提出** — 証拠画像と振り返りを送る
+3. **AI が判定** — Gemini が宣言と照らし合わせて採点する。70 点以上で合格、締切までなら 3 回まで再提出できる
+4. **失敗したらペナルティ** — 3pt 貯まるごとに、ほかのメンバー全員へ PayPay で定額を払う
+
+通知はアプリ内のベルと Web Push で届く。外部のチャットツールは使わない。運用費は 0 円。
+
+## ドキュメント
+| | |
+|---|---|
+| [要件定義](docs/requirements.md) | ルールと機能 |
+| [アーキテクチャ](docs/architecture.md) | 構成図・処理の流れ・ディレクトリ構成 |
+| [データベース](docs/database.md) | テーブル・RPC・RLS |
+| [設計判断 (ADR)](docs/decisions.md) | なぜこの構成にしたか |
+| [ロードマップ](docs/roadmap.md) | 実装の進み具合 |
+
+## 技術スタック
+Next.js 16 / React 19 / TypeScript / Tailwind CSS v4 / shadcn/ui ・ Supabase（Postgres・Auth・Storage・Realtime・pg_cron）・ Gemini API ・ Web Push ・ Vercel
+
+## ローカル開発
+
+必要なもの: Node.js 20 以上、Docker（ローカルの Supabase 用）
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+cp .env.example .env.local          # 値を埋める（下記）
+npx supabase start                  # 表示された URL / キーを .env.local に書く
+npx supabase db reset               # マイグレーションと seed を適用
+npm run dev                         # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 環境変数
+| 変数 | 取得元 |
+|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | `npx supabase start` の出力、または Supabase ダッシュボード |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/)。モデル ID は無料枠のある Flash 系を選ぶ |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` |
+| `CRON_SECRET` | `openssl rand -hex 32` |
+| `INVITE_CODE` | メンバーに配る招待コード（自分で決める） |
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Web Push はローカルでも `localhost` なら試せる。iPhone で試すには HTTPS で公開し、ホーム画面に追加する必要がある。
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## デプロイ
+未整備。[roadmap](docs/roadmap.md) の M9 で手順を書く。
