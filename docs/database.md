@@ -31,7 +31,7 @@ erDiagram
 | id | boolean PK | `true`, `check (id)` | 1 行に固定するためのダミー |
 | declaration_cutoff | time | `12:00` | 宣言締切 (JST) |
 | last_declaration_reminder | time | `11:00` | 2 回目の宣言リマインド |
-| rest_days_per_week | int | 1 | 週あたりの休息日上限（月曜始まり） |
+| rest_days_per_week | int | 1 | 週あたりの休息日上限（週は日曜〜土曜。精算の区切りと揃える） |
 | passing_score | int | 70 | 合格点 |
 | max_attempts | int | 3 | 1 学習日の最大提出回数 |
 | judge_grace_minutes | int | 60 | 締切後、判定待ちの提出を待つ時間 |
@@ -43,7 +43,8 @@ erDiagram
 | report_hours | int | 24 | 理由申告の期限 |
 | review_hours | int | 24 | 審査の期限 |
 | min_explanation_chars | int | 30 | 次の計画・理由の最小文字数 |
-| settlement_time | time | `09:00` | 月の最終日に精算を作る時刻 |
+| settlement_weekday | int | 6 | 精算する曜日（0 = 日曜 … 6 = 土曜） |
+| settlement_time | time | `23:00` | 精算する時刻 |
 | image_retention_days | int | 60 | 証拠画像の保持日数 |
 
 ### profiles
@@ -144,14 +145,14 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 
 ポイントは**カウンター列を持たず、台帳から集計する**（ずれない・あとから監査できる）。
 
-### settlements（月末の精算。1 人 1 か月 1 件）
+### settlements（毎週の精算。1 人 1 週 1 件）
 | 列 | 型 | 説明 |
 |---|---|---|
 | id | uuid PK | |
 | debtor_id | uuid → profiles | 払う人 |
 | payee_id | uuid → profiles | 支払先 |
 | payee_selection | text | `preset`（本人が決めていた） / `random` |
-| month | date | 対象月の 1 日。`unique (debtor_id, month)` |
+| period_end | date | 締めた日（土曜）。`unique (debtor_id, period_end)` |
 | amount_yen | int | 束ねた penalties の points の合計 |
 | status | text | `open` / `sent`（送金した） / `completed`（受け取った） |
 | created_at, sent_at, completed_at | timestamptz | |
@@ -193,7 +194,7 @@ type: `declared` / `rest_day_registered` / `judged_passed` / `judged_rejected` /
 | created_at, last_success_at | timestamptz | |
 
 ### ビュー: penalty_summary
-`user_id, display_name, total_points, unsettled_points, this_month_points, open_settlement_id`
+`user_id, display_name, total_points, unsettled_points, this_week_points, open_settlement_id`
 ダッシュボードのランキングと「奢り確定」バッジに使う。`security_invoker = true` にする。
 
 ## 3. RPC（Postgres 関数）
@@ -215,7 +216,7 @@ type: `declared` / `rest_day_registered` / `judged_passed` / `judged_rejected` /
 | `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `missed` + `failure_reports(awaiting_report)` |
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5)。締切 3 時間前のリマインドもここで作る |
 | `expire_reviews()` | `review_due_at` を過ぎた `under_review` → 却下 + penalty。締切 3 時間前のリマインドもここで作る |
-| `run_monthly_settlement()` | 月の最終日の `settlement_time` 以降に 1 回だけ。未精算の penalties を人ごとに束ね、支払先（`payee_id`、なければランダム）を決めて settlements を作る |
+| `run_weekly_settlement()` | 土曜 23:00 以降、その週に 1 回だけ。未精算の penalties を人ごとに束ね、支払先（`payee_id`、なければランダム）を決めて settlements を作る |
 | `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` | 本人確認つきで状態を進める |
 
 **P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed` かほかの理由で止まる。理由申告待ち・審査中の日があればそこでも止める（確定していないため）。
