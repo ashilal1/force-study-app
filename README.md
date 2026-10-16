@@ -24,20 +24,21 @@ Next.js 16 / React 19 / TypeScript / Tailwind CSS v4 / shadcn/ui ・ Supabase（
 
 ## ローカル開発
 
-必要なもの: Node.js 20 以上、Docker（ローカルの Supabase 用）
+必要なもの: Node.js 20 以上、[Supabase CLI](https://supabase.com/docs/guides/cli)、Supabase の開発用プロジェクト（無料プラン。リージョンは Tokyo）
 
 ```bash
 npm install
 cp .env.example .env.local          # 値を埋める（下記）
-npx supabase start                  # 表示された URL / キーを .env.local に書く
-npx supabase db reset               # マイグレーションと seed を適用
+supabase login
+supabase link --project-ref <開発用プロジェクトの ref>
+supabase db push                    # マイグレーションを適用
 npm run dev                         # http://localhost:3000
 ```
 
 ### 環境変数
 | 変数 | 取得元 |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_ANON_KEY` / `SUPABASE_SERVICE_ROLE_KEY` | `npx supabase start` の出力、または Supabase ダッシュボード |
+| `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` | Supabase ダッシュボード → Project Settings → API Keys |
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/)。モデル ID は無料枠のある Flash 系を選ぶ |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` |
 | `CRON_SECRET` | `openssl rand -hex 32` |

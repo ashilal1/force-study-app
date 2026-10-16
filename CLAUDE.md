@@ -15,14 +15,16 @@
 Next.js 16 (App Router, `src/`, Turbopack) / React 19 / TypeScript / Tailwind v4 / shadcn/ui ・ Supabase (Postgres, Auth, Storage, Realtime, pg_cron) ・ Gemini API（`@google/genai`、モデルは `GEMINI_MODEL`） ・ Web Push（`web-push` + `public/sw.js`） ・ Vercel Hobby
 
 ## コマンド
+開発はクラウドの Supabase 開発用プロジェクトにつなぐ（ローカルの Docker 版は使わない。ADR-024）。
 ```bash
-npm run dev            # 開発サーバー
-npm run lint           # ESLint
-npm run build          # 本番ビルド（型チェックを含む）
-npx supabase start     # ローカルの Supabase（Docker が必要）
-npx supabase db reset  # マイグレーションを適用し直す
-npx supabase gen types typescript --local > src/types/database.ts
+npm run dev                         # 開発サーバー
+npm run lint                        # ESLint
+npm run build                       # 本番ビルド（型チェックを含む）
+supabase db push                    # 新しいマイグレーションを開発用プロジェクトに反映
+supabase migration new <name>       # マイグレーションを追加
+supabase gen types typescript --linked > src/types/database.ts
 ```
+`supabase db reset --linked` は開発用プロジェクトのデータを全部消す。本番には絶対に向けない。
 
 ## 守るべきルール
 - **書き込みはサーバーだけ。** クライアントは RLS 越しに読むだけにする。状態を変える処理は Server Action / Route Handler → service role → Postgres RPC の順で通す（ADR-004）。`authenticated` への GRANT を増やすときは必ず `docs/database.md` の §4 を更新する。
@@ -31,8 +33,9 @@ npx supabase gen types typescript --local > src/types/database.ts
 - **ポイントは `penalties` 台帳から集計する。** カウンター列を作らない（ADR-005）。
 - **通知は `activity_events` に書いて `lib/notify` に渡す。** Server Action から直接 Push を送らない。
 - **無料枠を超える構成にしない。** 有料のサービス・プランや GitHub Actions の定期実行を入れない（ADR-003）。
-- **秘密情報**: `SUPABASE_SERVICE_ROLE_KEY` / `GEMINI_API_KEY` / `VAPID_PRIVATE_KEY` / `CRON_SECRET` / `INVITE_CODE` は `server-only` のモジュールからだけ参照する。`NEXT_PUBLIC_` を付けない。
-- Next.js 16 では `middleware.ts` が **`proxy.ts`** に変わっている。API を使う前に `node_modules/next/dist/docs/` を確認する。
+- **秘密情報**: `SUPABASE_SECRET_KEY` / `GEMINI_API_KEY` / `VAPID_PRIVATE_KEY` / `CRON_SECRET` / `INVITE_CODE` は `server-only` のモジュールからだけ参照する。`NEXT_PUBLIC_` を付けない。
+- Next.js 16 では `middleware.ts` が **`proxy.ts`** に変わっている。`cacheComponents` が有効なので、`cookies()` などのリクエスト時 API は `<Suspense>` の中で使う。API を使う前に `node_modules/next/dist/docs/` を確認する。
+- Supabase のキーは新形式（`sb_publishable_...` / `sb_secret_...`）。サーバーで RLS を越えるのは `src/lib/supabase/admin.ts` だけ。
 - UI の文言は日本語。コード中の識別子は英語。
 
 ## 設計を変えるとき

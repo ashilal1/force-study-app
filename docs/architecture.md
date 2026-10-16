@@ -30,13 +30,13 @@ flowchart LR
     GEM["Gemini API<br/>(無料枠)"]
     PUSH["ブラウザの Push サービス<br/>(FCM / APNs / Mozilla)"]
 
-    UI -- "読み取り (anon key + RLS)" --> DB
+    UI -- "読み取り (publishable key + RLS)" --> DB
     UI -- "画像アップロード (自分のフォルダのみ)" --> ST
     CMP --> UI
     UI -- "書き込み" --> SA
     UI -- "提出後" --> JUDGE
     RT -- "notifications / study_logs の変更" --> UI
-    SA & JUDGE & TICK -- "service role" --> DB
+    SA & JUDGE & TICK -- "secret key (service_role)" --> DB
     JUDGE -- "画像取得" --> ST
     JUDGE --> GEM
     SA & JUDGE & TICK --> NOTIFY
@@ -47,7 +47,7 @@ flowchart LR
 
 ### 基本方針
 1. **読み取りはクライアントから、書き込みはサーバーから。**
-   クライアントは anon key と RLS で自分のグループのデータを読むだけ。状態を変える操作はすべて Server Action / Route Handler を通し、サーバーが service role で書き込む。これでポイントやステータスの改ざんを構造的に防ぐ（例外はプロフィールの表示項目の更新と、自分のフォルダへの画像アップロードだけ）。
+   クライアントは publishable key と RLS で自分のグループのデータを読むだけ。状態を変える操作はすべて Server Action / Route Handler を通し、サーバーが service role で書き込む。これでポイントやステータスの改ざんを構造的に防ぐ（例外はプロフィールの表示項目の更新と、自分のフォルダへの画像アップロードだけ）。
 2. **時刻の基準は DB の `now()`。** 「今日」は `(now() at time zone 'Asia/Tokyo')::date`。
 3. **状態遷移とペナルティは Postgres 関数にまとめる。** 「未達成にする」「理由申告を確定する」「審査を締める」などを、ペナルティの記録・イベントの記録と同じ 1 トランザクションで行い、一意制約で冪等にする。TypeScript 側は関数を呼んで、返ってきたイベントを通知に回すだけ。
 4. **通知は「イベント → 通知 → Push」の一方向。** ドメイン操作は `activity_events` に 1 行書く。`lib/notify` がそこから受信者ごとの `notifications` を作り、Push の設定を見て `web-push` で送る。

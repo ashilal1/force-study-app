@@ -8,7 +8,7 @@
 
 ## M1. 基盤
 - [ ] 依存関係を追加: `@supabase/ssr` `@supabase/supabase-js` `zod` `@google/genai` `web-push` `browser-image-compression` `@tanstack/react-table`、shadcn/ui の初期化（Chart = Recharts を含む）
-- [ ] Supabase CLI でローカル開発環境（`supabase init` / `supabase start`）
+- [ ] Supabase CLI の初期化と、クラウドの開発用プロジェクトへの接続（`supabase init` / `supabase link`）
 - [ ] `src/lib/env.ts`（環境変数を zod で検証）、`src/lib/time.ts`（JST）
 - [ ] `src/lib/supabase/{client,server,admin,proxy}.ts`、`src/proxy.ts`
 - [ ] マイグレーション: 全テーブル・制約・RLS・列単位 GRANT・Storage バケットとポリシー
