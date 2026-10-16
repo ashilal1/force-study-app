@@ -70,6 +70,7 @@ erDiagram
 | is_admin | boolean default false | 最初のユーザーを true にする（トリガー） |
 | trial_ends_at | timestamptz | お試し期間の終わり = 登録後の最初の日曜 0:00 JST（日曜に登録したら翌週の日曜） |
 | notifications_verified_at | timestamptz null | テスト通知を本人が確認した時刻（F0）。null のあいだはアプリを使えない |
+| deactivated_at | timestamptz null | 抜けたメンバー。**行は消さない**（記録を残すため。`auth.users` を消しても profiles は残るよう、外部キーは `on delete set null` 相当で別に持つ） |
 | created_at | timestamptz | |
 
 `auth.users` の insert トリガーで作る（`display_name` は `raw_user_meta_data` から取る）。
@@ -135,6 +136,8 @@ erDiagram
 | kind | text | `regular`（通常の提出） / `resend`（「怪しい」のあとの送り直し） |
 | attempt_no | int null | `regular` のときだけ 1 から。`unique (study_log_id, attempt_no)` |
 | image_paths | text[] | Storage のパス `{user_id}/{date}/{uuid}.webp`（URL ではない）。1〜3 件。保持期間を過ぎたら空にする |
+| thumb_path | text | 1 枚目のサムネイル（長辺 320px）。`{user_id}/{date}/{uuid}_thumb.webp`。**永久に残す** |
+| images_purged_at | timestamptz null | 原寸を消した時刻 |
 | learned_text, struggled_text | text | `regular` で必須 |
 | explanation | text | `resend` の説明 |
 | self_rating | int | 1〜5（`regular`） |
@@ -253,6 +256,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - 疑義: `submission_flagged` / `evidence_resent` / `flag_withdrawn` / `dispute_final_review_started` / `review_vote_cast` / `dispute_upheld` / `dispute_invalidated`
 - 未達成: `missed` / `reported` / `review_requested` / `review_approved` / `review_rejected` / `report_expired`
 - 休会: `leave_requested` / `leave_approved` / `leave_rejected` / `leave_ending`
+- 振り返り: `weekly_review_created`
 - 精算: `payee_assigned` / `settlement_created` / `weekly_summary` / `settlement_sent` / `settlement_completed` / `settlement_not_received` / `late_payment`
 - その他: `penalized` / `trial_ending`
 - リマインド: `reminder_declare_midnight` / `reminder_declare_last_call` / `reminder_submit` / `reminder_revision_due` / `reminder_resend_due` / `reminder_report_due` / `reminder_review_due` / `reminder_late_payment`
@@ -281,6 +285,27 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | user_agent | text | 設定画面で端末を見分けるため |
 | verified_at | timestamptz null | この端末でテスト通知を確認した時刻 |
 | created_at, last_success_at | timestamptz | |
+
+### weekly_reviews（週の振り返り。土曜 23:00 に 1 人 1 件）
+| 列 | 型 | 説明 |
+|---|---|---|
+| user_id | uuid → profiles | PK (user_id, week_end) |
+| week_end | date | 締めた日（土曜） |
+| stats | jsonb | 達成数・宣言数・休み・平均点・平均経過時間・ペナルティ合計と内訳・未達成理由の内訳 |
+| ai_summary | text | 学んだこと・できなかったことの要約と来週への一言（Gemini）。失敗したら null で、次の tick で作り直す |
+| ai_model | text | |
+| self_note | text | 本人が書き足す振り返りメモ（あとから追記できる唯一の列） |
+| created_at, self_note_updated_at | timestamptz | |
+
+### ビュー: daily_history
+1 メンバー × 1 日 = 1 行（登録日から今日まで、`generate_series` で日付を埋める）。カレンダーと統計の元。
+`user_id, date, kind (completed / missed / no_declaration / invalidated / rest / leave / pending / trial), declaration, final_score, attempts, elapsed_minutes, penalty_points, failure_category`
+
+### ビュー: user_stats
+期間（週・月・全期間）ごとの達成率・連続達成日数（今と最長）・平均点・平均経過時間・ペナルティ合計。`daily_history` から集計する。
+
+### ビュー: received_objections
+本人が受けた指摘・却下の一覧（`declaration_flags`、`submission_flags`、`peer_reviews` の `reject`、AI の不合格）を 1 つの形にそろえたもの: `user_id, occurred_at, kind, by_user_id, reason, study_log_id`。
 
 ### ビュー: penalty_summary
 `user_id, display_name, total_points, unsettled_points, this_week_points, trial_points, open_settlement_id`
@@ -326,6 +351,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 精算
 | 関数 | 処理 |
 |---|---|
+| `save_weekly_note(user_id, week_end, note)` | 本人の週の振り返りメモを保存 |
 | `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ。支払先を設定して全員に通知 |
 | `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで状態を進める・戻す |
 
@@ -342,11 +368,20 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5) |
 | `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は penalty） |
 | `due_deadline_reminders()` | `deadline_reminder_times`（8:00・11:00・11:45）に、期限が「次の宣言締切」のもの（理由申告・審査・最終審査）で未対応の人へリマインドを作る |
+| `create_weekly_reviews()` | 土曜 23:00 以降、その週に 1 回だけ。全員の `weekly_reviews` を `stats` 付きで作る（`ai_summary` は tick が Gemini で埋める） |
 | `run_weekly_settlement()` | 土曜 23:00 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
 
 **P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed','invalidated')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed`（達成）かほかの理由の未達成で止まる。理由申告待ち・審査中・確定待ちの日があればそこでも止める（確定していないため）。
 
 同時実行対策: 確定系は `for update skip locked` で対象行をロックし、penalties・settlements の一意制約を最終防衛線にする。
+
+### 記録の保全（追記だけ）
+- 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
+- UPDATE は**状態と時刻の列だけ**を許すトリガーにする（例: `submissions` は `status`・`ai_*`・`judged_at`・`image_paths`（消すときの空配列）・`images_purged_at` だけ）。宣言・理由・コメントなど人が書いた文字は変えられない。書き直しは `original_declaration` に元を残す。
+- 外部キーは `on delete cascade` にしない（profiles を消しても記録が連鎖で消えないように）。
+
+### 検索
+`pg_trgm` 拡張を入れ、`study_logs.declaration`・`submissions.learned_text`・`submissions.struggled_text` に GIN の trigram インデックスを張って `ilike '%語%'` で探す（日本語の分かち書きが要らない）。
 
 ## 4. RLS とアクセス権
 
@@ -354,7 +389,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 |---|---|---|
 | group_settings | 全行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
 | profiles | 全行 | update: 本人の行の `display_name, avatar_url, paypay_link` **だけ**（列単位 GRANT）。`payee_id` は管理者が Server Action 経由で |
-| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events | 全行 | なし（申告・審査・送金の記録も Server Action 経由） |
+| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 全行 | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
 

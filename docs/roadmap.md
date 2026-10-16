@@ -52,9 +52,14 @@
 - [ ] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement`
 - [ ] 支払先の割り当て（管理者が入力）、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
 
-## M8. ダッシュボード・履歴
+## M8. ダッシュボード・振り返り
 - [ ] 本日のステータスカード、ランキング、タイムライン
-- [ ] メンバー履歴、学習ログ詳細（署名付き URL で画像を表示）
+- [ ] 記録の保全: 履歴テーブルの DELETE 禁止・UPDATE 制限のトリガー（M1 のマイグレーションに含めてもよい）
+- [ ] ビュー `daily_history` / `user_stats` / `received_objections`
+- [ ] 振り返り画面: カレンダー、その日の詳細（1 日のタイムライン、署名付き URL / サムネイル）、統計、指摘・却下の一覧、次の計画の追跡
+- [ ] 検索（`pg_trgm`）
+- [ ] 週の振り返り: RPC `create_weekly_reviews`、Gemini の要約、振り返りメモ
+- [ ] 書き出し `/api/export`（CSV / JSON）
 - [ ] グループ設定（admin）
 
 ## M9. 本番化

@@ -83,8 +83,8 @@ sequenceDiagram
     participant DB as Postgres
     Note over U,C: 宣言時に今日の合言葉が発行されている（全員に見える）
     U->>C: 提出写真 1〜3 枚（1 枚以上に合言葉）+ 振り返り
-    C->>C: 圧縮 (WebP, 長辺1200px, ~200KB)
-    C->>ST: upload {user_id}/{date}/{uuid}.webp
+    C->>C: 圧縮 (WebP, 長辺1200px, ~200KB) + 1 枚目のサムネイル (長辺320px, ~20KB)
+    C->>ST: upload {user_id}/{date}/{uuid}.webp と _thumb.webp
     C->>SA: createSubmission(paths, text, rating)
     SA->>DB: rpc create_submission()
     Note over DB: pending / 締切前 / 試行回数 を検査<br/>経過時間（宣言→提出）を記録
@@ -184,7 +184,8 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 9 | 理由申告の期限 (P5)、審査の期限（理由 P4・休会） | `rpc expire_reports()` / `rpc expire_reviews()` |
 | 10 | 8:00・11:00・11:45 の期限前リマインド | `rpc due_deadline_reminders()` |
 | 11 | 毎週土曜 23:00 の精算と、未払いへの P7 | `rpc run_weekly_settlement()` |
-| 12 | 保持期間を過ぎた画像、800MB を超えたぶんの古い画像を削除 | Storage API |
+| 11b | 週の振り返りを作り、Gemini で要約を書く（失敗したら次の tick で再試行） | `rpc create_weekly_reviews()` + `lib/gemini/weeklySummary` |
+| 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す） | Storage API |
 | 13 | 2〜11 で返ってきたイベントを通知に回す | `lib/notify` |
 
 5 分ごとなので、リマインドは最大 5 分遅れる（0:00 のリマインドは 0:00〜0:05 の間に届く）。期限ちょうどの確定も最大 5 分遅れるが、判定は記録された時刻で行うので結果は変わらない。
@@ -245,8 +246,10 @@ flowchart LR
     │   │   ├── page.tsx           # ダッシュボード
     │   │   ├── declare/           # 宣言
     │   │   ├── submit/            # 提出
-    │   │   ├── logs/[id]/         # 学習ログ詳細
-    │   │   ├── members/[id]/      # メンバー履歴
+    │   │   ├── logs/[id]/         # その日の詳細（1 日のタイムライン）
+    │   │   ├── members/[id]/      # 振り返り: カレンダー・統計・指摘と却下の一覧・次の計画の追跡
+    │   │   ├── members/[id]/weeks/[weekEnd]/  # 週の振り返り
+    │   │   ├── search/            # 学習内容の検索
     │   │   ├── reports/[logId]/   # 理由申告・審査
     │   │   ├── leave/             # 休会の申請・審査
     │   │   ├── settlements/       # 毎週の精算
@@ -254,6 +257,7 @@ flowchart LR
     │   │   └── settings/          # プロフィール・Push・グループ設定
     │   └── api/
     │       ├── judge/route.ts
+    │       ├── export/route.ts    # 自分の記録の CSV / JSON 書き出し
     │       └── cron/tick/route.ts
     ├── components/
     │   └── ui/                    # shadcn/ui
