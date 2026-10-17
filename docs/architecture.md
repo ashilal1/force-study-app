@@ -181,6 +181,7 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 3 | 12:00 の宣言なしを確定 (P1) | `rpc close_declarations()` |
 | 4 | 書き直しの期限 (P6) と残り 15 分のリマインド | `rpc expire_revisions()` |
 | 5 | 提出締切 1 時間前のリマインド | `rpc due_submit_reminders()` |
+| 5b | AI が判定できないまま 30 分たった・締切が来た提出を仮合格にする（メンバーが確認。ADR-033） | `rpc pass_unjudged()` |
 | 6 | 提出締切（翌日 12:00）超過を未達成にする（判定待ちには 60 分の猶予） | `rpc close_overdue_logs()` |
 | 7 | 「怪しい」の受付終了（提出から 24 時間）→ 達成で確定 | `rpc confirm_passed_logs()` |
 | 8 | 送り直しの期限 → 最終審査、最終審査の期限 → 確定 | `rpc advance_disputes()` |

@@ -261,6 +261,7 @@ export type Database = {
       }
       group_settings: {
         Row: {
+          ai_fallback_minutes: number
           declaration_cutoff: string
           dispute_cutoff: string
           dispute_window_hours: number
@@ -298,6 +299,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_fallback_minutes?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -335,6 +337,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_fallback_minutes?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -1258,6 +1261,7 @@ export type Database = {
           study_log_id: string
           submitted_at: string
           thumb_path: string | null
+          unverified_at: string | null
           user_id: string
         }
         Insert: {
@@ -1282,6 +1286,7 @@ export type Database = {
           study_log_id: string
           submitted_at?: string
           thumb_path?: string | null
+          unverified_at?: string | null
           user_id: string
         }
         Update: {
@@ -1306,6 +1311,7 @@ export type Database = {
           study_log_id?: string
           submitted_at?: string
           thumb_path?: string | null
+          unverified_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -2061,6 +2067,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      pass_unjudged: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       record_judge_error: {
         Args: { p_message: string; p_submission_id: string }
         Returns: undefined
@@ -2200,6 +2227,7 @@ export type Database = {
           study_log_id: string
           submitted_at: string
           thumb_path: string | null
+          unverified_at: string | null
           user_id: string
         }
         SetofOptions: {

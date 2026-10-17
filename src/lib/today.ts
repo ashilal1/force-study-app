@@ -41,6 +41,8 @@ export type TodayLog = Pick<
   latest: { status: string; score: number | null } | null;
   /** Score of the passing submission, once passed. */
   passedScore: number | null;
+  /** Passed without an AI verdict (ADR-033): the members check it. */
+  unverified: boolean;
   /** 「怪しい」 dispute status, if anyone flagged the passed submission. */
   dispute: string | null;
   /** Reason report status for a missed day. */
@@ -141,7 +143,7 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
           .order("created_at"),
         supabase
           .from("submissions")
-          .select("study_log_id, status, ai_score, submitted_at")
+          .select("study_log_id, status, ai_score, submitted_at, unverified_at")
           .in("study_log_id", logIds)
           .eq("kind", "regular")
           .order("submitted_at"),
@@ -171,6 +173,7 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
       attempts: mine.filter((submission) => submission.status !== "error").length,
       latest: latest ? { status: latest.status, score: latest.ai_score } : null,
       passedScore: mine.find((submission) => submission.status === "passed")?.ai_score ?? null,
+      unverified: mine.some((submission) => submission.status === "passed" && submission.unverified_at !== null),
       dispute: disputes!.find((dispute) => dispute.study_log_id === row.id)?.status ?? null,
       report: reports!.find((report) => report.study_log_id === row.id)?.status ?? null,
       flags: flags!

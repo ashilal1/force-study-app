@@ -87,6 +87,15 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
 
       <DisputeSection detail={detail} />
 
+      {log.status === "passed" && detail.submissions.some((submission) => submission.unverified) ? (
+        <Sticker tone="tape" shadow="sm" className="grid gap-1 px-4 py-3">
+          <b className="text-sm">AI が判定できなかったので、みんなで確認してください</b>
+          <span className="text-sm font-medium">
+            写真に合言葉「{log.passphrase}」が写っているか、宣言どおりの内容かを見てください。おかしければ「怪しい」を押せます。
+          </span>
+        </Sticker>
+      ) : null}
+
       {can.flag ? (
         <Sticker shadow="sm" className="grid gap-2 px-4 py-3">
           <span className="text-sm font-medium">
@@ -212,6 +221,7 @@ function SubmissionBlock({ submission }: { submission: DetailSubmission }) {
             feedback: submission.feedback ?? "",
             disputeWindowEndsAt: null,
             attemptsLeft: 0,
+            unverified: submission.unverified,
             hideFooter: true,
           }}
         />

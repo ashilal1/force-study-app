@@ -302,3 +302,15 @@ describe("draftNotifications (M8c)", () => {
     ]);
   });
 });
+
+describe("draftNotifications (ADR-033)", () => {
+  it("asks the others to check a provisional pass", () => {
+    const drafts = draftNotifications(
+      { id: "e", type: "judged_unverified", actor_id: "aki", study_log_id: "log-1", payload: { dispute_window_ends_at: "2026-10-21T04:30:00Z" } },
+      members,
+    );
+    expect(drafts[0]).toMatchObject({ recipientId: "aki", title: "AI が判定できなかったので、仮の合格にしました", url: "/logs/log-1" });
+    expect(drafts.slice(1).every((draft) => draft.requiresAction && draft.body.includes("10/21(水) 13:30"))).toBe(true);
+    expect(drafts).toHaveLength(members.length);
+  });
+});
