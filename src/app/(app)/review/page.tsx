@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "振り返り | Commit or Treat" };
 
 export default function ReviewPage({ searchParams }: PageProps<"/review">) {
   return (
-    <div className="grid gap-6">
+    <div data-wide className="grid gap-6">
       <div className="flex items-center justify-between gap-2">
         <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">みんなの振り返り</h1>
         <Link href="/search" className="text-sm font-bold underline underline-offset-2">
@@ -95,43 +95,45 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
         </div>
       </section>
 
-      <section className="grid gap-2.5">
-        <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">グループのカレンダー</h2>
-        <div className="grid gap-2">
-          {members.map((member) => (
-            <div key={member.id} className="grid grid-cols-[5.5rem_1fr] items-center gap-2">
-              <Link href={`/members/${member.id}`} className="truncate text-xs font-bold underline">
-                {member.name}
-              </Link>
-              <AchievementCalendar days={member.days} compact />
-            </div>
-          ))}
-        </div>
-      </section>
+      <div className="grid gap-6 lg:grid-cols-2 lg:gap-x-10">
+        <section className="grid gap-2.5">
+          <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">グループのカレンダー</h2>
+          <div className="grid gap-2">
+            {members.map((member) => (
+              <div key={member.id} className="grid grid-cols-[5.5rem_1fr] items-center gap-2">
+                <Link href={`/members/${member.id}`} className="truncate text-xs font-bold underline">
+                  {member.name}
+                </Link>
+                <AchievementCalendar days={member.days} compact />
+              </div>
+            ))}
+          </div>
+        </section>
 
-      <section className="grid gap-2.5">
-        <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">週ごとの達成率</h2>
-        <MemberRateChart
-          members={members.map((member) => ({ id: member.id, name: member.name }))}
-          weeks={weekEnds.map((weekEnd) => {
-            const entry: { weekEnd: string } & Record<string, number | string | null> = { weekEnd };
-            for (const member of members) entry[member.id] = member.weeks.find((week) => week.weekEnd === weekEnd)?.rate ?? null;
-            return entry;
-          })}
-        />
-      </section>
+        <section className="grid gap-2.5">
+          <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">週ごとの達成率</h2>
+          <MemberRateChart
+            members={members.map((member) => ({ id: member.id, name: member.name }))}
+            weeks={weekEnds.map((weekEnd) => {
+              const entry: { weekEnd: string } & Record<string, number | string | null> = { weekEnd };
+              for (const member of members) entry[member.id] = member.weeks.find((week) => week.weekEnd === weekEnd)?.rate ?? null;
+              return entry;
+            })}
+          />
+        </section>
 
-      <section className="grid gap-2.5">
-        <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">ペナルティランキング</h2>
-        <RankingSwitch
-          rows={members.map((member) => ({
-            name: member.name,
-            week: sum(member, weekStart),
-            month: sum(member, monthStart),
-            all: sum(member, null),
-          }))}
-        />
-      </section>
+        <section className="grid gap-2.5">
+          <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">ペナルティランキング</h2>
+          <RankingSwitch
+            rows={members.map((member) => ({
+              name: member.name,
+              week: sum(member, weekStart),
+              month: sum(member, monthStart),
+              all: sum(member, null),
+            }))}
+          />
+        </section>
+      </div>
     </>
   );
 }

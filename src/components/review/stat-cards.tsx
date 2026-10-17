@@ -14,7 +14,7 @@ export function StatCards({ summary, label }: { summary: Summary; label: string 
     },
   ];
   return (
-    <div className="grid grid-cols-2 gap-2.5">
+    <div className="grid grid-cols-2 gap-2.5 md:grid-cols-4">
       {cards.map((card) => (
         <Sticker key={card.title} shadow="sm" className="grid gap-0.5 px-3 py-2.5">
           <span className="text-xs font-bold text-sub">{card.title}</span>
