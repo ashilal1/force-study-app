@@ -41,3 +41,33 @@ const dateTimeFormatter = new Intl.DateTimeFormat("ja-JP", {
 export function formatJstDateTime(at: Date | string): string {
   return dateTimeFormatter.format(typeof at === "string" ? new Date(at) : at);
 }
+
+const dayFormatter = new Intl.DateTimeFormat("ja-JP", {
+  timeZone: TIME_ZONE,
+  month: "numeric",
+  day: "numeric",
+  weekday: "short",
+});
+
+/** "10/20(火)" for a JST calendar date ("YYYY-MM-DD") or an instant. */
+export function formatJstDay(value: string | Date): string {
+  const at = typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value) ? new Date(`${value}T12:00:00+09:00`) : new Date(value);
+  return dayFormatter.format(at);
+}
+
+/** "YYYY-MM-DD" shifted by whole days (calendar arithmetic, no time zone involved). */
+export function addDays(date: string, days: number): string {
+  const at = new Date(`${date}T00:00:00Z`);
+  at.setUTCDate(at.getUTCDate() + days);
+  return at.toISOString().slice(0, 10);
+}
+
+/** 0 = Sunday … 6 = Saturday for a "YYYY-MM-DD" date. */
+export function weekdayOf(date: string): number {
+  return new Date(`${date}T00:00:00Z`).getUTCDay();
+}
+
+/** Sunday that starts the week (weeks run Sunday-Saturday, like settlements). */
+export function weekStartOf(date: string): string {
+  return addDays(date, -weekdayOf(date));
+}

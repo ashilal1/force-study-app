@@ -30,10 +30,10 @@
 - [ ] iPhone の実機で F0 を確認（ホーム画面から開く → 許可 → テスト通知）
 
 ## M4. 宣言・休息日
-- [ ] RPC `declare_goal`（合言葉の発行、`day_at` などの共通関数を含む） / `register_rest_day` / `cancel_rest_day`
-- [ ] 宣言フォーム・休息日カレンダー
-- [ ] 宣言への指摘: RPC `flag_declaration` / `revise_declaration` / `expire_revisions`、書き直しフォーム
-- [ ] 休会: RPC `request_leave` / `cancel_leave`、申請・審査画面
+- [x] RPC `declare_goal`（合言葉の発行、`day_at` などの共通関数を含む） / `register_rest_day` / `cancel_rest_day`
+- [x] 宣言フォーム・休息日カレンダー（2 週間ぶん）・ホームに全員の今日
+- [x] 宣言への指摘: RPC `flag_declaration` / `revise_declaration` / `expire_revisions`、書き直しフォーム（`expire_revisions` の定期実行は M6）
+- [x] 休会: RPC `request_leave` / `cancel_leave` / `cast_review`（leave）/ `expire_reviews`（leave）、申請・審査画面（`expire_reviews` の定期実行は M6）
 
 ## M5. 証拠・提出・AI 判定
 - [ ] クライアントでの画像圧縮とアップロード

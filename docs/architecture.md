@@ -63,8 +63,8 @@ sequenceDiagram
     participant N as lib/notify
     U->>SA: 学習内容, 締切時刻 (HH:mm)
     SA->>SA: 認証確認・入力検証 (zod)
-    SA->>DB: rpc declare_goal(user, text, time)
-    Note over DB: 宣言締切前か / 休息日でないか / 既に宣言していないか<br/>締切の範囲 (+30分〜翌03:00) を検査して<br/>study_logs と activity_event を insert
+    SA->>DB: rpc declare_goal(user, text, time, 合言葉)
+    Note over DB: 宣言締切前か / 休息日・休会でないか / 既に宣言していないか<br/>締切の範囲 (+30分〜当日 21:00) を検査して<br/>study_logs と activity_event を insert
     DB-->>SA: event
     SA->>N: dispatch(event)
     N->>DB: notifications insert (本人以外)
@@ -279,6 +279,8 @@ flowchart LR
     │   ├── auth.ts                # Data Access Layer: getSessionUser / requireMember
     │   ├── secure-compare.ts      # INVITE_CODE・CRON_SECRET の定数時間比較
     │   ├── invite.ts              # 招待コードの生成・正規化・ハッシュ
+    │   ├── today.ts               # 今日のボード（全員の宣言・休息日・休会・指摘）の読み込み
+    │   ├── rpc-errors.ts          # RPC が投げる業務エラー → 日本語のメッセージ
     │   ├── redirect.ts            # ログイン後の戻り先の検証
     │   ├── validation/            # フォーム入力の zod スキーマ
     │   ├── gemini/                # judge(): プロンプト・スキーマ

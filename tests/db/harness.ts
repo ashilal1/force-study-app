@@ -89,3 +89,11 @@ async function runAs<T>(db: Db, role: string, userId: string, fn: (tx: Transacti
   }
   return result as T;
 }
+
+/**
+ * Pins the clock that every rule reads (private.now(), and so jst_today()) for this session.
+ * Pass a JST wall-clock time like "2026-10-20 09:00".
+ */
+export async function setNow(db: Queryable, jst: string): Promise<void> {
+  await db.query("select set_config('app.now', $1, false)", [`${jst}+09`]);
+}
