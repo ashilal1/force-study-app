@@ -16,6 +16,8 @@ export const maxDuration = 60;
 const REJUDGE_LIMIT = 3;
 /** Weekly summaries written per tick (same reason); the rest follow on the next ticks. */
 const SUMMARY_LIMIT = 2;
+/** Submissions whose original photos are deleted per tick (up to 3 files each). */
+const PURGE_LIMIT = 100;
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
@@ -33,7 +35,8 @@ export async function POST(request: NextRequest) {
 
   const rejudged = await rejudgeStuckSubmissions();
   const summarized = await fillWeeklySummaries();
-  return NextResponse.json({ events: events.length, rejudged, summarized });
+  const purged = await purgeOriginalImages();
+  return NextResponse.json({ events: events.length, rejudged, summarized, purged });
 }
 
 /**
@@ -124,3 +127,33 @@ async function fillWeeklySummaries(): Promise<number> {
   return count;
 }
 
+
+/**
+ * Original photos past the retention period, or the oldest while storage is over budget
+ * (rpc due_image_purges). Files go through the Storage API first; only then is the purge
+ * recorded, so a failed removal is retried on the next tick. Thumbnails stay.
+ */
+async function purgeOriginalImages(): Promise<number> {
+  const admin = createAdminClient();
+  const { data: due, error } = await admin.rpc("due_image_purges", { p_limit: PURGE_LIMIT });
+  if (error) {
+    console.error("listing image purges failed", error);
+    return 0;
+  }
+  if (due.length === 0) return 0;
+
+  // Files already gone are not an error for remove(), so a half-finished earlier run is fine.
+  const { error: removeError } = await admin.storage.from("study-evidence").remove(due.flatMap((row) => row.image_paths));
+  if (removeError) {
+    console.error("removing images failed", removeError);
+    return 0;
+  }
+  const { data: purged, error: markError } = await admin.rpc("mark_images_purged", {
+    p_submission_ids: due.map((row) => row.submission_id),
+  });
+  if (markError) {
+    console.error("recording image purges failed", markError);
+    return 0;
+  }
+  return purged;
+}

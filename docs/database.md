@@ -412,6 +412,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `create_weekly_reviews()` | 土曜 23:59 以降（精算のあと）、その週に記録があれば 1 回だけ。全員の `weekly_reviews` を `stats`（達成・対象日・休み・達成率・平均点・平均時間・ペナルティと理由別・未達成の理由）付きで作り、本人に `weekly_review_created`。`ai_summary` は tick（Route Handler）が Gemini で 1 回 2 件まで埋める |
 | `record_weekly_summary(user_id, week_end, summary, model)` | まだ空の `ai_summary` だけを埋める |
 | `save_weekly_note(user_id, week_end, note)` | 本人の振り返りメモ（4000 字まで）。あとから何度でも書き換えられる唯一の列 |
+| `due_image_purges(limit)` | 原寸の写真を消す対象を古い順に返す: `submitted_at` が `image_retention_days` を過ぎたもの、またはバケットの合計（`storage.objects.metadata.size`）が 800MB を超えているあいだの古いもの。判定中の提出と、まだ決着していない日（`pending`・`passed`）は除く。**tick とは別に** Route Handler が呼ぶ（Storage の削除は Storage API でしかできないため） |
+| `mark_images_purged(submission_ids)` | Storage API でファイルを消したあとに、`image_paths` を空にして `images_purged_at` を記録する。`thumb_path` は残す |
 | `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
 
 **P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed','invalidated')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed`（達成）かほかの理由の未達成で止まる。理由申告待ち・審査中・確定待ちの日があればそこでも止める（確定していないため）。

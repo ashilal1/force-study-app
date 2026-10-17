@@ -188,7 +188,7 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 10 | 理由申告（22:00・22:45）と審査（22:00・23:00・23:30）のリマインド | `rpc due_deadline_reminders()` |
 | 11 | 毎週土曜 23:59 の精算と、未払いへの P7。**同じ tick の 2〜10（土曜の決着）が終わってから**実行する | `rpc run_weekly_settlement()` |
 | 11b | 週の振り返りを作り、Gemini で要約を書く（1 回 2 件まで。失敗したら次の tick で再試行） | `rpc create_weekly_reviews()` + `lib/gemini/weekly-summary.ts` |
-| 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す） | Storage API |
+| 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す。1 回 100 件まで。消せなかったら次の tick で再試行） | `rpc due_image_purges()` → Storage API `remove` → `rpc mark_images_purged()` |
 | 13 | 2〜11 で返ってきたイベントを通知に回す | `lib/notify` |
 
 tick は 5 分ごとなので、「23:59」の処理（その日の決着・土曜の精算・週の振り返り）は実際には日付が変わった直後の 0:00〜0:05 の tick で、**前の学習日に対して**行う。どの期限も記録された時刻で判定するので、結果は変わらない。
@@ -222,7 +222,7 @@ flowchart LR
 
 | 対象 | 方法 |
 |---|---|
-| セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ（`/login` と `/auth/callback` だけは未ログインでも開ける）。proxy はログインの有無だけを見る楽観的なチェック |
+| セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ（`/login`・`/auth/callback`・使い方の `/guide` だけは未ログインでも開ける）。proxy はログインの有無だけを見る楽観的なチェック |
 | ログイン | Google OAuth（Supabase Auth の Google プロバイダー、PKCE）。`signInWithOAuth` → Google → `/auth/callback` で `exchangeCodeForSession` |
 | 招待 | メンバーがホームの「招待コードを発行する」を押すと、Server Action が暗号用の乱数でコードを作り、そのハッシュを `rpc create_invite` で保存して、コードとリンクを画面に返す（ADR-026） |
 | 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action がハッシュにして `rpc join_group` に渡し、招待の照合・使用済みへの更新・profile の作成を 1 つのトランザクションで行う。最初の 1 人だけは `INVITE_CODE` と定数時間で比べて通す（グループが空のときだけ）。profile のない人は、RLS の `private.is_member()` によって何も読めない |
