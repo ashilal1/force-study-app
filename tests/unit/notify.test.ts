@@ -258,3 +258,25 @@ describe("draftNotifications (M7a)", () => {
     expect(draft.body).toBe("期限までに全員の納得がそろいませんでした。500 円");
   });
 });
+
+describe("draftNotifications (M7b)", () => {
+  it("tells the debtor to pay and the payee what's coming", () => {
+    const drafts = draftNotifications(
+      { id: "e", type: "settlement_created", actor_id: "aki", payload: { payee_id: "ben", amount: 1200 } },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.title, d.requiresAction])).toEqual([
+      ["aki", "べん さんに 1,200 円 送ってください", true],
+      ["ben", "あき さんから 1,200 円 届きます", false],
+    ]);
+  });
+
+  it("lists the week's ranking for everyone", () => {
+    const drafts = draftNotifications(
+      { id: "e", type: "weekly_summary", actor_id: null, payload: { ranking: [{ user_id: "aki", amount: 1200 }, { user_id: "cho", amount: 500 }] } },
+      members,
+    );
+    expect(drafts).toHaveLength(3);
+    expect(drafts[0].body).toBe("あき 1,200円、ちょう 500円");
+  });
+});

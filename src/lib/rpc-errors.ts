@@ -52,6 +52,11 @@ const MESSAGES: Record<string, string> = {
   report_closed: "理由申告の期限を過ぎています",
   invalid_category: "理由を選んでください",
   reason_too_long: "2000 文字以内にしてください",
+  // Settlements
+  not_admin: "管理者だけが変更できます",
+  invalid_payee: "支払先には自分以外のメンバーを選んでください",
+  settlement_not_open: "この精算はもう送金済みです",
+  settlement_not_sent: "まだ送金されていません",
   // Reviews
   invalid_verdict: "承認か却下を選んでください",
   not_a_reviewer: "この審査に加わっていません",

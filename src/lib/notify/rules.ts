@@ -362,6 +362,86 @@ const RULES: Record<string, Rule> = {
   trial_ending: (event, members) =>
     draft(self(members, event), "お試し期間は今日までです", "明日 0:00 から、ペナルティが本番の金額で付きます", "/"),
 
+  // --- Settlement (F8, P7) ---------------------------------------------------------------
+  payee_assigned: (event, members) =>
+    draft(
+      members,
+      `支払先が変わりました: ${nameOf(members, event.payload.user_id)} → ${nameOf(members, event.payload.payee_id)}`,
+      "",
+      "/settlements",
+    ),
+
+  payee_missing: (event, members) => {
+    const admins = Array.isArray(event.payload.admin_ids) ? event.payload.admin_ids : [];
+    return draft(
+      members.filter((member) => admins.includes(member.id)),
+      `${nameOf(members, event.actor_id)} さんの支払先が未設定です`,
+      "今週の精算を作れませんでした。支払先を入力してください",
+      "/settlements",
+      true,
+    );
+  },
+
+  settlement_created: (event, members) => {
+    const amount = `${Number(event.payload.amount).toLocaleString()} 円`;
+    return [
+      ...draft(self(members, event), `${nameOf(members, event.payload.payee_id)} さんに ${amount} 送ってください`, "送ったら「送金した」を押してください", "/settlements", true),
+      ...draft(
+        members.filter((member) => member.id === event.payload.payee_id),
+        `${nameOf(members, event.actor_id)} さんから ${amount} 届きます`,
+        "",
+        "/settlements",
+      ),
+    ];
+  },
+
+  weekly_summary: (event, members) => {
+    const ranking = Array.isArray(event.payload.ranking) ? (event.payload.ranking as { user_id: string; amount: number }[]) : [];
+    const body =
+      ranking.length === 0
+        ? "今週はペナルティなし！"
+        : ranking.map((row) => `${nameOf(members, row.user_id)} ${Number(row.amount).toLocaleString()}円`).join("、");
+    return draft(members, "今週のペナルティ結果", body, "/settlements");
+  },
+
+  settlement_sent: (event, members) =>
+    draft(
+      members.filter((member) => member.id === event.payload.payee_id),
+      `${nameOf(members, event.actor_id)} さんが ${Number(event.payload.amount).toLocaleString()} 円を送金しました`,
+      "受け取ったら「受け取った」を押してください",
+      "/settlements",
+      true,
+    ),
+
+  settlement_completed: (event, members) =>
+    draft(
+      members.filter((member) => member.id === event.payload.debtor_id),
+      `${nameOf(members, event.actor_id)} さんが受け取りを確認しました`,
+      "精算が完了しました",
+      "/settlements",
+    ),
+
+  settlement_not_received: (event, members) =>
+    draft(
+      members.filter((member) => member.id === event.payload.debtor_id),
+      `${nameOf(members, event.actor_id)} さんに届いていません`,
+      "もう一度確かめて送金してください",
+      "/settlements",
+      true,
+    ),
+
+  late_payment: (event, members) =>
+    draft(members, `${nameOf(members, event.actor_id)} さんが未払いで追加されました`, yen(event.payload), "/settlements"),
+
+  reminder_late_payment: (event, members) =>
+    draft(
+      self(members, event),
+      "精算がまだです",
+      `${formatJstTime(text(event.payload.due_at))} までに「送金した」を押さないと ${yen(event.payload)} 追加されます`,
+      "/settlements",
+      true,
+    ),
+
   // --- Rest days (F2) ---------------------------------------------------------------------
   rest_day_registered: (event, members) =>
     draft(
