@@ -1,9 +1,11 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { after } from "next/server";
 import { z } from "zod";
 import { requireMember } from "@/lib/auth";
-import { sendTestPush } from "@/lib/notify";
+import { findDevice, sendTestPush } from "@/lib/notify";
+import { TEST_PUSH_DELAY_SECONDS } from "@/lib/notify/constants";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
@@ -37,19 +39,22 @@ export async function savePushSubscription(subscription: unknown, userAgent: str
   return { ok: true };
 }
 
-/** F0 step 4: sends a test notification to this device only. */
+/**
+ * F0 step 4: sends a test notification to this device only, a few seconds later. Real
+ * notifications arrive while the app is in the background, and some systems (macOS Chrome,
+ * iOS) present them differently while the app is in front, so the test should too.
+ */
 export async function sendTestNotification(endpoint: string): Promise<SetupResult> {
   const member = await requireMember();
-  const result = await sendTestPush(member.id, endpoint);
-  switch (result) {
-    case "ok":
-      return { ok: true };
-    case "gone":
-    case "unknown":
-      return { ok: false, message: "この端末の登録が見つかりません。最初からやり直してください" };
-    default:
-      return { ok: false, message: "テスト通知を送れませんでした。少し待ってからもう一度試してください" };
+  if (!(await findDevice(member.id, endpoint))) {
+    return { ok: false, message: "この端末の登録が見つかりません。最初からやり直してください" };
   }
+  after(async () => {
+    await new Promise((resolve) => setTimeout(resolve, TEST_PUSH_DELAY_SECONDS * 1000));
+    const result = await sendTestPush(member.id, endpoint);
+    if (result !== "ok") console.error("test push not delivered", result);
+  });
+  return { ok: true };
 }
 
 /** F0 step 5: the member saw the banner and heard the sound on this device. */

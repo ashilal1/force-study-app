@@ -5,6 +5,7 @@ import { signOut } from "@/actions/auth";
 import { PageLoading } from "@/components/app/page-loading";
 import { ActionButton } from "@/components/brand/action-button";
 import { Sticker } from "@/components/brand/sticker";
+import { NotificationHelp } from "@/components/notifications/notification-help";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { getSessionUser, requireMember } from "@/lib/auth";
@@ -19,12 +20,19 @@ export default function SettingsPage() {
       <Suspense fallback={<PageLoading />}>
         <Profile />
       </Suspense>
-      <Link
-        href="/onboarding/notifications"
-        className="text-center text-sm font-bold underline underline-offset-2"
-      >
-        この端末の通知を設定し直す
-      </Link>
+      <section className="grid gap-2.5">
+        <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">通知</h2>
+        <p className="m-0 text-sm font-medium text-sub">
+          バナーが出ない・音が鳴らないときは、使っている端末の手順を確かめてください。
+        </p>
+        <NotificationHelp />
+        <Link
+          href="/onboarding/notifications"
+          className="text-center text-sm font-bold underline underline-offset-2"
+        >
+          この端末の通知を設定し直す
+        </Link>
+      </section>
       <form action={signOut}>
         <ActionButton type="submit" tone="white">
           ログアウト
