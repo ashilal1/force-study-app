@@ -50,8 +50,9 @@
 ## M7. 理由申告・審査・精算
 - [x] RPC `file_failure_report` / `cast_review`（理由・休会・疑義で共通） / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
 - [x] 理由申告フォーム、審査画面（納得 / 納得できない）: `/reports/[logId]`
-- [ ] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement`
-- [ ] 支払先の割り当て（管理者が入力）、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
+- [x] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement` / `report_not_received` / `late_payment_reminders`
+- [x] 支払先の割り当て（管理者が入力）、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
+- [ ] 全員の支払先がそろうまでお試し期間を終えない（F8）。今は、支払先のない人の精算を持ち越して管理者に通知するだけ
 
 ## M8. ダッシュボード・振り返り
 - [ ] 本日のステータスカード、ランキング、タイムライン
