@@ -216,11 +216,12 @@ flowchart LR
 
 | 対象 | 方法 |
 |---|---|
-| セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ |
+| セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ（`/login` と `/auth/callback` だけは未ログインでも開ける）。proxy はログインの有無だけを見る楽観的なチェック |
 | ログイン | Google OAuth（Supabase Auth の Google プロバイダー、PKCE）。`signInWithOAuth` → Google → `/auth/callback` で `exchangeCodeForSession` |
 | 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action が `INVITE_CODE` と定数時間で比べ、`rpc join_group` で profile を作る（最初の 1 人が管理者）。profile のない人は、RLS の `private.is_member()` によって何も読めない |
+| メンバーの確認 | `src/lib/auth.ts`（Data Access Layer）の `requireMember()`。自分の profile を RLS 越しに読み、見えなければ `/join` へ。`(app)/layout.tsx` が `<Suspense>` の中で呼ぶので、メンバーでない人にはどのページも描画されない。Server Action も毎回これで確かめ直す |
 | DB 読み取り | RLS: **メンバー**（profile があり、抜けていない人）は全行を読める。`notifications` と `push_subscriptions` は本人の行だけ |
-| DB 書き込み | `authenticated` ロールには `profiles` の表示項目の update だけを許可（列単位の GRANT）。それ以外はサーバーの service role が書く |
+| DB 書き込み | `authenticated` ロールには `profiles` の表示項目の update だけを許可（列単位の GRANT）。プロフィール編集の Server Action はこの権限を使い、本人のセッションで書く。それ以外はサーバーの service role が書く |
 | Storage | private バケット。insert は `{auth.uid()}/` 配下だけ、select は認証済みユーザー。表示には署名付き URL を使う |
 | cron | `CRON_SECRET` との定数時間比較 |
 | Gemini | 提出テキストはデータとして扱うようシステム指示に明記（プロンプトインジェクション対策）。合否は点数からサーバーが決める |
@@ -243,9 +244,10 @@ flowchart LR
     ├── proxy.ts                   # セッション更新・認証ガード
     ├── app/
     │   ├── manifest.ts            # PWA manifest
-    │   ├── (auth)/login/          # 「Google でログイン」
+    │   ├── (auth)/                # 未ログイン・未参加向け（下部メニューなし）
+    │   │   ├── login/             # 「Google でログイン」
+    │   │   └── join/              # 招待コードの入力（profile がない人はここへ）
     │   ├── auth/callback/route.ts # OAuth のコード交換
-    │   ├── join/                  # 招待コードの入力（profile がない人はここへ）
     │   ├── onboarding/notifications/  # 通知ゲート (F0)
     │   ├── (app)/
     │   │   ├── page.tsx           # ダッシュボード
@@ -269,11 +271,15 @@ flowchart LR
     │   └── charts/                # G1〜G14 のグラフ（Client Components）と達成カレンダー
     ├── lib/
     │   ├── supabase/              # client.ts / server.ts / admin.ts / proxy.ts
+    │   ├── auth.ts                # Data Access Layer: getSessionUser / requireMember
+    │   ├── secure-compare.ts      # 招待コード・CRON_SECRET の定数時間比較
+    │   ├── validation/            # フォーム入力の zod スキーマ
     │   ├── gemini/                # judge(): プロンプト・スキーマ
     │   ├── passphrase.ts          # 合言葉の単語リストと生成
     │   ├── notify/                # dispatch(): 受信者ルール・web-push
     │   ├── time.ts                # JST の日付計算
-    │   └── env.ts                 # 環境変数の検証 (zod)
+    │   ├── env.ts                 # 公開してよい環境変数の検証 (zod)
+    │   └── env.server.ts          # 秘密の環境変数の検証（機能ごとに遅延して検証）
     ├── actions/                   # Server Actions
     └── types/database.ts          # supabase gen types で生成
 ```

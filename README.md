@@ -24,7 +24,7 @@ Next.js 16 / React 19 / TypeScript / Tailwind CSS v4 / shadcn/ui ・ Supabase（
 
 ## ローカル開発
 
-必要なもの: Node.js 20 以上、[Supabase CLI](https://supabase.com/docs/guides/cli)、Supabase の開発用プロジェクト（無料プラン。リージョンは Tokyo）
+必要なもの: Node.js 22 以上（supabase-js が 20 以下を非推奨にした）、[Supabase CLI](https://supabase.com/docs/guides/cli)、Supabase の開発用プロジェクト（無料プラン。リージョンは Tokyo）
 
 ```bash
 npm install
@@ -42,7 +42,7 @@ npm run dev                         # http://localhost:3000
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/)。モデル ID は無料枠のある Flash 系を選ぶ |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` |
 | `CRON_SECRET` | `openssl rand -hex 32` |
-| `INVITE_CODE` | メンバーに配る招待コード（自分で決める） |
+| `INVITE_CODE` | メンバーに配る招待コード（自分で決める。4 文字以上） |
 
 ### Google ログインの設定（無料）
 1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作る

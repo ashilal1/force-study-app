@@ -1,7 +1,7 @@
 import "server-only";
 import { createClient } from "@supabase/supabase-js";
 import { supabasePublicEnv } from "@/lib/env";
-import { serverEnv } from "@/lib/env.server";
+import { supabaseSecretEnv } from "@/lib/env.server";
 import type { Database } from "@/types/database";
 
 /**
@@ -9,7 +9,7 @@ import type { Database } from "@/types/database";
  * and only after checking who the caller is. State changes go through RPCs.
  */
 export function createAdminClient() {
-  return createClient<Database>(supabasePublicEnv().url, serverEnv().SUPABASE_SECRET_KEY, {
+  return createClient<Database>(supabasePublicEnv().url, supabaseSecretEnv().SUPABASE_SECRET_KEY, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 }
