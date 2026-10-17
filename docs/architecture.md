@@ -289,6 +289,9 @@ flowchart LR
     │   ├── judging.ts             # 1 件の提出を判定する（写真の取得 → Gemini → record_judgement）
     │   ├── log-detail.ts          # その日の詳細（/logs/[id]）の読み込みと、見ている人にできること
     │   ├── report-detail.ts       # 理由申告（/reports/[logId]）の読み込みと、連続回数の表示用の計算
+    │   ├── todo.ts                # ダッシュボードの「あなたがやること」
+    │   ├── timeline.ts            # タイムライン（通知の受信者ルールを、何にも関わっていない人の目線で使う）
+    │   ├── group-settings.ts      # 管理者が変えられるグループ設定の一覧
     │   ├── evidence-client.ts     # ブラウザ側: 写真の圧縮（WebP）と Storage へのアップロード
     │   ├── passphrase.ts          # 合言葉の単語リストと生成
     │   ├── notify/                # rules.ts（受信者と文言）・push.ts（web-push）・index.ts（dispatch / sendTestPush）

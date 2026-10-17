@@ -1,3 +1,4 @@
+import { SETTING_FIELDS } from "@/lib/group-settings";
 import { formatJstDay, formatJstTime } from "@/lib/time";
 
 // Who hears about an event, and what it says (requirements N1). Pure so it can be tested without
@@ -441,6 +442,18 @@ const RULES: Record<string, Rule> = {
       "/settlements",
       true,
     ),
+
+  // --- Group settings (F11) ---------------------------------------------------------------
+  settings_changed: (event, members) => {
+    const changes = (event.payload.changes ?? {}) as Record<string, unknown>;
+    const lines = Object.entries(changes).map(([key, value]) => {
+      const field = SETTING_FIELDS.find((candidate) => candidate.key === key);
+      const shown = field?.type === "time" ? String(value).slice(0, 5) : `${value}${field?.unit ?? ""}`;
+      return `${field?.label ?? key}: ${shown}`;
+    });
+    if (lines.length === 0) return [];
+    return draft(members, "グループ設定が変わりました", lines.join("、"), "/settings");
+  },
 
   // --- Rest days (F2) ---------------------------------------------------------------------
   rest_day_registered: (event, members) =>

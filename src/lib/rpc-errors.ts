@@ -57,6 +57,9 @@ const MESSAGES: Record<string, string> = {
   invalid_payee: "支払先には自分以外のメンバーを選んでください",
   settlement_not_open: "この精算はもう送金済みです",
   settlement_not_sent: "まだ送金されていません",
+  // Group settings
+  invalid_setting: "入力できない値があります。数と時刻を確かめてください",
+  invalid_schedule: "時刻の順番がおかしくなります（リマインド < 宣言締切 < 提出締切の上限 < 「怪しい」 < 送り直し < 審査の期限）",
   // Reviews
   invalid_verdict: "承認か却下を選んでください",
   not_a_reviewer: "この審査に加わっていません",
