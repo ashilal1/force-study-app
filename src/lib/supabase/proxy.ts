@@ -2,9 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { supabasePublicEnv } from "@/lib/env";
 
-const PUBLIC_PATHS = ["/login", "/signup"];
+// /auth/callback must stay reachable while signed out: it is where the session gets created.
+const PUBLIC_PATHS = ["/login", "/auth/callback"];
 
-/** Refreshes the auth session cookie and sends signed-out users to /login. */
+/**
+ * Refreshes the auth session cookie and sends signed-out users to /login.
+ * This is only the optimistic check; membership is checked next to the data (src/lib/auth.ts).
+ */
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
   const { url, publishableKey } = supabasePublicEnv();
@@ -30,11 +34,23 @@ export async function updateSession(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
   if (!signedIn && !isPublic) {
-    const loginUrl = request.nextUrl.clone();
-    loginUrl.pathname = "/login";
-    loginUrl.search = "";
-    return NextResponse.redirect(loginUrl);
+    // Remember where they were headed (e.g. an invite link) so login can bring them back.
+    const next = pathname === "/" ? undefined : `${pathname}${request.nextUrl.search}`;
+    return redirectTo(request, response, "/login", next);
+  }
+  if (signedIn && pathname === "/login") {
+    return redirectTo(request, response, "/");
   }
 
   return response;
+}
+
+// Carries over any refreshed session cookies so the redirect doesn't drop them.
+function redirectTo(request: NextRequest, response: NextResponse, pathname: string, next?: string) {
+  const url = request.nextUrl.clone();
+  url.pathname = pathname;
+  url.search = next ? `?${new URLSearchParams({ next })}` : "";
+  const redirect = NextResponse.redirect(url);
+  response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+  return redirect;
 }

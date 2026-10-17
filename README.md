@@ -24,7 +24,7 @@ Next.js 16 / React 19 / TypeScript / Tailwind CSS v4 / shadcn/ui ・ Supabase（
 
 ## ローカル開発
 
-必要なもの: Node.js 20 以上、[Supabase CLI](https://supabase.com/docs/guides/cli)、Supabase の開発用プロジェクト（無料プラン。リージョンは Tokyo）
+必要なもの: Node.js 22 以上（supabase-js が 20 以下を非推奨にした）、[Supabase CLI](https://supabase.com/docs/guides/cli)、Supabase の開発用プロジェクト（無料プラン。リージョンは Tokyo）
 
 ```bash
 npm install
@@ -42,7 +42,7 @@ npm run dev                         # http://localhost:3000
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/)。モデル ID は無料枠のある Flash 系を選ぶ |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` |
 | `CRON_SECRET` | `openssl rand -hex 32` |
-| `INVITE_CODE` | メンバーに配る招待コード（自分で決める） |
+| `INVITE_CODE` | **最初の 1 人（管理者）が参加するためだけ**のコード（自分で決める。4 文字以上）。グループが空のときしか使えない。2 人目からは、アプリでメンバーが発行する招待コードで参加する |
 
 ### Google ログインの設定（無料）
 1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作る
@@ -53,5 +53,23 @@ npm run dev                         # http://localhost:3000
 
 Web Push はローカルでも `localhost` なら試せる。iPhone で試すには HTTPS で公開し、ホーム画面に追加する必要がある。
 
-## デプロイ
-未整備。[roadmap](docs/roadmap.md) の M9 で手順を書く。
+## デプロイ（Vercel Hobby）
+
+`main` ブランチが本番 URL に出る。作業は `develop` に集め、公開したい時点で `develop` → `main` の PR をマージする（ADR-027）。M9 までは、本番 URL も **Supabase の開発用プロジェクト**につなぐ。
+
+### 初回だけ
+1. [Vercel](https://vercel.com) に GitHub アカウントでサインアップ（Hobby）。「Add New → Project」でこのリポジトリを Import する（非公開リポジトリなので Vercel の GitHub アプリに許可を出す）
+2. Import 画面の Environment Variables に、`.env.local` と同じ値を入れる（今使うのは下の 3 つ。ほかは使う機能ができたら足す）
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `SUPABASE_SECRET_KEY`
+3. Deploy。関数は `vercel.json` で東京（`hnd1`）に置く（Supabase と同じリージョン）
+4. Supabase ダッシュボード → Authentication → URL Configuration
+   - Redirect URLs に `https://<本番のドメイン>/auth/callback` を追加
+   - Site URL を `https://<本番のドメイン>` にする（Redirect URLs に合わない戻り先が来たときの行き先）
+5. Google Cloud の OAuth クライアントは変更不要（戻り先は Supabase の `/auth/v1/callback` のまま）
+
+### 注意
+- `NEXT_PUBLIC_` の変数はビルド時に埋め込まれる。値を変えたら再デプロイする
+- プレビュー（`main` 以外のブランチ）の URL は Vercel のログインで保護されている（Hobby の既定）。iPhone での確認は本番 URL で行う
+

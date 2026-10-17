@@ -164,7 +164,7 @@
 - **Consequences**: Docker が不要。オフラインでは開発できない。データを作り直すときは `supabase db reset --linked`（開発用プロジェクトだけに使う）。7 日使わないと一時停止するので、再開してから作業する。pg_cron から開発機の tick は呼べないので、開発中は tick を手動で呼ぶ。
 
 ## ADR-025: ログインは Google、メンバーになるには招待コード
-- **Status**: Accepted (2026-10-16)
+- **Status**: Accepted (2026-10-16)。招待コードの部分は ADR-026 で置き換え
 - **Context**: メール + パスワードだと、パスワードの管理とリセット（Supabase 無料枠のメール送信上限が厳しい）が手間になる。オーナーの提案で Google ログインにする。
 - **Decision**: Supabase Auth の Google プロバイダー（OAuth / OIDC、PKCE）でログインする。Google でログインしただけではメンバーにせず、`/join` で招待コードを入れた人だけに profile を作る（`join_group`）。RLS は `private.is_member()`（profile があり抜けていない）で判定する。
 - **Consequences**:
@@ -172,3 +172,25 @@
   - 招待コードを知らない人も auth のユーザーとしては登録されるが、何も読めない。
   - Google Cloud での OAuth クライアントの作成と、Supabase での設定が初回だけ必要（README）。
   - iPhone の PWA で OAuth から戻れるかは実機で確認する（M2）。だめならメールのワンタイムコードを予備にする。
+
+## ADR-026: 招待コードはメンバーがその場で発行し、1 回だけ・15 分で使えなくする
+- **Status**: Accepted (2026-10-17)
+- **Context**: ADR-025 では招待コードが環境変数の 1 つだけで、ずっと同じだった。一度漏れると誰でも参加できてしまい、変えるには管理者がデプロイし直す必要がある。オーナーの提案で「招待したいときにその場で作り、15 分で消える」形にする。
+- **Decision**:
+  - メンバーなら誰でも招待コードを発行できる。コードは Node の `crypto.randomInt` で作る 10 文字（紛らわしい文字を除いた 31 文字、約 49.5 ビット）。DB（`invites`）には SHA-256 だけを保存し、コードは発行した画面に一度だけ表示する。
+  - 1 回だけ使え、`invite_minutes`（既定 15 分）で使えなくなる。期限の判定は DB の `now()`。取り消しの機能は作らない（すぐ切れるため）。
+  - `join_group` が、招待の照合（未使用・期限内）・profile の作成・使用済みへの更新を 1 つのトランザクションで行う。advisory lock と `for update` で、同じコードで参加できるのは 1 人だけ。失敗の理由（違う・期限切れ・使用済み）は区別して返さない。
+  - メンバーの上限（`max_members`、既定 6）に達したら、発行も参加もできない。
+  - 最初の 1 人だけは環境変数 `INVITE_CODE` で参加する。グループが空のときしか通らないので、漏れても実害はほぼない。
+  - ログイン前に招待リンクを開いた人のために、戻り先を短命の httpOnly Cookie で `/auth/callback` まで運ぶ（OAuth の戻り先 URL にクエリを付けないので、Supabase の Redirect URLs は `/auth/callback` のままでよい）。
+- **Consequences**:
+  - 漏れたコードが使えるのは最長 15 分・1 人だけ。誰が誰を招待したかが `invites` と `member_joined` に残る。
+  - 相手がすぐに開けないと期限が切れるので、送る直前に発行する運用になる。切れたら発行し直す。
+  - ハッシュに salt は付けない。50 ビット弱のコードは DB が漏れれば総当たりで戻せなくはないが、短命・1 回限りで、DB が漏れた時点でデータはすでに見えているため、この用途では十分とする。
+
+## ADR-027: Vercel では `main` を公開し、関数は東京リージョンに置く
+- **Status**: Accepted (2026-10-17)
+- **Context**: iPhone の PWA（Google ログインから戻れるか、Web Push）は HTTPS でしか確かめられないので、M9 より前に公開 URL が要る。Vercel の既定では関数が米国東部で動き、東京の Supabase と往復するたびに遅くなる。Hobby のプレビュー URL は Vercel のログインで保護されている。
+- **Decision**: `main` を Vercel の本番ブランチにし、作業は `develop` に集めて、公開したいときに `develop` → `main` をマージする。`vercel.json` の `regions` を `hnd1`（東京）にする。M9 で本番用の Supabase プロジェクトを作るまでは、本番 URL も開発用プロジェクトにつなぐ。`package.json` の `engines` で Node 22 以上を指定する。
+- **Consequences**: 公開している版が `main` で分かる。iPhone ではいつも同じ URL で試せる。M9 までは公開 URL と開発中のデータが同じ DB を使うので、メンバーへの本格的な案内は M9 のあとにする。
+

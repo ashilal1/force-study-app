@@ -6,19 +6,20 @@
 - [x] Next.js 16 (App Router, TS, Tailwind v4) の雛形
 - [x] git / CLAUDE.md / .claude / docs / README / .env.example
 
-## M1. 基盤
-- [ ] 依存関係を追加: `@supabase/ssr` `@supabase/supabase-js` `zod` `@google/genai` `web-push` `browser-image-compression` `@tanstack/react-table`、shadcn/ui の初期化（Chart = Recharts を含む）
-- [ ] Supabase CLI の初期化と、クラウドの開発用プロジェクトへの接続（`supabase init` / `supabase link`）
-- [ ] `src/lib/env.ts`（環境変数を zod で検証）、`src/lib/time.ts`（JST）
-- [ ] `src/lib/supabase/{client,server,admin,proxy}.ts`、`src/proxy.ts`
-- [ ] マイグレーション: 全テーブル・制約・RLS・列単位 GRANT・Storage バケットとポリシー
-- [ ] `supabase gen types` → `src/types/database.ts`
+## M1. 基盤 ✅
+- [x] 依存関係を追加: `@supabase/ssr` `@supabase/supabase-js` `zod` `@google/genai` `web-push` `browser-image-compression` `@tanstack/react-table`、shadcn/ui の初期化（Chart = Recharts を含む）
+- [x] Supabase CLI の初期化と、クラウドの開発用プロジェクトへの接続（`supabase init` / `supabase link`）
+- [x] `src/lib/env.ts`（環境変数を zod で検証）、`src/lib/time.ts`（JST）
+- [x] `src/lib/supabase/{client,server,admin,proxy}.ts`、`src/proxy.ts`
+- [x] マイグレーション: 全テーブル・制約・RLS・列単位 GRANT・Storage バケットとポリシー
+- [x] `supabase gen types` → `src/types/database.ts`
 
 ## M2. 認証・プロフィール
-- [ ] Google ログイン（`/login`、`/auth/callback`）と招待コードでの参加（`/join`、`rpc join_group`）（ADR-025）
+- [x] Google ログイン（`/login`、`/auth/callback`）と招待コードでの参加（`/join`、`rpc join_group`）（ADR-025）
+- [x] 招待コードをメンバーがその場で発行する（1 回だけ・15 分。ADR-026）
 - [ ] iPhone の PWA で Google ログインが戻ってくるかを実機で確認。だめならメールのワンタイムコードを追加
-- [ ] プロフィール編集（表示名・アバター・PayPay リンク）
-- [ ] お試し期間（`trial_ends_at`）
+- [x] プロフィール編集（表示名・アバター・PayPay リンク）
+- [x] お試し期間（`trial_ends_at`）の表示
 
 ## M3. 通知基盤（後の機能はすべてこれを使うので先に作る）
 - [ ] `activity_events` → `notifications` の配信 (`lib/notify`)
@@ -53,7 +54,7 @@
 
 ## M8. ダッシュボード・振り返り
 - [ ] 本日のステータスカード、ランキング、タイムライン
-- [ ] 記録の保全: 履歴テーブルの DELETE 禁止・UPDATE 制限のトリガー（M1 のマイグレーションに含めてもよい）
+- [x] 記録の保全: 履歴テーブルの DELETE 禁止・UPDATE 制限のトリガー（M1 のマイグレーションで実装済み）
 - [ ] ビュー `daily_history` / `weekly_stats` / `user_stats` / `received_objections`
 - [ ] 振り返り画面: 数字のカードと G2〜G10 のグラフ・表、その日の詳細（1 日のタイムライン、署名付き URL / サムネイル）、次の計画の追跡
 - [ ] グループの比較画面: G11〜G14
@@ -63,6 +64,7 @@
 - [ ] グループ設定（admin）
 
 ## M9. 本番化
-- [ ] Supabase 本番プロジェクト、Vercel のデプロイと環境変数
+- [ ] Vercel のデプロイ（`main` を公開、東京リージョン。当面は開発用の Supabase につなぐ。ADR-027）
+- [ ] Supabase 本番プロジェクトと、本番の環境変数
 - [ ] 画像の保持期間による削除
 - [ ] メンバーへの案内（ホーム画面に追加、通知の許可、Gemini 無料枠のデータの扱い）
