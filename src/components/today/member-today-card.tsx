@@ -4,8 +4,10 @@ import { Stamp } from "@/components/brand/stamp";
 import { Sticker } from "@/components/brand/sticker";
 import { FlagList } from "@/components/declare/flag-list";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
+import Link from "next/link";
+import { actionButtonVariants } from "@/components/brand/action-button";
 import { formatJstTime } from "@/lib/time";
-import type { TodayMember } from "@/lib/today";
+import type { TodayLog, TodayMember } from "@/lib/today";
 import { FlagForm } from "./flag-form";
 
 /** One member's day on the home board: declaration, deadline, passphrase and flags. */
@@ -34,12 +36,31 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
             </p>
           ) : null}
           <PassphraseCard value={state.log.passphrase!} compact />
+          <SubmissionLine log={state.log} />
           <FlagList flags={state.log.flags} />
           {member.canFlag ? <FlagForm logId={state.log.id} ownerName={member.name} /> : null}
+          {member.isMe && state.log.status === "pending" ? (
+            <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
+              提出する
+            </Link>
+          ) : null}
         </>
       ) : null}
     </Sticker>
   );
+}
+
+function SubmissionLine({ log }: { log: TodayLog }) {
+  if (!log.latest) return null;
+  const text =
+    log.latest.status === "judging"
+      ? "提出しました。AI が判定中"
+      : log.latest.status === "error"
+        ? "提出しました。判定待ち"
+        : log.latest.status === "rejected"
+          ? `${log.attempts} 回目は不合格（${log.latest.score} 点）`
+          : null;
+  return text ? <p className="m-0 text-xs font-bold text-sub">{text}</p> : null;
 }
 
 function headline({ state }: TodayMember): string {
@@ -67,6 +88,16 @@ function Badge({ member }: { member: TodayMember }) {
     case "undeclared":
       return <Pill variant="outline">未宣言</Pill>;
     case "declared":
+      if (member.state.log.status === "passed" || member.state.log.status === "completed") {
+        return (
+          <Stamp
+            tone="mint"
+            label={member.state.log.status === "completed" ? "PASSED" : "合格"}
+            sub={member.state.log.passedScore === null ? undefined : `${member.state.log.passedScore}pt`}
+            className="text-base"
+          />
+        );
+      }
       return member.state.log.revision_due_at && !member.state.log.revised_at ? (
         <Stamp tone="red" label="指摘" className="text-base" />
       ) : (

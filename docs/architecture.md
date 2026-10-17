@@ -78,7 +78,7 @@ sequenceDiagram
     participant C as Client
     participant ST as Storage
     participant SA as Server Actions
-    participant J as /api/judge
+    participant J as judgeMySubmission<br/>(Server Action → lib/judging)
     participant G as Gemini
     participant DB as Postgres
     Note over U,C: 宣言時に今日の合言葉が発行されている（全員に見える）
@@ -89,7 +89,7 @@ sequenceDiagram
     SA->>DB: rpc create_submission()
     Note over DB: pending / 締切前 / 試行回数 を検査<br/>経過時間（宣言→提出）を記録
     SA-->>C: submission_id
-    C->>J: POST { submission_id }
+    C->>J: judgeMySubmission(submission_id)
     J->>ST: 提出写真を取得
     J->>G: 宣言 + 合言葉 + 写真(inline base64) + テキスト + 経過時間<br/>responseSchema = {score, passphrase_found, feedback}
     alt Gemini 成功
@@ -102,8 +102,10 @@ sequenceDiagram
     J->>J: lib/notify で通知
     J-->>C: 結果
 ```
-- 判定は `/api/judge` で同期実行する（Gemini Flash は数秒。Vercel Hobby の関数時間の上限に収まる）。
-- `error` の提出は、本人が「再判定」を押すか、次の cron tick が再実行する。
+- 判定は Server Action `judgeMySubmission` → `lib/judging.ts` の `judgeSubmission()` で同期実行する（Gemini Flash は数秒。Vercel Hobby の関数時間の上限に収まる）。Route Handler は作らない（ADR-030）。
+- Gemini への指示は `lib/gemini/judge.ts`。出力は `responseJsonSchema` で `{score, passphrase_found, feedback}` に固定し、zod で検証する。本人の書いた文章は `<submission>` で囲み、指示として扱わないようシステム指示に書く。
+- 宣言の書き直し待ちのあいだは判定しない（`revision_pending`）。書き直しが期限切れになったら、判定待ちの提出は `expire_revisions` が取り消す。
+- `error` の提出は、本人が「もう一度判定する」を押すか、次の cron tick（M6）が再実行する。試行回数には数えない。
 
 ### 2.3 「怪しい」指摘
 ```mermaid
@@ -268,7 +270,6 @@ flowchart LR
     │   │   ├── notifications/     # 通知一覧
     │   │   └── settings/          # プロフィール・Push・グループ設定
     │   └── api/
-    │       ├── judge/route.ts
     │       ├── export/route.ts    # 自分の記録の CSV / JSON 書き出し
     │       └── cron/tick/route.ts
     ├── components/
@@ -283,7 +284,9 @@ flowchart LR
     │   ├── rpc-errors.ts          # RPC が投げる業務エラー → 日本語のメッセージ
     │   ├── redirect.ts            # ログイン後の戻り先の検証
     │   ├── validation/            # フォーム入力の zod スキーマ
-    │   ├── gemini/                # judge(): プロンプト・スキーマ
+    │   ├── gemini/judge.ts        # Gemini への指示・出力スキーマ
+    │   ├── judging.ts             # 1 件の提出を判定する（写真の取得 → Gemini → record_judgement）
+    │   ├── evidence-client.ts     # ブラウザ側: 写真の圧縮（WebP）と Storage へのアップロード
     │   ├── passphrase.ts          # 合言葉の単語リストと生成
     │   ├── notify/                # rules.ts（受信者と文言）・push.ts（web-push）・index.ts（dispatch / sendTestPush）
     │   ├── push-client.ts         # ブラウザ側: Service Worker の登録・購読・端末の判定

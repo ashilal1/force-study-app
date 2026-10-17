@@ -53,7 +53,8 @@ async function HomeContent() {
     <>
       {isInTrial(me.trial_ends_at) ? <TrialNotice trialEndsAt={me.trial_ends_at} /> : null}
 
-      {board.me.state.kind === "undeclared" ? (
+      {board.me.state.kind === "undeclared" &&
+      board.now < new Date(`${board.date}T${board.settings.declaration_cutoff}+09:00`).getTime() ? (
         <Link href="/declare" className={actionButtonVariants({ tone: "tape" })}>
           <span>今日の宣言をする</span>
           <span className="font-sans text-xs font-bold">締切 {board.settings.declaration_cutoff.slice(0, 5)}</span>

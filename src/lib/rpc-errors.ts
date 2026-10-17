@@ -31,6 +31,15 @@ const MESSAGES: Record<string, string> = {
   leave_overlaps: "その期間と重なる休会の申請がすでにあります",
   leave_closed: "この休会はもう終わっています",
   leave_finished: "取り消せる日が残っていません",
+  // Submissions
+  already_passed: "今日はもう合格しています",
+  not_open: "今日の提出は受け付けていません",
+  deadline_passed: "提出締切を過ぎています",
+  judging_in_progress: "前の提出を判定中です。結果が出てからもう一度提出してください",
+  no_attempts_left: "今日の提出回数を使い切りました",
+  invalid_images: "写真を 1〜3 枚選んでください",
+  invalid_reflection: "学んだこと・できなかったことを書いてください",
+  invalid_rating: "自己評価を選んでください",
   // Reviews
   invalid_verdict: "承認か却下を選んでください",
   not_a_reviewer: "この審査に加わっていません",
