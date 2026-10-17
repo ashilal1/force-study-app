@@ -280,3 +280,13 @@ describe("draftNotifications (M7b)", () => {
     expect(drafts[0].body).toBe("あき 1,200円、ちょう 500円");
   });
 });
+
+describe("draftNotifications (M8a)", () => {
+  it("lists changed settings with labels and units", () => {
+    const [draft] = draftNotifications(
+      { id: "e", type: "settings_changed", actor_id: "aki", payload: { changes: { penalty_slacked: 1000, declaration_cutoff: "11:30:00", passing_score: 75 } } },
+      members,
+    );
+    expect(draft.body).toBe("サボり・申告なし（P2・P5）: 1000、宣言の締切: 11:30、合格点: 75点");
+  });
+});

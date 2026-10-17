@@ -1125,6 +1125,7 @@ export type Database = {
           display_name: string | null
           open_settlement_id: string | null
           this_week_points: number | null
+          this_week_trial_points: number | null
           total_points: number | null
           trial_points: number | null
           unsettled_points: number | null
@@ -1973,6 +1974,27 @@ export type Database = {
           to: "activity_events"
           isOneToOne: false
           isSetofReturn: true
+        }
+      }
+      update_group_settings: {
+        Args: { p_admin_id: string; p_changes: Json }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       withdraw_flag: {

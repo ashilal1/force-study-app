@@ -333,7 +333,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 本人が受けた指摘・却下の一覧（`declaration_flags`、`submission_flags`、`peer_reviews` の `reject`、AI の不合格）を 1 つの形にそろえたもの: `user_id, occurred_at, kind, by_user_id, reason, study_log_id`。
 
 ### ビュー: penalty_summary
-`user_id, display_name, total_points, unsettled_points, this_week_points, trial_points, open_settlement_id`
+`user_id, display_name, total_points, unsettled_points, this_week_points, trial_points, open_settlement_id, this_week_trial_points`
 ダッシュボードのランキングと「奢り確定」バッジに使う。`waived` の行は `trial_points` にだけ数える。`security_invoker = true` にする。
 
 ## 3. RPC（Postgres 関数）
@@ -389,6 +389,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | 関数 | 処理 |
 |---|---|
 | `save_weekly_note(user_id, week_end, note)` | 本人の週の振り返りメモを保存 |
+| `update_group_settings(admin_id, changes jsonb)` | 管理者だけ。決まったキーだけを受け付け（`invalid_setting`）、表の制約と 1 日の時刻の順番（リマインド < 宣言締切 < 提出締切の上限 ≤ 「怪しい」 ≤ 送り直し ≤ 審査の期限、理由申告 ≤ 審査の期限）を検査（`invalid_schedule`）。変わった項目だけを `settings_changed` に記録 |
 | `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ（`not_admin`）。自分自身・抜けた人は不可（`invalid_payee`）、同じなら `unchanged`。`payee_assigned` で全員に通知 |
 | `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで `open` → `sent` → `completed`、「届いていない」は `sent` → `open` |
 | `run_weekly_settlement()`（定期実行。tick の最後） | `current_period_end()`（設定の曜日・時刻を過ぎた直近の締め日）について 1 回だけ。① 前の週までの `open` の精算に P7（`late:{settlement}:{締め日}`）② 人ごとに、締め日までの学習日（P7 は作成時刻）の未精算・`waived` でないペナルティを束ねて支払先への精算を作る（支払先が未設定なら作らずに持ち越して `payee_missing` を管理者へ）③ その週に記録があれば `weekly_summary` |
