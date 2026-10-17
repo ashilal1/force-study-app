@@ -153,6 +153,26 @@ const RULES: Record<string, Rule> = {
     ];
   },
 
+  // ADR-033: the AI couldn't judge, so the day passed provisionally and the members check it.
+  judged_unverified: (event, members) => {
+    const until = formatJstDateTime(text(event.payload.dispute_window_ends_at));
+    return [
+      ...draft(
+        self(members, event),
+        "AI が判定できなかったので、仮の合格にしました",
+        `${until} までにメンバーが写真を確認します。「怪しい」と言われたら証拠を送り直せます`,
+        logUrl(event),
+      ),
+      ...draft(
+        everyoneExcept(members, event.actor_id),
+        `${nameOf(members, event.actor_id)} さんの提出を確認してください（AI 未判定）`,
+        `AI が判定できなかったので仮の合格です。合言葉と内容を見て、おかしければ ${until} までに「怪しい」を`,
+        logUrl(event),
+        true,
+      ),
+    ];
+  },
+
   judged_rejected: (event, members) => {
     if (event.payload.kind === "resend") return [];
     const name = nameOf(members, event.actor_id);

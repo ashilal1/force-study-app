@@ -25,6 +25,7 @@ export const SETTING_FIELDS: SettingField[] = [
   { key: "passing_score", label: "合格点", type: "number", unit: "点", section: "判定と指摘" },
   { key: "max_attempts", label: "1 日の提出回数", type: "number", unit: "回", section: "判定と指摘" },
   { key: "judge_grace_minutes", label: "判定待ちの猶予", type: "number", unit: "分", section: "判定と指摘" },
+  { key: "ai_fallback_minutes", label: "AI が判定できないとき、仮合格にするまで", type: "number", unit: "分", section: "判定と指摘" },
   { key: "flag_window_hours", label: "「軽すぎる」を押せる時間", type: "number", unit: "時間", section: "判定と指摘" },
   { key: "revision_minutes", label: "書き直しの期限", type: "number", unit: "分", section: "判定と指摘" },
   { key: "dispute_window_hours", label: "「怪しい」を押せる時間（提出から）", type: "number", unit: "時間", section: "判定と指摘" },

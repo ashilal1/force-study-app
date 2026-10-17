@@ -10,6 +10,8 @@ export type JudgeResult = {
   feedback: string;
   disputeWindowEndsAt: string | null;
   attemptsLeft: number;
+  /** Passed provisionally because the AI couldn't judge it (ADR-033): no score, members check. */
+  unverified?: boolean;
   /** Past or resent submissions: no "what happens next" line. */
   hideFooter?: boolean;
 };
@@ -21,6 +23,28 @@ function elapsed(minutes: number) {
 }
 
 export function JudgeKarte({ result }: { result: JudgeResult }) {
+  if (result.unverified) {
+    return (
+      <Karte title="AI 検問カルテ">
+        <div className="flex items-baseline justify-center gap-2">
+          <b className="font-heading text-2xl leading-none font-normal">AI 未判定</b>
+          <Stamp tone="ink" label="仮合格" className="ml-2 bg-transparent text-xl" />
+        </div>
+        <ul className="m-0 flex list-none flex-wrap justify-center gap-2 p-0 text-[0.78rem]">
+          <li className="rounded-full border-[2.5px] border-ink bg-card px-2.5 py-0.5">合言葉はメンバーが確認</li>
+          <li className="rounded-full border-[2.5px] border-ink bg-card px-2.5 py-0.5">宣言から {elapsed(result.elapsedMinutes)}</li>
+        </ul>
+        <p className="m-0 text-sm leading-relaxed font-medium">
+          AI が判定できなかったので、仮の合格にしました。ほかのメンバーが写真を見て、合言葉と内容を確かめます。
+        </p>
+        {result.hideFooter || !result.disputeWindowEndsAt ? null : (
+          <p className="m-0 text-center text-[0.78rem] font-bold">
+            {formatJstDateTime(result.disputeWindowEndsAt)} まで、ほかのメンバーが「怪しい」を押せます
+          </p>
+        )}
+      </Karte>
+    );
+  }
   return (
     <Karte title="AI 検問カルテ" className={result.passed ? undefined : "bg-[#f6c9c5]"}>
       <div className="flex items-baseline justify-center gap-1.5">

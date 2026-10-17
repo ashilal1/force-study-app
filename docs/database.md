@@ -51,6 +51,7 @@ erDiagram
 | revision_minutes | int | 60 | 「軽すぎる」から書き直すまでの期限 |
 | dispute_window_hours | int | 24 | 合格した提出から何時間「怪しい」を押せるか |
 | review_hours | int | 24 | 理由の審査・「怪しい」の最終審査の期限（始まってから） |
+| ai_fallback_minutes | int | 30 | AI の判定がないまま、何分たったら仮合格にするか（ADR-033） |
 | resend_minutes | int | 1440 | 最初の「怪しい」から証拠を送り直せる時間 |
 | penalty_no_declaration | int | 500 | P1 |
 | penalty_slacked | int | 700 | P2・P5 |
@@ -160,6 +161,7 @@ Google でログインしただけでは作らない。招待コードを確か�
 | image_paths | text[] | Storage のパス `{user_id}/{date}/{uuid}.webp`（URL ではない）。1〜3 件。保持期間を過ぎたら空にする |
 | thumb_path | text | 1 枚目のサムネイル（長辺 320px）。`{user_id}/{date}/{uuid}_thumb.webp`。**永久に残す** |
 | images_purged_at | timestamptz null | 原寸を消した時刻 |
+| unverified_at | timestamptz null | AI が判定できず仮合格にした時刻（ADR-033）。点数は null |
 | learned_text, struggled_text | text | `regular` で必須 |
 | explanation | text | `resend` の説明 |
 | self_rating | int | 1〜5（`regular`） |
@@ -405,6 +407,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `close_declarations()` | 12:00 を過ぎた今日、レコードも休息日も休会もないメンバー → `no_declaration` + penalty (P1) |
 | `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す（M5 で追加）。残り 15 分のリマインドも作る。**M4 で実装済み、定期実行は M6** |
 | `due_submit_reminders()` | 提出締切の 1 時間前で、まだ合格していない人にリマインドを作る |
+| `pass_unjudged()` | `pending` の日で、通常の提出が `judging` / `error` のまま `ai_fallback_minutes` たったか提出締切が来たら、いちばん早い 1 件を仮合格（`passed` + `unverified_at`、点数なし）にして、log を `passed`（「怪しい」は今から `dispute_window_hours`）。書き直し待ちの日は除く。`judged_unverified` を記録。`close_overdue_logs` より先に動く（ADR-033） |
 | `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `missed` + `failure_reports(awaiting_report)` |
 | `confirm_passed_logs()` | `passed` で `dispute_window_ends_at` を過ぎ、疑義のないもの → `completed` |
 | `advance_disputes()` | `resend_due_at` を過ぎた `resending` → `final_review`（`peer_reviews('dispute')` を作る。期限は `review_hours`）。`review_due_at` を過ぎた `final_review` → `upheld`。送り直しの残り 1 時間のリマインドも作る |

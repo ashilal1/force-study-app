@@ -66,7 +66,11 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
           ) : null}
           {state.log.latest ? (
             <Link href={`/logs/${state.log.id}`} className="text-sm font-bold underline underline-offset-2">
-              {state.log.status === "passed" && !member.isMe ? "証拠を見る（怪しければ指摘）→" : "証拠と判定を見る →"}
+              {state.log.status === "passed" && !member.isMe
+                ? state.log.unverified
+                  ? "AI 未判定。写真を確認する →"
+                  : "証拠を見る（怪しければ指摘）→"
+                : "証拠と判定を見る →"}
             </Link>
           ) : null}
           {member.isMe && state.log.status === "pending" ? (
@@ -160,6 +164,9 @@ function Badge({ member }: { member: TodayMember }) {
       }
       if (member.state.log.dispute === "resending" || member.state.log.dispute === "final_review") {
         return <Stamp tone="blue" label="審査中" sub="怪しい" className="text-base" />;
+      }
+      if (member.state.log.status === "passed" && member.state.log.unverified) {
+        return <Stamp tone="mint" label="仮合格" sub="AI未判定" className="text-base" />;
       }
       if (member.state.log.status === "passed" || member.state.log.status === "completed") {
         return (

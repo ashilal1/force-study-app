@@ -38,6 +38,7 @@ type Submission = {
   judge_error: string | null;
   elapsed_minutes: number | null;
   submitted_at: string;
+  unverified_at: string | null;
 };
 
 async function Submit() {
@@ -62,7 +63,7 @@ async function Submit() {
     supabase
       .from("submissions")
       .select(
-        "id, attempt_no, status, image_paths, learned_text, struggled_text, ai_score, ai_passphrase_found, ai_feedback, judge_error, elapsed_minutes, submitted_at",
+        "id, attempt_no, status, image_paths, learned_text, struggled_text, ai_score, ai_passphrase_found, ai_feedback, judge_error, elapsed_minutes, submitted_at, unverified_at",
       )
       .eq("study_log_id", log.id)
       .eq("kind", "regular")
@@ -195,6 +196,7 @@ function SubmissionResult({
             feedback: submission.ai_feedback ?? "",
             disputeWindowEndsAt: null,
             attemptsLeft,
+            unverified: submission.unverified_at !== null,
             hideFooter: submission.status === "passed" || attemptsLeft === 0,
           }}
         />

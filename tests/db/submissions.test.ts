@@ -143,3 +143,58 @@ describe("record_judgement", () => {
     await expect(judge(db, id, 90)).rejects.toThrow(/not_open/);
   });
 });
+
+describe("AI fallback (ADR-033)", () => {
+  const unjudged = (db: Db) => db.query<Event>("select * from public.pass_unjudged()").then((r) => r.rows);
+
+  it("passes an unjudged submission provisionally after 30 minutes, once", async () => {
+    const { db, aki, logId } = await setup();
+    await setNow(db, "2026-10-20 13:00");
+    const { submission_id: id } = await submit(db, aki, logId);
+    await db.query("select public.record_judge_error($1, 'model overloaded')", [id]);
+
+    await setNow(db, "2026-10-20 13:29");
+    expect(await unjudged(db)).toHaveLength(0);
+    await setNow(db, "2026-10-20 13:30");
+    const events = await unjudged(db);
+    expect(events.map((e) => e.type)).toEqual(["judged_unverified"]);
+    expect(await unjudged(db)).toHaveLength(0);
+
+    const log = await logStatus(db, logId);
+    expect(log.status).toBe("passed");
+    expect(new Date(log.dispute_window_ends_at!).toISOString()).toBe("2026-10-21T04:30:00.000Z"); // 24 hours to check
+    const { rows } = await db.query<{ status: string; ai_score: number | null; unverified: boolean }>(
+      "select status, ai_score, unverified_at is not null as unverified from public.submissions where id = $1",
+      [id],
+    );
+    expect(rows).toEqual([{ status: "passed", ai_score: null, unverified: true }]);
+    // The AI answering late changes nothing.
+    await expect(judge(db, id, 10)).rejects.toThrow(/already_judged/);
+  });
+
+  it("passes at the deadline instead of closing the day as missed", async () => {
+    const { db, aki, logId } = await setup();
+    await setNow(db, "2026-10-21 11:50");
+    await submit(db, aki, logId); // still "judging" (the request never came back)
+    await setNow(db, "2026-10-21 12:00");
+    const events = (await db.query<Event>("select * from public.tick()")).rows;
+    expect(events.map((e) => e.type)).toContain("judged_unverified");
+    expect(events.map((e) => e.type)).not.toContain("missed");
+    expect((await logStatus(db, logId)).status).toBe("passed");
+  });
+
+  it("leaves rejected attempts and pending rewrites alone", async () => {
+    const { db, aki, ben, logId } = await setup();
+    const { submission_id: id } = await submit(db, aki, logId);
+    await judge(db, id, 30);
+    await setNow(db, "2026-10-20 09:40");
+    expect(await unjudged(db)).toHaveLength(0);
+
+    await setNow(db, "2026-10-20 09:41");
+    await db.query("select public.flag_declaration($1, $2, '軽い')", [ben, logId]);
+    await setNow(db, "2026-10-20 09:42");
+    await submit(db, aki, logId);
+    await setNow(db, "2026-10-20 10:20");
+    expect(await unjudged(db)).toHaveLength(0);
+  });
+});
