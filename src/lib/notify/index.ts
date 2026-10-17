@@ -97,14 +97,7 @@ async function sendAndRecord(device: { endpoint: string; p256dh: string; auth: s
  * sound. Not an activity event: it concerns only this device and never shows in the timeline.
  */
 export async function sendTestPush(userId: string, endpoint: string): Promise<PushResult | "unknown"> {
-  const admin = createAdminClient();
-  const { data: device, error } = await admin
-    .from("push_subscriptions")
-    .select("endpoint, p256dh, auth")
-    .eq("user_id", userId)
-    .eq("endpoint", endpoint)
-    .maybeSingle();
-  if (error) throw error;
+  const device = await findDevice(userId, endpoint);
   if (!device) return "unknown";
 
   return sendAndRecord(device, {
@@ -114,4 +107,16 @@ export async function sendTestPush(userId: string, endpoint: string): Promise<Pu
     tag: "notification-test",
     requireInteraction: true,
   });
+}
+
+/** The member's registered device with this endpoint, or null. */
+export async function findDevice(userId: string, endpoint: string) {
+  const { data, error } = await createAdminClient()
+    .from("push_subscriptions")
+    .select("endpoint, p256dh, auth")
+    .eq("user_id", userId)
+    .eq("endpoint", endpoint)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
 }

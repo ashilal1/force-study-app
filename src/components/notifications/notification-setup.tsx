@@ -6,6 +6,7 @@ import { confirmNotifications, savePushSubscription, sendTestNotification } from
 import { ActionButton } from "@/components/brand/action-button";
 import { Sticker } from "@/components/brand/sticker";
 import { FieldError } from "@/components/form/submit-button";
+import { TEST_PUSH_DELAY_SECONDS } from "@/lib/notify/constants";
 import { SettingsGuide } from "./settings-guide";
 import {
   currentSubscription,
@@ -153,10 +154,12 @@ export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string |
       {step === "test" ? (
         <>
           <StepCard title="3. テスト通知を送る">
-            送ったら、画面の上にバナーが出て音が鳴るか確かめてください。
+            押してから {TEST_PUSH_DELAY_SECONDS} 秒後に届きます。押したらすぐ
+            {platform === "ios" || platform === "android" ? "画面を閉じて（ロックして）" : "ほかのアプリに切り替えて"}
+            、バナーが出て音が鳴るか確かめてください。アプリを見たままだと、音やバナーが出ない端末があります。
           </StepCard>
           <ActionButton type="button" onClick={sendTest} disabled={pending}>
-            {pending ? "送信中…" : "テスト通知を送る"}
+            {pending ? "送信中…" : `テスト通知を送る（${TEST_PUSH_DELAY_SECONDS} 秒後に届く）`}
           </ActionButton>
         </>
       ) : null}
@@ -164,14 +167,14 @@ export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string |
       {step === "sent" ? (
         <>
           <StepCard title="4. バナーと音を確かめる">
-            テスト通知を送りました。バナーが出なかった、または音が鳴らなかったときは、下の手順で端末の設定を直してから、もう一度送ってください。音を鳴らすかどうかは端末の設定で決まり、アプリからは変えられません。
+            テスト通知を送りました（{TEST_PUSH_DELAY_SECONDS} 秒後に届きます）。バナーが出なかった、または音が鳴らなかったときは、下の手順で端末の設定を直してから、もう一度送ってください。音を鳴らすかどうかは端末の設定で決まり、アプリからは変えられません。
           </StepCard>
           <SettingsGuide platform={platform} focus="sound" />
           <ActionButton type="button" onClick={confirm} disabled={pending}>
             {pending ? "記録中…" : "表示され、音も鳴った"}
           </ActionButton>
           <ActionButton type="button" tone="white" onClick={sendTest} disabled={pending}>
-            届かなかったので、もう一度送る
+            届かなかったので、もう一度送る（{TEST_PUSH_DELAY_SECONDS} 秒後）
           </ActionButton>
         </>
       ) : null}
