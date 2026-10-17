@@ -493,7 +493,7 @@ tick の DB 側（すべて `service_role` だけが呼べる）:
 | `close_overdue_logs()` | 提出締切（翌日 12:00）を過ぎた `pending` を `missed` にして `failure_reports(awaiting_report, 期限 = 学習日の翌日の report_deadline)` を作る。締切前に出した提出が判定待ち・エラーなら `judge_grace_minutes` 待つ |
 | `confirm_passed_logs()` | 「怪しい」の受付が終わって疑義のない `passed` → `completed` |
 | `due_deadline_reminders()` | 理由申告は期限の日の `report_reminder_times`、休会は `review_reminder_times`、理由・最終審査は期限の 3 時間前・1 時間前 |
-| `trial_ending_reminders()` | お試し期間の最終日に本人へ |
+| `trial_ending_reminders()` | お試し期間の最終日に本人へ（終わりの日ごとに 1 回。延ばしたらもう一度届く） |
 
 ## 6. Realtime
 `notifications`、`study_logs`、`submissions`、`submission_flags`、`submission_disputes`、`failure_reports`、`peer_reviews`、`activity_events` を `supabase_realtime` パブリケーションに追加する。RLS が効くので、クライアントには読める行だけが届く。
