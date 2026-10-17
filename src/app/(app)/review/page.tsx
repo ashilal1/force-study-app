@@ -16,7 +16,12 @@ export const metadata: Metadata = { title: "振り返り | Commit or Treat" };
 export default function ReviewPage({ searchParams }: PageProps<"/review">) {
   return (
     <div className="grid gap-6">
-      <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">みんなの振り返り</h1>
+      <div className="flex items-center justify-between gap-2">
+        <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">みんなの振り返り</h1>
+        <Link href="/search" className="text-sm font-bold underline underline-offset-2">
+          記録を検索 →
+        </Link>
+      </div>
       <Suspense fallback={<PageLoading />}>
         <Review searchParams={searchParams} />
       </Suspense>

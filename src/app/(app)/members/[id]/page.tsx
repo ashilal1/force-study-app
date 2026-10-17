@@ -144,6 +144,8 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
         </Section>
       ) : null}
 
+      <WeeklyReviews memberId={member.id} />
+
       <Section title="学習ログ">
         <LogTable rows={days} />
       </Section>
@@ -159,3 +161,35 @@ function Section({ title, children }: { title: string; children: React.ReactNode
     </section>
   );
 }
+
+async function WeeklyReviews({ memberId }: { memberId: string }) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("weekly_reviews")
+    .select("week_end, stats")
+    .eq("user_id", memberId)
+    .order("week_end", { ascending: false })
+    .limit(12);
+  if (error) throw error;
+  if (data.length === 0) return null;
+  return (
+    <Section title="週の振り返り">
+      <ul className="m-0 grid list-none gap-1.5 p-0 text-sm">
+        {data.map((review) => {
+          const stats = review.stats as { rate?: number | null; penalty?: number };
+          return (
+            <li key={review.week_end}>
+              <Link href={`/members/${memberId}/weeks/${review.week_end}`} className="flex justify-between gap-2 font-bold underline">
+                <span>{formatJstDay(review.week_end)} までの週</span>
+                <span className="font-en">
+                  {stats.rate ?? "−"}% ・ {(stats.penalty ?? 0).toLocaleString()}円
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </Section>
+  );
+}
+

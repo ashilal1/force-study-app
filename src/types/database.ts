@@ -1721,6 +1721,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_weekly_reviews: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       declare_goal: {
         Args: {
           p_declaration: string
@@ -2037,6 +2058,15 @@ export type Database = {
         }
       }
       record_push_success: { Args: { p_endpoint: string }; Returns: undefined }
+      record_weekly_summary: {
+        Args: {
+          p_model: string
+          p_summary: string
+          p_user_id: string
+          p_week_end: string
+        }
+        Returns: undefined
+      }
       register_rest_day: {
         Args: { p_date: string; p_user_id: string }
         Returns: {
@@ -2236,6 +2266,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      save_weekly_note: {
+        Args: { p_note: string; p_user_id: string; p_week_end: string }
+        Returns: undefined
       }
       tick: {
         Args: never

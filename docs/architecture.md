@@ -172,7 +172,7 @@ sequenceDiagram
 ### 2.5 定期実行 (`/api/cron/tick`)
 Supabase の `pg_cron` が 5 分ごとに `pg_net` で `POST /api/cron/tick` を呼ぶ（`Authorization: Bearer <CRON_SECRET>`。シークレットは Supabase Vault に保存）。
 
-tick は以下を順に実行する。各ステップは冪等なので、重複・遅延・取りこぼしがあっても次の tick で回復する。DB 側の手順は `rpc tick()` が 1 つのトランザクションで順に呼び（同時に 2 つ走ったら後のほうは何もしない）、Route Handler はその結果のイベントを `lib/notify` に渡してから、判定待ち・エラーの提出を再判定する。**1〜10 とお試し期間の最終日の通知を実装済み**と 11 の精算（M7）。11b・12 は M8・M9 で足す。
+tick は以下を順に実行する。各ステップは冪等なので、重複・遅延・取りこぼしがあっても次の tick で回復する。DB 側の手順は `rpc tick()` が 1 つのトランザクションで順に呼び（同時に 2 つ走ったら後のほうは何もしない）、Route Handler はその結果のイベントを `lib/notify` に渡してから、判定待ち・エラーの提出を再判定する。**1〜10 とお試し期間の最終日の通知を実装済み**と 11 の精算（M7）、11b の週の振り返り（M8）。12 は M9 で足す。
 
 | # | 処理 | 実体 |
 |---|---|---|
@@ -187,7 +187,7 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 9 | 理由申告の期限 (P5)、審査の期限（理由 P4・休会） | `rpc expire_reports()` / `rpc expire_reviews()` |
 | 10 | 理由申告（22:00・22:45）と審査（22:00・23:00・23:30）のリマインド | `rpc due_deadline_reminders()` |
 | 11 | 毎週土曜 23:59 の精算と、未払いへの P7。**同じ tick の 2〜10（土曜の決着）が終わってから**実行する | `rpc run_weekly_settlement()` |
-| 11b | 週の振り返りを作り、Gemini で要約を書く（失敗したら次の tick で再試行） | `rpc create_weekly_reviews()` + `lib/gemini/weeklySummary` |
+| 11b | 週の振り返りを作り、Gemini で要約を書く（1 回 2 件まで。失敗したら次の tick で再試行） | `rpc create_weekly_reviews()` + `lib/gemini/weekly-summary.ts` |
 | 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す） | Storage API |
 | 13 | 2〜11 で返ってきたイベントを通知に回す | `lib/notify` |
 
@@ -312,7 +312,7 @@ flowchart LR
 - 達成カレンダー（G2・G12）はライブラリを使わず、CSS Grid のマス目で作る（軽くて、スマホでも崩れない）。
 - データの集計は DB のビュー（`daily_history`・`weekly_stats`・`user_stats`・`received_objections`）で行い、Server Component で取って、グラフの Client Component に渡す。ブラウザでは集計しない。
 - 結果の色（達成・未達成・宣言なし・休み）とペナルティ理由の色は 1 か所（`src/lib/chart-colors.ts`）で決め、全グラフで同じ色にする。
-- 画面: 個人の振り返り `/members/[id]`（G1〜G10・次の計画の追跡）、グループの比較 `/review`（G11〜G14。下部メニューの「振り返り」）、その日の詳細 `/logs/[id]` に「この日のタイムライン」。期間は `?range=4w|3m|all`。
+- 画面: 週の振り返り `/members/[id]/weeks/[weekEnd]`（G1・その週の 7 マス・G7・AI のまとめ・本人のメモ）、検索 `/search`（`ilike` + trigram インデックス）、書き出し `/api/export?format=csv|json`（本人の記録だけ。CSV は 1 日 1 行で Excel 用に BOM 付き）、個人の振り返り `/members/[id]`（G1〜G10・次の計画の追跡）、グループの比較 `/review`（G11〜G14。下部メニューの「振り返り」）、その日の詳細 `/logs/[id]` に「この日のタイムライン」。期間は `?range=4w|3m|all`。
 - TanStack Table は v9（`useTable` + `tableFeatures`）。学習ログの表は並べ替えだけを TanStack に任せ、結果での絞り込みは渡す前に行う。
 
 ## 6. 無料枠の見積もり（6 人想定）

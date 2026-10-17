@@ -60,9 +60,9 @@
 - [x] ビュー `daily_history` / `weekly_stats` / `received_objections`（`user_stats` はビューにせず `lib/stats.ts` で計算）
 - [x] 振り返り画面: 数字のカードと G2〜G10 のグラフ・表、その日の詳細（1 日のタイムライン、署名付き URL / サムネイル）、次の計画の追跡
 - [x] グループの比較画面: G11〜G14（G11 の小さな折れ線は G13 にまとめた）
-- [ ] 検索（`pg_trgm`）
-- [ ] 週の振り返り: RPC `create_weekly_reviews`、Gemini の要約、振り返りメモ
-- [ ] 書き出し `/api/export`（CSV / JSON）
+- [x] 検索（`pg_trgm`）: `/search`
+- [x] 週の振り返り: RPC `create_weekly_reviews`、Gemini の要約、振り返りメモ
+- [x] 書き出し `/api/export`（CSV / JSON）
 - [x] グループ設定（admin）: RPC `update_group_settings`、設定画面のフォーム
 
 ## M9. 本番化

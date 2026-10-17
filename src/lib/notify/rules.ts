@@ -443,6 +443,15 @@ const RULES: Record<string, Rule> = {
       true,
     ),
 
+  // --- Weekly review (F12) ----------------------------------------------------------------
+  weekly_review_created: (event, members) =>
+    draft(
+      self(members, event),
+      `今週の振り返りができました（達成 ${event.payload.completed ?? 0}/${event.payload.counted ?? 0}）`,
+      "AI のまとめと、来週へのメモを書き足せます",
+      `/members/${event.actor_id}/weeks/${text(event.payload.week_end)}`,
+    ),
+
   // --- Group settings (F11) ---------------------------------------------------------------
   settings_changed: (event, members) => {
     const changes = (event.payload.changes ?? {}) as Record<string, unknown>;

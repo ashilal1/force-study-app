@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { cronEnv } from "@/lib/env.server";
+import { summarizeWeek } from "@/lib/gemini/weekly-summary";
 import { judgeSubmission } from "@/lib/judging";
 import { dispatch } from "@/lib/notify";
 import { secureEqual } from "@/lib/secure-compare";
@@ -13,6 +14,8 @@ export const maxDuration = 60;
 
 /** Submissions re-judged per tick: the Gemini free tier allows only a few requests a minute. */
 const REJUDGE_LIMIT = 3;
+/** Weekly summaries written per tick (same reason); the rest follow on the next ticks. */
+const SUMMARY_LIMIT = 2;
 
 export async function POST(request: NextRequest) {
   const token = request.headers.get("authorization")?.replace(/^Bearer /, "") ?? "";
@@ -29,7 +32,8 @@ export async function POST(request: NextRequest) {
   for (const event of events) await dispatch(event.id);
 
   const rejudged = await rejudgeStuckSubmissions();
-  return NextResponse.json({ events: events.length, rejudged });
+  const summarized = await fillWeeklySummaries();
+  return NextResponse.json({ events: events.length, rejudged, summarized });
 }
 
 /**
@@ -57,3 +61,66 @@ async function rejudgeStuckSubmissions(): Promise<number> {
   }
   return count;
 }
+
+/** Weekly reviews still without an AI summary (new ones, or a Gemini call that failed). */
+async function fillWeeklySummaries(): Promise<number> {
+  const admin = createAdminClient();
+  const { data: reviews, error } = await admin
+    .from("weekly_reviews")
+    .select("user_id, week_end, stats, profiles(display_name)")
+    .is("ai_summary", null)
+    .order("week_end")
+    .limit(SUMMARY_LIMIT);
+  if (error) {
+    console.error("listing weekly reviews failed", error);
+    return 0;
+  }
+
+  let count = 0;
+  for (const review of reviews) {
+    try {
+      const from = new Date(`${review.week_end}T00:00:00Z`);
+      from.setUTCDate(from.getUTCDate() - 6);
+      const { data: logs, error: logsError } = await admin
+        .from("study_logs")
+        .select("date, status, declaration, submissions(kind, status, learned_text, struggled_text, submitted_at)")
+        .eq("user_id", review.user_id)
+        .gte("date", from.toISOString().slice(0, 10))
+        .lte("date", review.week_end)
+        .order("date");
+      if (logsError) throw logsError;
+
+      const days = logs.map((log) => {
+        const regular = log.submissions
+          .filter((submission) => submission.kind === "regular")
+          .sort((a, b) => a.submitted_at.localeCompare(b.submitted_at));
+        const shown = regular.find((submission) => submission.status === "passed") ?? regular.at(-1);
+        return {
+          date: log.date,
+          declaration: log.declaration,
+          result: log.status,
+          learned: shown?.learned_text ?? null,
+          struggled: shown?.struggled_text ?? null,
+        };
+      });
+      const profile = Array.isArray(review.profiles) ? review.profiles[0] : review.profiles;
+      const { summary, model } = await summarizeWeek({
+        name: profile?.display_name ?? "メンバー",
+        stats: review.stats as Record<string, unknown>,
+        days,
+      });
+      const { error: saveError } = await admin.rpc("record_weekly_summary", {
+        p_user_id: review.user_id,
+        p_week_end: review.week_end,
+        p_summary: summary,
+        p_model: model,
+      });
+      if (saveError) throw saveError;
+      count += 1;
+    } catch (cause) {
+      console.error("weekly summary failed", review.user_id, review.week_end, cause instanceof Error ? cause.message : cause);
+    }
+  }
+  return count;
+}
+
