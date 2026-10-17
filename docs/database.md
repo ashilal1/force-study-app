@@ -381,8 +381,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 未達成・審査
 | 関数 | 処理 |
 |---|---|
-| `file_failure_report(user_id, study_log_id, category, reason, next_plan)` | 本人の `awaiting_report` か、期限内か、必須テキストと文字数を検査。<br>・`unrealistic`: 連続回数を計算 → しきい値以上なら penalty、`resolved`<br>・`slacked`: penalty、`resolved`<br>・`sudden_plan` / `other`: `under_review` にして、`peer_reviews('excuse')` の行を作る |
-| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う。**`leave`（M4）と `dispute`（M5）に対応**。`excuse` は M7 で足す |
+| `file_failure_report(user_id, study_log_id, category, text)` | 本人の `awaiting_report` か、期限内か、`slacked` 以外は `min_explanation_chars` 以上かを検査（1 回だけ）。<br>・`unrealistic`: `text` を次の計画にして、`private.unrealistic_streak()` で連続回数を計算 → しきい値以上なら P3、`resolved`<br>・`slacked`: P2、`resolved`（`text` は任意のひとこと）<br>・`sudden_plan` / `other`: `under_review`（期限は学習日の `review_deadline`）にして、審査者ぶんの `peer_reviews('excuse')` を作る（審査者がいなければその場で承認）。`reported`（と `review_requested`）を記録 |
+| `expire_reports()`（定期実行） | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + P5 |
+| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う。**`leave`（M4）・`dispute`（M5）・`excuse`（M7）に対応**。`excuse` は却下 1 件で P4、全員納得で 0 円 |
 
 ### 精算
 | 関数 | 処理 |
@@ -402,7 +403,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `confirm_passed_logs()` | `passed` で `dispute_window_ends_at` を過ぎ、疑義のないもの → `completed` |
 | `advance_disputes()` | `resend_due_at` を過ぎた `resending` → `final_review`（`peer_reviews('dispute')` を作る）。`review_due_at` を過ぎた `final_review` → `upheld`。送り直しの残り 15 分のリマインドも作る |
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5) |
-| `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は penalty）。**M4 で `leave` だけ実装、定期実行は M6** |
+| `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は P4 `excuse_expired`） |
 | `due_deadline_reminders()` | `report_reminder_times`・`review_reminder_times` に、その日の理由申告・審査・最終審査で未対応の人へリマインドを作る |
 | `create_weekly_reviews()` | 土曜 23:59 以降、その週に 1 回だけ。全員の `weekly_reviews` を `stats` 付きで作る（`ai_summary` は tick が Gemini で埋める） |
 | `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
@@ -475,7 +476,7 @@ tick の DB 側（すべて `service_role` だけが呼べる）:
 | `due_submit_reminders()` | 提出締切の 1 時間前、まだ合格していない人に |
 | `close_overdue_logs()` | 提出締切を過ぎた `pending` を `missed` にして `failure_reports(awaiting_report, 期限 = 当日 report_deadline)` を作る。締切前に出した提出が判定待ち・エラーなら `judge_grace_minutes` 待つ |
 | `confirm_passed_logs()` | 「怪しい」の受付が終わって疑義のない `passed` → `completed` |
-| `due_deadline_reminders()` | `review_reminder_times` に、まだ審査していない人へ（休会・最終審査。理由申告ぶんは M7） |
+| `due_deadline_reminders()` | `report_reminder_times` にまだ申告していない人へ、`review_reminder_times` にまだ審査していない人へ（休会・最終審査・理由） |
 | `trial_ending_reminders()` | お試し期間の最終日に本人へ |
 
 ## 6. Realtime

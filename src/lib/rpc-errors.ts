@@ -47,6 +47,11 @@ const MESSAGES: Record<string, string> = {
   withdraw_closed: "もう取り下げられません",
   not_flagged: "この提出には指摘していません",
   comment_required: "却下するときは理由を書いてください",
+  // Reason reports
+  already_reported: "この日の理由はもう申告しています",
+  report_closed: "理由申告の期限を過ぎています",
+  invalid_category: "理由を選んでください",
+  reason_too_long: "2000 文字以内にしてください",
   // Reviews
   invalid_verdict: "承認か却下を選んでください",
   not_a_reviewer: "この審査に加わっていません",

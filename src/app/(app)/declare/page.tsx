@@ -111,6 +111,11 @@ function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
         </Sticker>
       ) : null}
 
+      {log.status === "missed" ? (
+        <Link href={`/reports/${log.id}`} className={actionButtonVariants({ tone: "red" })}>
+          未達成でした。理由を申告する・見る
+        </Link>
+      ) : null}
       {log.status === "pending" ? (
         <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
           <span>提出する</span>

@@ -1324,6 +1324,27 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      expire_reports: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       expire_reviews: {
         Args: never
         Returns: {
@@ -1347,6 +1368,32 @@ export type Database = {
       }
       expire_revisions: {
         Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      file_failure_report: {
+        Args: {
+          p_category: string
+          p_study_log_id: string
+          p_text: string
+          p_user_id: string
+        }
         Returns: {
           actor_id: string | null
           created_at: string
