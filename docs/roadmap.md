@@ -57,9 +57,9 @@
 ## M8. ダッシュボード・振り返り
 - [x] 本日のステータスカード、「あなたがやること」、ランキング（累計・お試しの本番なら・奢り確定・PayPay）、タイムライン
 - [x] 記録の保全: 履歴テーブルの DELETE 禁止・UPDATE 制限のトリガー（M1 のマイグレーションで実装済み）
-- [ ] ビュー `daily_history` / `weekly_stats` / `user_stats` / `received_objections`
-- [ ] 振り返り画面: 数字のカードと G2〜G10 のグラフ・表、その日の詳細（1 日のタイムライン、署名付き URL / サムネイル）、次の計画の追跡
-- [ ] グループの比較画面: G11〜G14
+- [x] ビュー `daily_history` / `weekly_stats` / `received_objections`（`user_stats` はビューにせず `lib/stats.ts` で計算）
+- [x] 振り返り画面: 数字のカードと G2〜G10 のグラフ・表、その日の詳細（1 日のタイムライン、署名付き URL / サムネイル）、次の計画の追跡
+- [x] グループの比較画面: G11〜G14（G11 の小さな折れ線は G13 にまとめた）
 - [ ] 検索（`pg_trgm`）
 - [ ] 週の振り返り: RPC `create_weekly_reviews`、Gemini の要約、振り返りメモ
 - [ ] 書き出し `/api/export`（CSV / JSON）

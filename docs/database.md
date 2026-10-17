@@ -319,18 +319,20 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | created_at, self_note_updated_at | timestamptz | |
 
 ### ビュー: daily_history
-1 メンバー × 1 日 = 1 行（登録日から今日まで、`generate_series` で日付を埋める）。カレンダーと統計の元。
-`user_id, date, kind (completed / missed / no_declaration / invalidated / rest / leave / pending / trial), declaration, final_score, attempts, elapsed_minutes, penalty_points, failure_category`
+1 メンバー × 1 日 = 1 行（登録日から今日まで、`generate_series` で日付を埋める。「今日」は `private.jst_today()`）。カレンダーと統計の元。
+`user_id, date, kind (completed / missed / no_declaration / invalidated / pending / rest / leave / none), study_log_id, declaration, final_score, attempts, elapsed_minutes, submitted_hour, penalty_points, trial_points, penalty_reason, failure_category, in_trial`
+`pending` は今日か確定待ち、`none` は記録のない日（定期実行が入る前や、締切後に参加した日）。
 
 ### ビュー: weekly_stats
 1 メンバー × 1 週 = 1 行。G3・G7・G11・G13 の元。
-`user_id, week_end, declared_days, completed_days, achievement_rate, avg_score, avg_elapsed_minutes, penalty_points, penalty_by_reason (jsonb)`
+`user_id, week_end（土曜）, counted_days, completed_days, achievement_rate, avg_score, avg_elapsed_minutes, penalty_points, trial_points`
+達成率 = 達成 ÷（達成 + 未達成 + 証拠不認定 + 宣言なし）。理由ごとのペナルティ（G7）は画面側で `penalties` から週ごとに集める。
 
 ### ビュー: user_stats
-期間（週・月・全期間）ごとの達成率・連続達成日数（今と最長）・平均点・平均経過時間・ペナルティ合計。`daily_history` から集計する。
+**ビューは作らず**、`src/lib/stats.ts`（サーバー側の純粋な関数・テストあり）で `daily_history` から計算する。連続達成日数は休み・休会・進行中・記録なしを飛ばし、未達成・宣言なし・証拠不認定で切れる。
 
 ### ビュー: received_objections
-本人が受けた指摘・却下の一覧（`declaration_flags`、`submission_flags`、`peer_reviews` の `reject`、AI の不合格）を 1 つの形にそろえたもの: `user_id, occurred_at, kind, by_user_id, reason, study_log_id`。
+本人が受けた指摘・却下の一覧（`declaration_flags`、`submission_flags`、`peer_reviews` の `reject`、AI の不合格）を 1 つの形にそろえたもの: `user_id, occurred_at, kind (too_light / suspicious / excuse_rejected / dispute_rejected / leave_rejected / ai_rejected), by_user_id, reason, study_log_id`。
 
 ### ビュー: penalty_summary
 `user_id, display_name, total_points, unsettled_points, this_week_points, trial_points, open_settlement_id, this_week_trial_points`
@@ -442,7 +444,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 全行 | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
-| penalty_summary（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
+| penalty_summary・daily_history・weekly_stats・received_objections（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
+
+関数の EXECUTE は `private.is_member()` に加えて、ビューが「今日」を求めるための `private.now()`・`private.jst_today()` だけを `authenticated` に許可する（時刻を返すだけ）。
 | invites | なし（RLS は有効、GRANT なし。サーバーだけが読む） | なし（`create_invite` / `join_group`） |
 
 `anon` ロールにはどのテーブルも許可しない。上の「全行」はすべて「メンバーなら全行」（`private.is_member()`）。Google でログインしただけの人は何も読めない。

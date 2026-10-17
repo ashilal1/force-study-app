@@ -20,7 +20,7 @@ export function GroupSettingsForm({ current }: { current: Record<string, string 
         <fieldset key={section} className="m-0 grid gap-2 border-0 p-0">
           <legend className="mb-1 font-sans text-base font-black">{section}</legend>
           {SETTING_FIELDS.filter((field) => field.section === section).map((field) => (
-            <label key={field.key} className="grid grid-cols-[1fr_7.5rem] items-center gap-3 text-sm font-bold">
+            <label key={field.key} className="grid grid-cols-[1fr_9rem] items-center gap-3 text-sm font-bold">
               <span>{field.label}</span>
               <span className="flex items-center gap-1">
                 <TextInput
@@ -32,7 +32,7 @@ export function GroupSettingsForm({ current }: { current: Record<string, string 
                   required
                   className="px-2 py-1.5 text-sm"
                 />
-                {field.unit ? <span className="text-xs">{field.unit}</span> : null}
+                {field.unit ? <span className="shrink-0 text-xs whitespace-nowrap">{field.unit}</span> : null}
               </span>
             </label>
           ))}

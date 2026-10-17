@@ -12,7 +12,9 @@ import { DisputeReview, WithdrawFlagButton } from "@/components/dispute/dispute-
 import { ResendForm } from "@/components/dispute/resend-form";
 import { JudgeKarte } from "@/components/submit/judge-karte";
 import { FlagForm } from "@/components/today/flag-form";
+import { Timeline } from "@/components/dashboard/timeline";
 import { getLogDetail, type DetailSubmission, type LogDetail } from "@/lib/log-detail";
+import { getTimeline } from "@/lib/timeline";
 import { formatJstDay, formatJstTime } from "@/lib/time";
 
 export const metadata: Metadata = { title: "その日の記録 | Commit or Treat" };
@@ -101,6 +103,11 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
         {detail.submissions.map((submission) => (
           <SubmissionBlock key={submission.id} submission={submission} />
         ))}
+      </section>
+
+      <section className="grid gap-3">
+        <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">この日のタイムライン</h2>
+        <Timeline items={await getTimeline(50, log.id)} />
       </section>
 
       {dispute && can.resend ? (

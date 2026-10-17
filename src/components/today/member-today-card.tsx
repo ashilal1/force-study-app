@@ -19,7 +19,9 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
         <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
         <div className="min-w-0">
           <p className="m-0 truncate font-heading text-[1.2rem] leading-tight">
-            {member.name}
+            <Link href={`/members/${member.id}`} className="hover:underline">
+              {member.name}
+            </Link>
             {member.isMe ? <span className="ml-1.5 align-middle text-xs font-bold text-sub">（あなた）</span> : null}
           </p>
           <p className="m-0 truncate text-sm font-bold">{headline(member)}</p>
