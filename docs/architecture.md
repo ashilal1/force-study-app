@@ -172,11 +172,11 @@ sequenceDiagram
 ### 2.5 定期実行 (`/api/cron/tick`)
 Supabase の `pg_cron` が 5 分ごとに `pg_net` で `POST /api/cron/tick` を呼ぶ（`Authorization: Bearer <CRON_SECRET>`。シークレットは Supabase Vault に保存）。
 
-tick は以下を順に実行する。各ステップは冪等なので、重複・遅延・取りこぼしがあっても次の tick で回復する。
+tick は以下を順に実行する。各ステップは冪等なので、重複・遅延・取りこぼしがあっても次の tick で回復する。DB 側の手順は `rpc tick()` が 1 つのトランザクションで順に呼び（同時に 2 つ走ったら後のほうは何もしない）、Route Handler はその結果のイベントを `lib/notify` に渡してから、判定待ち・エラーの提出を再判定する。**M6 で 1〜8・10（理由申告ぶんを除く）とお試し期間の最終日の通知を実装済み**。9 の理由申告・11 の精算は M7、11b・12 は M8・M9 で足す。
 
 | # | 処理 | 実体 |
 |---|---|---|
-| 1 | 判定待ち・エラーの提出を再判定（最大 N 件） | `/api/judge` と同じロジック |
+| 1 | 判定待ち（2 分以上）・エラーの提出を再判定（1 回 3 件まで。まだ締まっていない日だけ） | `lib/judging.ts` の `judgeSubmission()` |
 | 2 | 0:00・11:00 の宣言リマインド | `rpc run_declaration_reminders()` |
 | 3 | 12:00 の宣言なしを確定 (P1) | `rpc close_declarations()` |
 | 4 | 書き直しの期限 (P6) と残り 15 分のリマインド | `rpc expire_revisions()` |

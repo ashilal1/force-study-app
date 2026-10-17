@@ -73,6 +73,7 @@ Web Push はローカルでも `localhost` なら試せる。iPhone で試すに
    - `SUPABASE_SECRET_KEY`
    - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`（通知。M3 から）
    - `GEMINI_API_KEY` / `GEMINI_MODEL`（AI 判定。M5 から）
+   - `CRON_SECRET`（定期実行。M6 から）
 3. Deploy。関数は `vercel.json` で東京（`hnd1`）に置く（Supabase と同じリージョン）
 4. Settings → Deployment Protection → Vercel Authentication を **オフ**にする。Hobby の既定では `main` 以外の URL に Vercel のログインが要り、iPhone のホーム画面アプリ（Safari とログイン状態を共有しない）からテスト用 URL を開けない。アプリ自体は Google ログインと招待コードで守られている
 5. Settings → Domains で `force-study-app-staging.vercel.app` を追加し、Git Branch に `develop` を指定する（自動で付くブランチ URL は長く、途中が省略されるため）
@@ -80,6 +81,18 @@ Web Push はローカルでも `localhost` なら試せる。iPhone で試すに
    - Redirect URLs に、公開用とテスト用の両方の `https://<ドメイン>/auth/callback` を追加
    - Site URL を公開用の `https://<本番のドメイン>` にする（Redirect URLs に合わない戻り先が来たときの行き先）
 7. Google Cloud の OAuth クライアントは変更不要（戻り先は Supabase の `/auth/v1/callback` のまま）
+
+### 定期実行（pg_cron）
+マイグレーションが `pg_cron` と `pg_net` を有効にして、5 分ごとのジョブ `tick` を登録する。どのデプロイを呼ぶかとシークレットは、**Supabase のプロジェクトごとに** Vault に入れる（SQL Editor か `supabase db query --linked` で 1 回だけ。シークレットを Git に入れない）。
+
+```sql
+select vault.create_secret('<CRON_SECRET と同じ値>', 'cron_secret', 'Bearer token for /api/cron/tick');
+select vault.create_secret('https://<このプロジェクトを使うデプロイ>/api/cron/tick', 'tick_url', 'Deployment that runs the tick');
+```
+
+- 開発用プロジェクトはテスト用 URL（`force-study-app-staging.vercel.app`）を呼ぶ。本番用プロジェクトは M9 で本番の URL を入れる
+- `CRON_SECRET` は Vercel の環境変数（Production と Preview）にも同じ値を入れる
+- 動いているかは `select * from cron.job_run_details order by start_time desc limit 5;` と `select status_code, created from net._http_response order by created desc limit 5;` で確かめる
 
 ### 注意
 - `NEXT_PUBLIC_` の変数はビルド時に埋め込まれる。値を変えたら再デプロイする

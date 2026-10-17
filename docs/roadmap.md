@@ -43,9 +43,9 @@
 - [x] 「怪しい」指摘: RPC `flag_submission` / `resend_evidence` / `withdraw_flag` / `advance_disputes` / `cast_review('dispute')`、その日の詳細画面 `/logs/[id]`（`advance_disputes` の定期実行は M6）
 
 ## M6. 定期実行・宣言なし
-- [ ] RPC `run_declaration_reminders` / `close_declarations` / `expire_revisions` / `close_overdue_logs` / `due_submit_reminders` / `confirm_passed_logs` / `advance_disputes` / `due_deadline_reminders`
-- [ ] `/api/cron/tick`
-- [ ] pg_cron + pg_net + Vault の設定（マイグレーションと手順書）
+- [x] RPC `run_declaration_reminders` / `close_declarations` / `expire_revisions` / `close_overdue_logs` / `due_submit_reminders` / `confirm_passed_logs` / `advance_disputes` / `due_deadline_reminders`（理由申告ぶんは M7）/ `trial_ending_reminders` / `tick`
+- [x] `/api/cron/tick`（`CRON_SECRET` で認証、イベントの通知、エラーの提出の再判定）
+- [x] pg_cron + pg_net + Vault の設定（マイグレーションと README の手順。開発用プロジェクトはテスト用 URL を呼ぶ）
 
 ## M7. 理由申告・審査・精算
 - [ ] RPC `file_failure_report` / `cast_review`（理由・休会・疑義で共通） / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）

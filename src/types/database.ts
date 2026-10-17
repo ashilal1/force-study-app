@@ -1101,6 +1101,69 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      close_declarations: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      close_overdue_logs: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      confirm_passed_logs: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       confirm_push_subscription: {
         Args: { p_endpoint: string; p_user_id: string }
         Returns: {
@@ -1218,6 +1281,48 @@ export type Database = {
       delete_push_subscription: {
         Args: { p_endpoint: string; p_user_id?: string }
         Returns: undefined
+      }
+      due_deadline_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      due_submit_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       expire_reviews: {
         Args: never
@@ -1485,6 +1590,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      run_declaration_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       save_push_subscription: {
         Args: {
           p_auth: string
@@ -1509,6 +1635,48 @@ export type Database = {
           to: "push_subscriptions"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      tick: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      trial_ending_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       withdraw_flag: {

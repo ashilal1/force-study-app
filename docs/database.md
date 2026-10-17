@@ -449,6 +449,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - バケットの制限: `file_size_limit = 1MB`、`allowed_mime_types = {image/webp, image/jpeg, image/png}`
 
 ## 5. pg_cron
+マイグレーション（`20261017000006_tick.sql`）が `pg_cron` と `pg_net` を有効にして、次のジョブを登録する（PGlite のテストでは拡張が無いので飛ばす）。URL とシークレットは**プロジェクトごとに Vault に入れる**（README の手順）。入っていなければジョブは何もしない。
 
 ```sql
 -- 5 分ごとに Vercel の tick を呼ぶ（URL とシークレットは Vault から読む）
@@ -459,10 +460,23 @@ select cron.schedule('tick', '*/5 * * * *', $$
       'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'),
       'Content-Type', 'application/json'),
     body    := '{}'::jsonb,
-    timeout_milliseconds := 30000
-  );
+    timeout_milliseconds := 60000
+  )
+  where exists (select 1 from vault.decrypted_secrets where name = 'tick_url');
 $$);
 ```
+
+tick の DB 側（すべて `service_role` だけが呼べる）:
+| 関数 | 処理 |
+|---|---|
+| `tick()` | 下の手順と、M4・M5 の `expire_revisions` / `advance_disputes` / `expire_reviews` を順に呼ぶ。`pg_try_advisory_xact_lock` で同時実行を防ぐ |
+| `run_declaration_reminders()` | 締切前、まだ宣言していない人（休息日・休会・締切後に参加した人を除く）に 0:00 と 11:00 のリマインド |
+| `close_declarations()` | 締切を過ぎたら、宣言していない人に `no_declaration` の log + P1 |
+| `due_submit_reminders()` | 提出締切の 1 時間前、まだ合格していない人に |
+| `close_overdue_logs()` | 提出締切を過ぎた `pending` を `missed` にして `failure_reports(awaiting_report, 期限 = 当日 report_deadline)` を作る。締切前に出した提出が判定待ち・エラーなら `judge_grace_minutes` 待つ |
+| `confirm_passed_logs()` | 「怪しい」の受付が終わって疑義のない `passed` → `completed` |
+| `due_deadline_reminders()` | `review_reminder_times` に、まだ審査していない人へ（休会・最終審査。理由申告ぶんは M7） |
+| `trial_ending_reminders()` | お試し期間の最終日に本人へ |
 
 ## 6. Realtime
 `notifications`、`study_logs`、`submissions`、`submission_flags`、`submission_disputes`、`failure_reports`、`peer_reviews`、`activity_events` を `supabase_realtime` パブリケーションに追加する。RLS が効くので、クライアントには読める行だけが届く。

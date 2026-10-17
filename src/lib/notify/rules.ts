@@ -43,6 +43,9 @@ const yen = (payload: Record<string, unknown>) => {
 const period = (payload: Record<string, unknown>) =>
   `${formatJstDay(text(payload.start_date))}〜${formatJstDay(text(payload.end_date))}`;
 
+/** The member the event is about (actor), e.g. for their own reminders. */
+const self = (members: MemberName[], event: ActivityEvent) => members.filter((member) => member.id === event.actor_id);
+
 const logUrl = (event: ActivityEvent) => (event.study_log_id ? `/logs/${event.study_log_id}` : "/");
 
 /** "4 時間 12 分" / "35 分". */
@@ -251,6 +254,62 @@ const RULES: Record<string, Rule> = {
       `${nameOf(members, event.payload.rejected_by)} さん: ${text(event.payload.comment)} ／ ${yen(event.payload)}`,
       logUrl(event),
     ),
+
+  // --- Scheduled (F9): reminders and the day's outcomes -----------------------------------
+  reminder_declare_midnight: (event, members) =>
+    draft(
+      self(members, event),
+      `今日の宣言をしましょう（${formatJstTime(text(event.payload.cutoff))} まで）`,
+      "宣言すると今日の合言葉が出ます",
+      "/declare",
+      true,
+    ),
+
+  reminder_declare_last_call: (event, members) =>
+    draft(
+      self(members, event),
+      `宣言の締切まであと 1 時間（${formatJstTime(text(event.payload.cutoff))}）`,
+      `過ぎると宣言なしになり、${yen(event.payload)}`,
+      "/declare",
+      true,
+    ),
+
+  no_declaration: (event, members) =>
+    draft(members, `${nameOf(members, event.actor_id)} さんが宣言しませんでした`, yen(event.payload), "/"),
+
+  reminder_submit: (event, members) =>
+    draft(
+      self(members, event),
+      "提出締切まであと 1 時間",
+      `締切 ${formatJstTime(text(event.payload.deadline))}。まだ合格していません`,
+      "/submit",
+      true,
+    ),
+
+  missed: (event, members) => [
+    ...draft(
+      self(members, event),
+      "未達成でした",
+      `今日 ${formatJstTime(text(event.payload.report_due_at))} までに理由を申告してください。申告しないとサボり扱いです`,
+      logUrl(event),
+      true,
+    ),
+    ...draft(everyoneExcept(members, event.actor_id), `${nameOf(members, event.actor_id)} さんが未達成でした`, "", logUrl(event)),
+  ],
+
+  completion_confirmed: (event, members) =>
+    draft(self(members, event), "達成が確定しました", "おつかれさまでした", logUrl(event)),
+
+  reminder_review_due: (event, members) => {
+    const owner = nameOf(members, event.payload.owner_id);
+    const due = formatJstTime(text(event.payload.review_due_at));
+    return event.payload.subject_type === "dispute"
+      ? draft(self(members, event), `${owner} さんの最終審査の期限が近づいています`, `今日 ${due} まで`, logUrl(event), true)
+      : draft(self(members, event), `${owner} さんの休会の審査の期限が近づいています`, `今日 ${due} まで`, "/leave", true);
+  },
+
+  trial_ending: (event, members) =>
+    draft(self(members, event), "お試し期間は今日までです", "明日 0:00 から、ペナルティが本番の金額で付きます", "/"),
 
   // --- Rest days (F2) ---------------------------------------------------------------------
   rest_day_registered: (event, members) =>
