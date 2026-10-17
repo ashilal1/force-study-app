@@ -1139,6 +1139,35 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      create_submission: {
+        Args: {
+          p_image_paths: string[]
+          p_learned: string
+          p_self_rating: number
+          p_struggled: string
+          p_study_log_id: string
+          p_thumb_path: string
+          p_user_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       declare_goal: {
         Args: {
           p_declaration: string
@@ -1266,6 +1295,37 @@ export type Database = {
       mark_notifications_pushed: {
         Args: { p_ids: string[] }
         Returns: undefined
+      }
+      record_judge_error: {
+        Args: { p_message: string; p_submission_id: string }
+        Returns: undefined
+      }
+      record_judgement: {
+        Args: {
+          p_feedback: string
+          p_model: string
+          p_passphrase_found: boolean
+          p_score: number
+          p_submission_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       record_push_success: { Args: { p_endpoint: string }; Returns: undefined }
       register_rest_day: {

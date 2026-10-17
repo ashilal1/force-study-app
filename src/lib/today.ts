@@ -33,7 +33,14 @@ export type TodayLog = Pick<
   | "declared_at"
   | "revision_due_at"
   | "revised_at"
-> & { flags: Flag[] };
+> & {
+  flags: Flag[];
+  /** Regular submissions so far (Gemini errors excluded) and the latest one's state. */
+  attempts: number;
+  latest: { status: string; score: number | null } | null;
+  /** Score of the passing submission, once passed. */
+  passedScore: number | null;
+};
 
 export type TodayState =
   | { kind: "rest" }
@@ -109,23 +116,40 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
   for (const result of [profiles, logs, rests, leaves]) if (result.error) throw result.error;
 
   const logIds = logs.data!.map((log) => log.id);
-  const { data: flags, error } = logIds.length
-    ? await supabase
-        .from("declaration_flags")
-        .select("study_log_id, flagger_id, comment, created_at")
-        .in("study_log_id", logIds)
-        .order("created_at")
-    : { data: [], error: null };
+  const [{ data: flags, error }, { data: submissions, error: submissionsError }] = logIds.length
+    ? await Promise.all([
+        supabase
+          .from("declaration_flags")
+          .select("study_log_id, flagger_id, comment, created_at")
+          .in("study_log_id", logIds)
+          .order("created_at"),
+        supabase
+          .from("submissions")
+          .select("study_log_id, status, ai_score, submitted_at")
+          .in("study_log_id", logIds)
+          .eq("kind", "regular")
+          .order("submitted_at"),
+      ])
+    : [
+        { data: [], error: null },
+        { data: [], error: null },
+      ];
   if (error) throw error;
+  if (submissionsError) throw submissionsError;
 
   const names = new Map(profiles.data!.map((profile) => [profile.id, profile.display_name]));
   const now = Date.now();
 
   const members = profiles.data!.map((profile, index): TodayMember => {
     const row = logs.data!.find((log) => log.user_id === profile.id);
+    const mine = row ? submissions!.filter((submission) => submission.study_log_id === row.id) : [];
+    const latest = mine.at(-1);
     const log: TodayLog | null = row
       ? {
           ...row,
+          attempts: mine.filter((submission) => submission.status !== "error").length,
+          latest: latest ? { status: latest.status, score: latest.ai_score } : null,
+          passedScore: mine.find((submission) => submission.status === "passed")?.ai_score ?? null,
           flags: flags!
             .filter((flag) => flag.study_log_id === row.id)
             .map((flag) => ({

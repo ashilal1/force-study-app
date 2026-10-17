@@ -1,10 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { createSubmission, judgeMySubmission } from "@/actions/submissions";
 import { ActionButton } from "@/components/brand/action-button";
 import { Sticker } from "@/components/brand/sticker";
 import { Tape } from "@/components/brand/tape";
 import { FieldLabel, TextArea } from "@/components/form/fields";
+import { FieldError } from "@/components/form/submit-button";
+import { uploadEvidence } from "@/lib/evidence-client";
 import { cn } from "@/lib/utils";
 
 const MAX_PHOTOS = 3;
@@ -13,19 +17,38 @@ type Props = {
   goal: string;
   passphrase: string;
   attemptsLeft: number;
+  /** Live submission: today's log and where the photos go. Omitted in the /preview gallery. */
+  live?: { logId: string; userId: string; date: string };
 };
 
-export function SubmitForm({ goal, passphrase, attemptsLeft }: Props) {
+type Phase = "idle" | "uploading" | "saving" | "judging";
+
+const PHASE_LABEL: Record<Phase, string> = {
+  idle: "提出する",
+  uploading: "写真を圧縮・アップロード中…",
+  saving: "提出を記録中…",
+  judging: "AI が判定中…（数秒〜数十秒）",
+};
+
+export function SubmitForm({ goal, passphrase, attemptsLeft, live }: Props) {
+  const router = useRouter();
   const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
   const [learned, setLearned] = useState("");
   const [struggled, setStruggled] = useState("");
   const [rating, setRating] = useState(0);
+  const [phase, setPhase] = useState<Phase>("idle");
+  const [error, setError] = useState<string>();
+  const [, startTransition] = useTransition();
 
-  const ready = photos.length > 0 && learned.trim() && struggled.trim() && rating > 0;
+  const busy = phase !== "idle";
+  const ready = photos.length > 0 && learned.trim() && struggled.trim() && rating > 0 && !busy;
 
   function addPhotos(files: FileList | null) {
     if (!files) return;
-    const next = [...files].slice(0, MAX_PHOTOS - photos.length).map((file) => ({ file, url: URL.createObjectURL(file) }));
+    const next = [...files]
+      .filter((file) => file.type.startsWith("image/"))
+      .slice(0, MAX_PHOTOS - photos.length)
+      .map((file) => ({ file, url: URL.createObjectURL(file) }));
     setPhotos((current) => [...current, ...next]);
   }
 
@@ -36,8 +59,37 @@ export function SubmitForm({ goal, passphrase, attemptsLeft }: Props) {
     });
   }
 
+  function submit(event: React.FormEvent) {
+    event.preventDefault();
+    if (!live || !ready) return;
+    setError(undefined);
+    startTransition(async () => {
+      try {
+        setPhase("uploading");
+        const uploaded = await uploadEvidence(
+          live.userId,
+          live.date,
+          photos.map((photo) => photo.file),
+        );
+        setPhase("saving");
+        const created = await createSubmission({ logId: live.logId, ...uploaded, learned, struggled, rating });
+        if ("error" in created) {
+          setError(created.error);
+          return;
+        }
+        setPhase("judging");
+        await judgeMySubmission(created.submissionId);
+        router.refresh();
+      } catch {
+        setError("アップロードに失敗しました。電波の良いところでもう一度試してください");
+      } finally {
+        setPhase("idle");
+      }
+    });
+  }
+
   return (
-    <form className="grid gap-5" onSubmit={(event) => event.preventDefault()}>
+    <form className="grid gap-5" onSubmit={submit}>
       <Sticker tone="tape" shadow="sm" className="grid gap-1 px-3.5 py-3">
         <span className="text-xs">今日の宣言</span>
         <span className="text-base">{goal}</span>
@@ -58,6 +110,7 @@ export function SubmitForm({ goal, passphrase, attemptsLeft }: Props) {
               <button
                 type="button"
                 onClick={() => removePhoto(index)}
+                disabled={busy}
                 className="absolute top-1 right-1 rounded-full border-2 border-ink bg-card px-1.5 text-xs"
                 aria-label={`写真 ${index + 1} を外す`}
               >
@@ -74,17 +127,20 @@ export function SubmitForm({ goal, passphrase, attemptsLeft }: Props) {
             >
               {photos.length === 0 ? <Tape className="-top-3 left-1/2 -ml-9" /> : null}
               <span>
-                ＋ 写真を撮る
+                ＋ 写真を撮る・選ぶ
                 <br />
                 <span className="text-xs text-sub">ノート・画面など</span>
               </span>
               <input
                 type="file"
                 accept="image/*"
-                capture="environment"
                 multiple
+                disabled={busy}
                 className="sr-only"
-                onChange={(event) => addPhotos(event.target.files)}
+                onChange={(event) => {
+                  addPhotos(event.target.files);
+                  event.target.value = "";
+                }}
               />
             </label>
           ) : null}
@@ -93,11 +149,23 @@ export function SubmitForm({ goal, passphrase, attemptsLeft }: Props) {
 
       <div className="grid gap-1.5">
         <FieldLabel htmlFor="learned">学んだこと</FieldLabel>
-        <TextArea id="learned" value={learned} onChange={(e) => setLearned(e.target.value)} placeholder="例: 固有値の出し方と対角化の手順" />
+        <TextArea
+          id="learned"
+          value={learned}
+          maxLength={2000}
+          onChange={(e) => setLearned(e.target.value)}
+          placeholder="例: 固有値の出し方と対角化の手順"
+        />
       </div>
       <div className="grid gap-1.5">
         <FieldLabel htmlFor="struggled">できなかったこと・あいまいな所</FieldLabel>
-        <TextArea id="struggled" value={struggled} onChange={(e) => setStruggled(e.target.value)} placeholder="例: 重解のときの対角化" />
+        <TextArea
+          id="struggled"
+          value={struggled}
+          maxLength={2000}
+          onChange={(e) => setStruggled(e.target.value)}
+          placeholder="例: 重解のときの対角化"
+        />
       </div>
 
       <fieldset className="m-0 grid gap-2 border-0 p-0">
@@ -120,8 +188,9 @@ export function SubmitForm({ goal, passphrase, attemptsLeft }: Props) {
         </div>
       </fieldset>
 
-      <ActionButton type="submit" disabled={!ready} hint={`AI が採点します ・ 残り ${attemptsLeft} 回`}>
-        提出する
+      <FieldError id="submit-error" message={error} />
+      <ActionButton type="submit" disabled={!ready} hint={busy ? undefined : `AI が採点します ・ 残り ${attemptsLeft} 回`}>
+        {PHASE_LABEL[phase]}
       </ActionButton>
     </form>
   );

@@ -29,7 +29,7 @@ describe("draftNotifications", () => {
   });
 
   it("sends nothing for event types without a rule yet", () => {
-    expect(draftNotifications({ id: "e1", type: "submitted", actor_id: "aki", payload: {} }, members)).toEqual([]);
+    expect(draftNotifications({ id: "e1", type: "trial_ending_unruled", actor_id: "aki", payload: {} }, members)).toEqual([]);
   });
 });
 
@@ -104,5 +104,38 @@ describe("draftNotifications (M4)", () => {
     expect(
       recipientsOf("review_vote_cast", "ben", { subject_type: "leave", owner_id: "aki", verdict: "accept", accepted: 1, total: 2 }),
     ).toEqual(["aki"]);
+  });
+});
+
+describe("draftNotifications (M5a)", () => {
+  it("asks the owner to resubmit after a rejection while attempts remain", () => {
+    const drafts = draftNotifications(
+      {
+        id: "e",
+        type: "judged_rejected",
+        actor_id: "aki",
+        payload: { score: 55, passphrase_found: false, feedback: "量が少ない", attempts_left: 2, deadline: "2026-10-20T12:00:00Z" },
+      },
+      members,
+    );
+    expect(drafts[0]).toMatchObject({
+      recipientId: "aki",
+      requiresAction: true,
+      body: "合言葉が見つかりませんでした。量が少ない ／ 残り 2 回（締切 21:00）",
+    });
+    expect(drafts.slice(1).map((d) => d.body)).toEqual(["残り 2 回", "残り 2 回"]);
+  });
+
+  it("tells everyone about a pass with the dispute window", () => {
+    const drafts = draftNotifications(
+      { id: "e", type: "judged_passed", actor_id: "aki", payload: { score: 85, dispute_window_ends_at: "2026-10-20T07:00:00Z" } },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.title])).toEqual([
+      ["aki", "合格しました（85 点）"],
+      ["ben", "あき さんが合格しました（85 点）"],
+      ["cho", "あき さんが合格しました（85 点）"],
+    ]);
+    expect(drafts[1].body).toBe("怪しければ 16:00 までに指摘できます");
   });
 });

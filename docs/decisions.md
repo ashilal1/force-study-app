@@ -219,3 +219,9 @@
 - **Decision**: RPC が使う現在時刻は `private.now()`（ふだんは `now()`）にまとめ、`jst_today()` もこれを使う。テストのセッションだけ `set app.now = '...'` で固定する（`tests/db/harness.ts` の `setNow`）。行の `created_at` などの既定値は `now()` のまま。
 - **Consequences**: 時刻に関わるルールを、決まった日時で再現性よくテストできる。`app.now` を設定できるのは SQL を直接実行できる人だけで、API からは設定できず、RPC も `service_role` だけが呼べるので、本番で時刻をずらされることはない。
 
+## ADR-030: AI 判定は Route Handler ではなく Server Action から呼ぶ
+- **Status**: Accepted (2026-10-17)
+- **Context**: 設計では、ブラウザが提出を記録したあと `/api/judge` に POST して判定する予定だった。Route Handler にすると、ログインと本人確認を自前で書く必要がある。
+- **Decision**: 判定の本体は `lib/judging.ts` の `judgeSubmission(submissionId)`（写真を Storage から取得 → Gemini → `record_judgement`、失敗したら `record_judge_error`）。ブラウザは Server Action `judgeMySubmission` を呼び、そこで本人の提出かを確かめてから実行する。M6 の cron tick も同じ関数で `error` の提出を判定し直す。写真の入力は `capture` 属性を付けず、端末の「カメラで撮る / 写真を選ぶ」の選択に任せる（`capture` を付けるとギャラリーから選べない端末があるため）。
+- **Consequences**: 認証は Server Action の仕組み（Origin の確認と Cookie のセッション）に乗る。判定は数秒〜数十秒かかるので、その間ボタンを「AI が判定中…」にする。途中で画面を閉じても提出は記録済みで、「もう一度判定する」で続きができる。
+

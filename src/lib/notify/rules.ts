@@ -42,6 +42,12 @@ const yen = (payload: Record<string, unknown>) => {
 const period = (payload: Record<string, unknown>) =>
   `${formatJstDay(text(payload.start_date))}〜${formatJstDay(text(payload.end_date))}`;
 
+/** "4 時間 12 分" / "35 分". */
+function duration(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  return hours > 0 ? `${hours} 時間 ${minutes % 60} 分` : `${minutes} 分`;
+}
+
 function draft(recipients: MemberName[], title: string, body: string, url: string, requiresAction = false) {
   return recipients.map((member) => ({ recipientId: member.id, title, body, url, requiresAction }));
 }
@@ -108,6 +114,59 @@ const RULES: Record<string, Rule> = {
 
   revision_expired: (event, members) =>
     draft(members, `${nameOf(members, event.actor_id)} さんが宣言を書き直しませんでした`, yen(event.payload), "/"),
+
+  // --- Submissions and AI judgement (F4b, F5) ---------------------------------------------
+  submitted: (event, members) =>
+    draft(
+      everyoneExcept(members, event.actor_id),
+      `${nameOf(members, event.actor_id)} さんが提出しました`,
+      `宣言から ${duration(Number(event.payload.elapsed_minutes ?? 0))}`,
+      "/",
+    ),
+
+  judged_passed: (event, members) => {
+    if (event.payload.kind === "resend") return [];
+    const name = nameOf(members, event.actor_id);
+    const until = formatJstTime(text(event.payload.dispute_window_ends_at));
+    return [
+      ...draft(
+        members.filter((member) => member.id === event.actor_id),
+        `合格しました（${event.payload.score} 点）`,
+        `${until} まで「怪しい」がなければ達成で確定します`,
+        "/submit",
+      ),
+      ...draft(
+        everyoneExcept(members, event.actor_id),
+        `${name} さんが合格しました（${event.payload.score} 点）`,
+        `怪しければ ${until} までに指摘できます`,
+        "/",
+      ),
+    ];
+  },
+
+  judged_rejected: (event, members) => {
+    if (event.payload.kind === "resend") return [];
+    const name = nameOf(members, event.actor_id);
+    const left = Number(event.payload.attempts_left ?? 0);
+    const reason = event.payload.passphrase_found === false ? "合言葉が見つかりませんでした。" : "";
+    return [
+      ...draft(
+        members.filter((member) => member.id === event.actor_id),
+        `不合格でした（${event.payload.score} 点）`,
+        `${reason}${text(event.payload.feedback)} ／ ${
+          left > 0 ? `残り ${left} 回（締切 ${formatJstTime(text(event.payload.deadline))}）` : "今日の提出回数を使い切りました"
+        }`,
+        "/submit",
+        left > 0,
+      ),
+      ...draft(
+        everyoneExcept(members, event.actor_id),
+        `${name} さんの提出は不合格（${event.payload.score} 点）`,
+        left > 0 ? `残り ${left} 回` : "提出回数を使い切りました",
+        "/",
+      ),
+    ];
+  },
 
   // --- Rest days (F2) ---------------------------------------------------------------------
   rest_day_registered: (event, members) =>

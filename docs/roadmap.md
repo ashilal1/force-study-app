@@ -36,10 +36,10 @@
 - [x] 休会: RPC `request_leave` / `cancel_leave` / `cast_review`（leave）/ `expire_reviews`（leave）、申請・審査画面（`expire_reviews` の定期実行は M6）
 
 ## M5. 証拠・提出・AI 判定
-- [ ] クライアントでの画像圧縮とアップロード
-- [ ] RPC `create_submission` / `record_judgement` / `record_judge_error`
-- [ ] `/api/judge`（Gemini、structured output、合言葉の確認）
-- [ ] 結果の表示・再提出・再判定・経過時間の表示
+- [x] クライアントでの画像圧縮とアップロード
+- [x] RPC `create_submission` / `record_judgement` / `record_judge_error`
+- [x] AI 判定（Gemini、structured output、合言葉の確認）。Route Handler ではなく Server Action + `lib/judging.ts`（ADR-030）
+- [x] 結果の表示・再提出・再判定・経過時間の表示
 - [ ] 「怪しい」指摘: RPC `flag_submission` / `resend_evidence` / `withdraw_flag`、最終審査
 
 ## M6. 定期実行・宣言なし

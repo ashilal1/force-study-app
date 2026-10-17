@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import Link from "next/link";
 import { PageLoading } from "@/components/app/page-loading";
+import { actionButtonVariants } from "@/components/brand/action-button";
 import { Countdown } from "@/components/brand/countdown";
 import { Pill } from "@/components/brand/pill";
 import { Stamp } from "@/components/brand/stamp";
@@ -110,9 +111,12 @@ function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
         </Sticker>
       ) : null}
 
-      <p className="m-0 text-sm text-sub">
-        提出の画面はもうすぐ使えるようになります。合言葉を紙に書いて、成果物と一緒に撮っておきましょう。
-      </p>
+      {log.status === "pending" ? (
+        <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
+          <span>提出する</span>
+          <span className="font-sans text-xs font-bold">合言葉を紙に書いて、成果物と一緒に撮る</span>
+        </Link>
+      ) : null}
     </div>
   );
 }

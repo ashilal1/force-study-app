@@ -369,9 +369,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 提出・疑義
 | 関数 | 処理 |
 |---|---|
-| `create_submission(user_id, study_log_id, paths[], ...)` | `pending` か、`now() < target_end_time` か、試行回数が上限未満か、パスが `{user_id}/` で始まるかを検査 → `regular` / `judging` で insert。経過時間を計算 |
-| `record_judgement(submission_id, score, passphrase_found, feedback, model)` | 合格 = 点数 >= 合格点 かつ 合言葉あり。`regular` の合格なら log を `passed` にして `dispute_window_ends_at` を入れる |
-| `record_judge_error(submission_id, message)` | `error` にする |
+| `create_submission(user_id, study_log_id, image_paths[], thumb_path, learned, struggled, self_rating)` | 本人の今日の `pending` か、`now() < target_end_time` か（提出時刻で判定）、判定中の提出がないか、試行回数（`error` を除く）が上限未満か、パスが `{user_id}/{学習日}/{uuid}.webp` の形か（1〜3 枚）を検査 → `regular` / `judging` で insert。経過時間を計算して `submitted` を記録 |
+| `record_judgement(submission_id, score, passphrase_found, feedback, model)` | `judging` か `error` の提出だけ。書き直し待ちなら `revision_pending`、`regular` で log が `pending` でなければ `not_open`。合格 = 点数 >= 合格点 かつ 合言葉あり。`regular` の合格なら log を `passed` にして `dispute_window_ends_at = least(今 + dispute_window_hours, 当日の dispute_cutoff)`。`judged_passed` / `judged_rejected`（残り回数つき）を記録 |
+| `record_judge_error(submission_id, message)` | `error` にする（試行回数に数えない。あとで判定し直せる） |
 | `flag_submission(flagger_id, study_log_id, comment)` | 本人以外か、`passed` で `dispute_window_ends_at` 前か、`final_review` に入っていないかを検査。最初の 1 件なら `submission_disputes(resending)` を作る |
 | `resend_evidence(user_id, study_log_id, paths[], explanation)` | 本人の `resending` で `resend_due_at` 前か → `resend` の提出を作る（回数制限なし。判定は `/api/judge`） |
 | `withdraw_flag(flagger_id, study_log_id)` | 自分の指摘を取り下げる。全員取り下げたら `upheld` → log を `completed` |
