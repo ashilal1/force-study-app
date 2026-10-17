@@ -66,7 +66,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
     supabase
       .from("submissions")
       .select(
-        "id, kind, attempt_no, status, image_paths, learned_text, struggled_text, explanation, self_rating, ai_score, ai_passphrase_found, ai_feedback, elapsed_minutes, submitted_at",
+        "id, kind, attempt_no, status, image_paths, thumb_path, learned_text, struggled_text, explanation, self_rating, ai_score, ai_passphrase_found, ai_feedback, elapsed_minutes, submitted_at",
       )
       .eq("study_log_id", logId)
       .order("submitted_at"),
@@ -84,7 +84,10 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
   }
 
   const name = (id: string) => profiles.data!.find((profile) => profile.id === id)?.display_name ?? "メンバー";
-  const paths = submissions.data!.flatMap((submission) => submission.image_paths);
+  // Originals are deleted after the retention period; the thumbnail stays forever (F12).
+  const shown = (submission: { image_paths: string[]; thumb_path: string | null }) =>
+    submission.image_paths.length > 0 ? submission.image_paths : submission.thumb_path ? [submission.thumb_path] : [];
+  const paths = submissions.data!.flatMap(shown);
   const urls = new Map<string, string>();
   if (paths.length > 0) {
     const { data: signed, error: signError } = await supabase.storage.from("study-evidence").createSignedUrls(paths, 60 * 60);
@@ -125,7 +128,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
       kind: submission.kind as "regular" | "resend",
       attemptNo: submission.attempt_no,
       status: submission.status,
-      photos: submission.image_paths.map((path) => urls.get(path)).filter((url) => url !== undefined),
+      photos: shown(submission).map((path) => urls.get(path)).filter((url) => url !== undefined),
       learned: submission.learned_text,
       struggled: submission.struggled_text,
       explanation: submission.explanation,

@@ -292,6 +292,9 @@ flowchart LR
     │   ├── todo.ts                # ダッシュボードの「あなたがやること」
     │   ├── timeline.ts            # タイムライン（通知の受信者ルールを、何にも関わっていない人の目線で使う）
     │   ├── group-settings.ts      # 管理者が変えられるグループ設定の一覧
+    │   ├── history.ts             # 振り返り（個人・グループ）のデータの読み込み
+    │   ├── stats.ts               # 達成率・連続達成日数・平均などの計算（純粋な関数）
+    │   ├── chart-colors.ts        # 結果・ペナルティ理由・指摘の色・記号・ラベル
     │   ├── evidence-client.ts     # ブラウザ側: 写真の圧縮（WebP）と Storage へのアップロード
     │   ├── passphrase.ts          # 合言葉の単語リストと生成
     │   ├── notify/                # rules.ts（受信者と文言）・push.ts（web-push）・index.ts（dispatch / sendTestPush）
@@ -309,6 +312,8 @@ flowchart LR
 - 達成カレンダー（G2・G12）はライブラリを使わず、CSS Grid のマス目で作る（軽くて、スマホでも崩れない）。
 - データの集計は DB のビュー（`daily_history`・`weekly_stats`・`user_stats`・`received_objections`）で行い、Server Component で取って、グラフの Client Component に渡す。ブラウザでは集計しない。
 - 結果の色（達成・未達成・宣言なし・休み）とペナルティ理由の色は 1 か所（`src/lib/chart-colors.ts`）で決め、全グラフで同じ色にする。
+- 画面: 個人の振り返り `/members/[id]`（G1〜G10・次の計画の追跡）、グループの比較 `/review`（G11〜G14。下部メニューの「振り返り」）、その日の詳細 `/logs/[id]` に「この日のタイムライン」。期間は `?range=4w|3m|all`。
+- TanStack Table は v9（`useTable` + `tableFeatures`）。学習ログの表は並べ替えだけを TanStack に任せ、結果での絞り込みは渡す前に行う。
 
 ## 6. 無料枠の見積もり（6 人想定）
 
