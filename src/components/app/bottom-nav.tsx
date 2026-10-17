@@ -49,7 +49,7 @@ function Nav({ basePath = "", live = false, pathname }: Props & { pathname: stri
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative block rounded-full px-3 py-1.5 text-xs font-bold",
+                  "relative block rounded-full px-3 py-1.5 text-xs font-bold md:px-4 md:py-2 md:text-sm",
                   active ? "bg-ink text-white" : "text-ink",
                 )}
               >
