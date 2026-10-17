@@ -1,6 +1,6 @@
 import { Karte } from "@/components/brand/karte";
 import { Stamp } from "@/components/brand/stamp";
-import { formatJstTime } from "@/lib/time";
+import { formatJstDateTime } from "@/lib/time";
 
 export type JudgeResult = {
   score: number;
@@ -38,7 +38,7 @@ export function JudgeKarte({ result }: { result: JudgeResult }) {
       {result.hideFooter ? null : (
         <p className="m-0 text-center text-[0.78rem] font-bold">
           {result.passed && result.disputeWindowEndsAt
-            ? `${formatJstTime(result.disputeWindowEndsAt)} まで、ほかのメンバーが「怪しい」を押せます`
+            ? `${formatJstDateTime(result.disputeWindowEndsAt)} まで、ほかのメンバーが「怪しい」を押せます`
             : `締切までに あと ${result.attemptsLeft} 回 提出し直せます`}
         </p>
       )}

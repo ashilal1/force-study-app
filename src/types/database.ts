@@ -287,6 +287,7 @@ export type Database = {
           resend_minutes: number
           rest_days_per_week: number
           review_deadline: string
+          review_hours: number
           review_reminder_times: string[]
           revision_minutes: number
           settlement_time: string
@@ -323,6 +324,7 @@ export type Database = {
           resend_minutes?: number
           rest_days_per_week?: number
           review_deadline?: string
+          review_hours?: number
           review_reminder_times?: string[]
           revision_minutes?: number
           settlement_time?: string
@@ -359,6 +361,7 @@ export type Database = {
           resend_minutes?: number
           rest_days_per_week?: number
           review_deadline?: string
+          review_hours?: number
           review_reminder_times?: string[]
           revision_minutes?: number
           settlement_time?: string
@@ -1941,6 +1944,27 @@ export type Database = {
           p_flagger_id: string
           p_study_log_id: string
         }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      give_up_day: {
+        Args: { p_study_log_id: string; p_user_id: string }
         Returns: {
           actor_id: string | null
           created_at: string

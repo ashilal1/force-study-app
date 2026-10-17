@@ -9,7 +9,7 @@ import { Stamp } from "@/components/brand/stamp";
 import { Sticker } from "@/components/brand/sticker";
 import { CharCount, FieldLabel, TextArea } from "@/components/form/fields";
 import { FieldError } from "@/components/form/submit-button";
-import { formatJstTime } from "@/lib/time";
+import { formatJstDateTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 type Category = "unrealistic" | "sudden_plan" | "other" | "slacked";
@@ -26,7 +26,6 @@ const DEFAULT_AMOUNTS: ReasonAmounts = { slacked: 700, unrealisticStreak: 500, e
 
 type Props = {
   deadline: string;
-  missedAt: string;
   goal: string;
   minChars: number;
   /** Unrealistic misses in a row before this day (this one would be +1). */
@@ -38,7 +37,7 @@ type Props = {
 
 const yen = (value: number) => `${value.toLocaleString()}円`;
 
-export function ReasonForm({ deadline, missedAt, goal, minChars, unrealisticStreak, amounts = DEFAULT_AMOUNTS, logId }: Props) {
+export function ReasonForm({ deadline, goal, minChars, unrealisticStreak, amounts = DEFAULT_AMOUNTS, logId }: Props) {
   const [state, formAction, pending] = useActionState<FormState, FormData>(fileReport, {});
   const [category, setCategory] = useState<Category | null>((state.values?.category as Category) ?? null);
   const [text, setText] = useState(state.values?.text ?? "");
@@ -82,7 +81,7 @@ export function ReasonForm({ deadline, missedAt, goal, minChars, unrealisticStre
       <div className="grid justify-items-center gap-3 pt-2 text-center">
         <Stamp tone="red" label="未達成" className="px-5 py-1.5 text-[2.2rem]" />
         <p className="m-0 text-sm leading-relaxed font-medium">
-          {formatJstTime(missedAt)} の締切までに合格できませんでした（{goal}）。
+          締切までに合格できませんでした（{goal}）。
           <br />
           今日のうちに理由を書いて、振り返りましょう。申告したら変えられません。
         </p>
@@ -91,7 +90,7 @@ export function ReasonForm({ deadline, missedAt, goal, minChars, unrealisticStre
       <Sticker tone="tape" className="flex items-center justify-between px-3.5 py-3">
         <div>
           <small className="block text-xs">理由申告の締切</small>
-          <span className="font-en text-2xl">今日 {formatJstTime(deadline)}</span>
+          <span className="font-en text-xl">{formatJstDateTime(deadline)}</span>
         </div>
         <div className="text-right">
           <small className="block text-xs">残り</small>

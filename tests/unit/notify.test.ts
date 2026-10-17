@@ -62,7 +62,7 @@ describe("draftNotifications (M4)", () => {
       "ben",
       "cho",
     ]);
-    expect(first.body).toBe("「演習 10 問」（締切 21:00）");
+    expect(first.body).toBe("「演習 10 問」（締切 10/20(火) 21:00）");
   });
 
   it("asks the owner to rewrite a flagged declaration, and tells the rest", () => {
@@ -121,7 +121,7 @@ describe("draftNotifications (M5a)", () => {
     expect(drafts[0]).toMatchObject({
       recipientId: "aki",
       requiresAction: true,
-      body: "合言葉が見つかりませんでした。量が少ない ／ 残り 2 回（締切 21:00）",
+      body: "合言葉が見つかりませんでした。量が少ない ／ 残り 2 回（締切 10/20(火) 21:00）",
     });
     expect(drafts.slice(1).map((d) => d.body)).toEqual(["残り 2 回", "残り 2 回"]);
   });
@@ -136,7 +136,7 @@ describe("draftNotifications (M5a)", () => {
       ["ben", "あき さんが合格しました（85 点）"],
       ["cho", "あき さんが合格しました（85 点）"],
     ]);
-    expect(drafts[1].body).toBe("怪しければ 16:00 までに指摘できます");
+    expect(drafts[1].body).toBe("怪しければ 10/20(火) 16:00 までに指摘できます");
   });
 });
 
@@ -156,7 +156,7 @@ describe("draftNotifications (M5b)", () => {
       ["aki", true, "/logs/log-1"],
       ["cho", false, "/logs/log-1"],
     ]);
-    expect(drafts[0].body).toBe("昨日の写真に見える ／ 15:00 までなら何度でも証拠を送り直せます");
+    expect(drafts[0].body).toBe("昨日の写真に見える ／ 10/20(火) 15:00 までなら何度でも証拠を送り直せます");
   });
 
   it("tells only the active flaggers about resent evidence", () => {
@@ -220,7 +220,7 @@ describe("draftNotifications (M6)", () => {
       { id: "e", type: "reminder_review_due", actor_id: "ben", payload: { subject_type: "leave", owner_id: "aki", review_due_at: "2026-10-20T14:59:00Z" } },
       members,
     );
-    expect(leave).toMatchObject({ recipientId: "ben", url: "/leave", body: "今日 23:59 まで" });
+    expect(leave).toMatchObject({ recipientId: "ben", url: "/leave", body: "10/20(火) 23:59 まで" });
   });
 });
 
@@ -287,7 +287,7 @@ describe("draftNotifications (M8a)", () => {
       { id: "e", type: "settings_changed", actor_id: "aki", payload: { changes: { penalty_slacked: 1000, declaration_cutoff: "11:30:00", passing_score: 75 } } },
       members,
     );
-    expect(draft.body).toBe("サボり・申告なし（P2・P5）: 1000、宣言の締切: 11:30、合格点: 75点");
+    expect(draft.body).toBe("サボり・申告なし（P2・P5）: 1000、宣言の締切（前の日の提出締切）: 11:30、合格点: 75点");
   });
 });
 

@@ -32,7 +32,7 @@ describe("update_group_settings", () => {
     await expect(update(db, admin, { id: false })).rejects.toThrow(/invalid_setting/);
     await expect(update(db, admin, { passing_score: 150 })).rejects.toThrow(/invalid_setting/);
     await expect(update(db, admin, { max_attempts: "many" })).rejects.toThrow(/invalid_setting/);
-    await expect(update(db, admin, { declaration_cutoff: "22:00" })).rejects.toThrow(/invalid_schedule/);
+    await expect(update(db, admin, { declaration_cutoff: "23:30" })).rejects.toThrow(/invalid_schedule/);
     const { rows } = await db.query("select passing_score, declaration_cutoff from public.group_settings");
     expect(rows).toEqual([{ passing_score: 70, declaration_cutoff: "12:00:00" }]);
   });

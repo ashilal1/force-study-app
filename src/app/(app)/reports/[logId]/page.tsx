@@ -8,7 +8,7 @@ import { Sticker } from "@/components/brand/sticker";
 import { ExcuseReview } from "@/components/report/excuse-review";
 import { ReasonForm } from "@/components/report/reason-form";
 import { getReportDetail, type ReportDetail } from "@/lib/report-detail";
-import { formatJstDay, formatJstTime } from "@/lib/time";
+import { formatJstDateTime, formatJstDay } from "@/lib/time";
 
 export const metadata: Metadata = { title: "理由申告 | Commit or Treat" };
 
@@ -45,7 +45,6 @@ async function Report({ params }: Pick<PageProps<"/reports/[logId]">, "params">)
       <ReasonForm
         logId={log.id}
         deadline={report.dueAt}
-        missedAt={log.targetEndTime ?? report.dueAt}
         goal={log.declaration ?? ""}
         minChars={detail.minChars}
         unrealisticStreak={detail.streakBefore}
@@ -65,7 +64,7 @@ async function Report({ params }: Pick<PageProps<"/reports/[logId]">, "params">)
       </header>
 
       <Sticker className="grid gap-2 px-4 py-4">
-        <small className="text-xs text-sub">宣言（締切 {log.targetEndTime ? formatJstTime(log.targetEndTime) : ""}）</small>
+        <small className="text-xs text-sub">宣言（締切 {log.targetEndTime ? formatJstDateTime(log.targetEndTime) : ""}）</small>
         <p className="m-0 font-bold whitespace-pre-wrap">{log.declaration}</p>
       </Sticker>
 
@@ -75,7 +74,7 @@ async function Report({ params }: Pick<PageProps<"/reports/[logId]">, "params">)
         <Sticker tone="tape" className="grid gap-3 px-4 py-4">
           <b>この理由に納得できますか？</b>
           <span className="text-sm font-medium">
-            今日 {report.reviewDueAt ? formatJstTime(report.reviewDueAt) : ""} までに全員が「納得」を押したら 0 円。
+            {report.reviewDueAt ? formatJstDateTime(report.reviewDueAt) : ""} までに全員が「納得」を押したら 0 円。
           </span>
           <ExcuseReview logId={log.id} />
         </Sticker>
@@ -94,7 +93,7 @@ function ReportBody({ detail }: { detail: ReportDetail }) {
     return (
       <Sticker className="grid gap-1 px-4 py-3">
         <b>まだ申告していません</b>
-        <span className="text-sm font-medium">今日 {formatJstTime(report.dueAt)} までに申告がなければ、サボり扱いになります。</span>
+        <span className="text-sm font-medium">{formatJstDateTime(report.dueAt)} までに申告がなければ、サボり扱いになります。</span>
       </Sticker>
     );
   }

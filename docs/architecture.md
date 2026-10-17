@@ -129,7 +129,7 @@ sequenceDiagram
         F->>SA: 取り下げる
         SA->>DB: rpc withdraw_flag() → upheld → completed
     else 1 時間たっても取り下げがそろわない
-        T->>DB: rpc advance_disputes() → final_review（期限: 今日 23:59）
+        T->>DB: rpc advance_disputes() → final_review（期限: 24 時間後）
         T-->>M: 「最終審査して」
         M->>SA: 認める / 却下（理由必須）
         SA->>DB: rpc cast_review('dispute')
@@ -163,7 +163,7 @@ sequenceDiagram
         SA->>DB: rpc cast_review('excuse')
         Note over DB: reject → 即却下 500pt<br/>全員 accept → 承認 0pt
         T->>DB: rpc expire_reviews()
-        Note over DB: 23:59 までにそろわなければ却下 500pt
+        Note over DB: 申告から 24 時間でそろわなければ却下 500pt
     end
     T->>DB: rpc expire_reports()
     Note over DB: 23:00 までに申告なし → not_reported 700pt
@@ -181,17 +181,17 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 3 | 12:00 の宣言なしを確定 (P1) | `rpc close_declarations()` |
 | 4 | 書き直しの期限 (P6) と残り 15 分のリマインド | `rpc expire_revisions()` |
 | 5 | 提出締切 1 時間前のリマインド | `rpc due_submit_reminders()` |
-| 6 | 提出締切超過を未達成にする（判定待ちには 60 分の猶予） | `rpc close_overdue_logs()` |
-| 7 | 「怪しい」の受付終了 → 達成で確定 | `rpc confirm_passed_logs()` |
+| 6 | 提出締切（翌日 12:00）超過を未達成にする（判定待ちには 60 分の猶予） | `rpc close_overdue_logs()` |
+| 7 | 「怪しい」の受付終了（提出から 24 時間）→ 達成で確定 | `rpc confirm_passed_logs()` |
 | 8 | 送り直しの期限 → 最終審査、最終審査の期限 → 確定 | `rpc advance_disputes()` |
 | 9 | 理由申告の期限 (P5)、審査の期限（理由 P4・休会） | `rpc expire_reports()` / `rpc expire_reviews()` |
-| 10 | 理由申告（22:00・22:45）と審査（22:00・23:00・23:30）のリマインド | `rpc due_deadline_reminders()` |
-| 11 | 毎週土曜 23:59 の精算と、未払いへの P7。**同じ tick の 2〜10（土曜の決着）が終わってから**実行する | `rpc run_weekly_settlement()` |
+| 10 | 理由申告（期限の日の 22:00・22:45）、休会の審査（22:00・23:00・23:30）、理由・最終審査（期限の 3 時間前・1 時間前）のリマインド | `rpc due_deadline_reminders()` |
+| 11 | 毎週土曜 23:59 の精算と、未払いへの P7。同じ tick の 2〜10 のあとに実行し、その時点で決まっているペナルティだけを束ねる（まだ決着していない日の分は次の週。ADR-032） | `rpc run_weekly_settlement()` |
 | 11b | 週の振り返りを作り、Gemini で要約を書く（1 回 2 件まで。失敗したら次の tick で再試行） | `rpc create_weekly_reviews()` + `lib/gemini/weekly-summary.ts` |
 | 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す。1 回 100 件まで。消せなかったら次の tick で再試行） | `rpc due_image_purges()` → Storage API `remove` → `rpc mark_images_purged()` |
 | 13 | 2〜11 で返ってきたイベントを通知に回す | `lib/notify` |
 
-tick は 5 分ごとなので、「23:59」の処理（その日の決着・土曜の精算・週の振り返り）は実際には日付が変わった直後の 0:00〜0:05 の tick で、**前の学習日に対して**行う。どの期限も記録された時刻で判定するので、結果は変わらない。
+tick は 5 分ごとなので、「23:59」の処理（土曜の精算・週の振り返り）は実際には日付が変わった直後の 0:00〜0:05 の tick で、**前の学習日に対して**行う。どの期限も記録された時刻で判定するので、結果は変わらない。
 
 5 分ごとなので、リマインドは最大 5 分遅れる（0:00 のリマインドは 0:00〜0:05 の間に届く）。期限ちょうどの確定も最大 5 分遅れるが、判定は記録された時刻で行うので結果は変わらない。
 
