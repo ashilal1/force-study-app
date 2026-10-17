@@ -200,3 +200,16 @@
   - 公開している版は `main`、確かめている版は `develop` で分かる。iPhone ではいつも同じテスト用 URL で試せる。
   - M9 までは公開用 URL も開発中のデータと同じ DB を使うので、メンバーへの本格的な案内は M9 のあとにする。
   - M9 以降は、テスト用（開発用 Supabase）と公開用（本番用 Supabase）でデータが分かれる。定期実行（pg_cron → `/api/cron/tick`）も、各 Supabase プロジェクトが自分の環境の URL を呼ぶ。
+
+## ADR-028: 通知の配信の作り（M3）
+- **Status**: Accepted (2026-10-17)
+- **Context**: M3 で `activity_events` → `notifications` → Web Push の配信と、通知ゲート（F0）を作る。CLAUDE.md の「通知は `activity_events` に書いて `lib/notify` に渡す」を守りつつ、F0 のテスト通知のようにタイムラインに出さない Push もある。
+- **Decision**:
+  - 受信者と文言はイベントの種類ごとのルール（`lib/notify/rules.ts`、純粋な関数）で決め、DB は `create_notifications` で記録するだけにする（受信者ルールは TypeScript でテストしやすく、DB は冪等さと「抜けた人に送らない」を守る）。
+  - 呼び出し側は RPC でイベントを記録したあと、`after()` の中で `dispatch(eventId)` を呼ぶ。配信の失敗はログだけで、元の操作は失敗させない（通知はアプリ内の一覧に残る）。
+  - F0 のテスト通知だけは `activity_events` を通さず、`lib/notify` の `sendTestPush` がその端末にだけ送る。Server Action から直接 web-push を呼ばない、というルールは保つ。
+  - 端末（endpoint）は 1 人に属する。同じブラウザで別の人がログインして登録したら、その人に移して確認をやり直させる。
+  - 未読数は下部メニューの「通知」タブのバッジで見せる（ヘッダーのベルは置かない。画面が狭く、下部メニューに通知タブがあるため）。
+  - `VAPID_SUBJECT` は公開用の `https://` URL にする（個人のメールアドレスを Push サービスに渡さない）。
+- **Consequences**: 新しい通知は `rules.ts` にルールを足すだけで、配信・Push・既読は共通になる。M6 の cron は、`pushed_at` が null の通知を送り直す処理を足せる。
+

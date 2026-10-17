@@ -62,6 +62,23 @@ export const getMember = cache(async (): Promise<Member | null> => {
   return data;
 });
 
+/**
+ * Notification gate, server half (F0): the member confirmed a test notification on at least one
+ * device that is still registered. The client half (NotificationGuard) checks the current device.
+ */
+export const hasConfirmedNotifications = cache(async (member: Member): Promise<boolean> => {
+  if (!member.notifications_verified_at) return false;
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("push_subscriptions")
+    .select("id")
+    .eq("user_id", member.id)
+    .not("verified_at", "is", null)
+    .limit(1);
+  if (error) throw error;
+  return data.length > 0;
+});
+
 export async function requireMember(): Promise<Member> {
   const user = await requireUser();
   const member = await getMember();

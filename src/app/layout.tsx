@@ -13,6 +13,9 @@ const JAPANESE_FONTS =
 export const metadata: Metadata = {
   title: "Commit or Treat",
   description: "友人どうしで学習をサボれなくするアプリ",
+  // Home-screen app on iOS (needed for Web Push there).
+  appleWebApp: { capable: true, title: "Commit or Treat", statusBarStyle: "default" },
+  icons: { apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {

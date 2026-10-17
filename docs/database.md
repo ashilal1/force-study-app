@@ -404,6 +404,16 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 
 同時実行対策: 確定系は `for update skip locked` で対象行をロックし、penalties・settlements の一意制約を最終防衛線にする。
 
+### 通知（M3）
+| 関数 | 処理 |
+|---|---|
+| `save_push_subscription(user_id, endpoint, p256dh, auth, user_agent)` | 端末を登録（endpoint で upsert）。同じ人・同じ鍵なら確認済みのまま、別の人に移った・鍵が変わったら `verified_at` を消す。メンバーでなければ `not_a_member`、`https://` 以外は `invalid_endpoint` |
+| `confirm_push_subscription(user_id, endpoint)` | テスト通知を本人が確かめた。端末の `verified_at` と `profiles.notifications_verified_at` を記録。本人の端末でなければ `unknown_subscription` |
+| `delete_push_subscription(endpoint, user_id?)` | 端末を消す。`user_id` を付けたら本人の端末だけ（自分で解除）、付けなければ Push が 404/410 を返したとき |
+| `record_push_success(endpoint)` | `last_success_at` を更新 |
+| `create_notifications(event_id, items jsonb)` | `lib/notify` が決めた受信者ごとに通知を作る。抜けたメンバーは飛ばす。`(recipient_id, event_id)` で重複しない。今回作った行だけを返す（再実行で二重に Push しない） |
+| `mark_notifications_pushed(ids)` | Push が届いた通知に `pushed_at` を付ける（1 回だけ） |
+
 ### 記録の保全（追記だけ）
 - 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
 - UPDATE は**状態と時刻の列だけ**を許すトリガーにする（例: `submissions` は `status`・`ai_*`・`judged_at`・`image_paths`（消すときの空配列）・`images_purged_at` だけ）。宣言・理由・コメントなど人が書いた文字は変えられない。書き直しは `original_declaration` に元を残す。

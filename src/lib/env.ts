@@ -8,6 +8,11 @@ const supabasePublicSchema = z.object({
 
 let supabasePublic: z.infer<typeof supabasePublicSchema> | undefined;
 
+/** VAPID public key for PushManager.subscribe (Web Push). Null when push isn't configured. */
+export function vapidPublicKey(): string | null {
+  return process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || null;
+}
+
 export function supabasePublicEnv() {
   supabasePublic ??= supabasePublicSchema.parse({
     url: process.env.NEXT_PUBLIC_SUPABASE_URL,
