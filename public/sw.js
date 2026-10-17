@@ -27,6 +27,9 @@ self.addEventListener("push", (event) => {
       tag: data.tag || undefined,
       renotify: Boolean(data.tag && data.renotify),
       requireInteraction: Boolean(data.requireInteraction),
+      // Ask for the OS sound explicitly. Whether it plays is still up to the OS settings
+      // (on macOS, Chrome defers entirely to Notification Center's setting for Google Chrome).
+      silent: false,
       data: { url },
     }),
   );

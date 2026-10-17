@@ -6,6 +6,7 @@ import { confirmNotifications, savePushSubscription, sendTestNotification } from
 import { ActionButton } from "@/components/brand/action-button";
 import { Sticker } from "@/components/brand/sticker";
 import { FieldError } from "@/components/form/submit-button";
+import { SettingsGuide } from "./settings-guide";
 import {
   currentSubscription,
   detectPlatform,
@@ -22,7 +23,7 @@ type Step = "checking" | "unsupported" | "install" | "ask" | "denied" | "test" |
 
 export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string | null }) {
   const router = useRouter();
-  const [platform, setPlatform] = useState<Platform>("desktop");
+  const [platform, setPlatform] = useState<Platform>("other");
   const [step, setStep] = useState<Step>("checking");
   const [endpoint, setEndpoint] = useState<string | null>(null);
   const [error, setError] = useState<string>();
@@ -125,7 +126,7 @@ export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string |
           iPhone では、ホーム画面に追加したアプリにだけ通知が届きます。
           <ol className="m-0 mt-2 grid gap-1 pl-5">
             <li>Safari の下にある共有ボタン（四角から矢印が出たアイコン）を押す</li>
-            <li>「ホーム画面に追加」→「追加」を押す</li>
+            <li>「ホーム画面に追加」を押し、「Web アプリとして開く」がオンのまま「追加」を押す</li>
             <li>ホーム画面にできた Commit or Treat のアイコンから開き直す</li>
           </ol>
         </StepCard>
@@ -141,11 +142,12 @@ export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string |
       ) : null}
 
       {step === "denied" ? (
-        <StepCard title="通知がブロックされています" tone="red">
-          {DENIED_HELP[platform]}
-          <br />
-          許可したら、このページを開き直してください。
-        </StepCard>
+        <>
+          <StepCard title="通知がブロックされています" tone="red">
+            下の手順で通知を許可してから、このページを開き直してください。
+          </StepCard>
+          <SettingsGuide platform={platform} focus="unblock" />
+        </>
       ) : null}
 
       {step === "test" ? (
@@ -162,9 +164,9 @@ export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string |
       {step === "sent" ? (
         <>
           <StepCard title="4. バナーと音を確かめる">
-            テスト通知を送りました。バナーが出なかった、または音が鳴らなかったときは、端末の設定を直してからもう一度送ってください。
-            <p className="m-0 mt-2 font-bold">{BANNER_HELP[platform]}</p>
+            テスト通知を送りました。バナーが出なかった、または音が鳴らなかったときは、下の手順で端末の設定を直してから、もう一度送ってください。音を鳴らすかどうかは端末の設定で決まり、アプリからは変えられません。
           </StepCard>
+          <SettingsGuide platform={platform} focus="sound" />
           <ActionButton type="button" onClick={confirm} disabled={pending}>
             {pending ? "記録中…" : "表示され、音も鳴った"}
           </ActionButton>
@@ -178,18 +180,6 @@ export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string |
     </div>
   );
 }
-
-const DENIED_HELP: Record<Platform, string> = {
-  ios: "設定アプリ → 通知 → Commit or Treat →「通知を許可」を ON にしてください。",
-  android: "Chrome のアドレスバーの左のアイコン → 権限 → 通知 →「許可」にしてください。",
-  desktop: "アドレスバーの左のアイコン（鍵やスライダー）→ 通知 →「許可」にしてください。",
-};
-
-const BANNER_HELP: Record<Platform, string> = {
-  ios: "設定 → 通知 → Commit or Treat →「通知を許可」「サウンド」を ON、「ロック画面」「通知センター」「バナー」にチェック",
-  android: "アプリ情報 → 通知 →「ポップアップで表示」と「音」を ON",
-  desktop: "OS の通知設定で、このブラウザの通知・バナー・サウンドを ON（Mac: システム設定 → 通知 → ブラウザ名）",
-};
 
 function StepCard({
   title,

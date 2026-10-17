@@ -1,13 +1,15 @@
 // Browser-side helpers for Web Push and the notification gate (F0). Import from client components only.
 
-export type Platform = "ios" | "android" | "desktop";
+export type Platform = "ios" | "android" | "windows" | "mac" | "other";
 
 export function detectPlatform(): Platform {
   const ua = navigator.userAgent;
   // iPadOS reports itself as a Mac; touch support tells them apart.
   if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
   if (/Android/.test(ua)) return "android";
-  return "desktop";
+  if (/Windows/.test(ua)) return "windows";
+  if (/Macintosh/.test(ua)) return "mac";
+  return "other";
 }
 
 /** Opened from the home screen (iOS only delivers push to home-screen apps). */
