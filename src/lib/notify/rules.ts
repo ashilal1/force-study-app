@@ -8,6 +8,7 @@ export type ActivityEvent = {
   id: string;
   type: string;
   actor_id: string | null;
+  study_log_id?: string | null;
   payload: Record<string, unknown>;
 };
 
@@ -41,6 +42,8 @@ const yen = (payload: Record<string, unknown>) => {
 
 const period = (payload: Record<string, unknown>) =>
   `${formatJstDay(text(payload.start_date))}〜${formatJstDay(text(payload.end_date))}`;
+
+const logUrl = (event: ActivityEvent) => (event.study_log_id ? `/logs/${event.study_log_id}` : "/");
 
 /** "4 時間 12 分" / "35 分". */
 function duration(minutes: number): string {
@@ -168,6 +171,87 @@ const RULES: Record<string, Rule> = {
     ];
   },
 
+  // --- 「怪しい」 (F5b) -----------------------------------------------------------------------
+  submission_flagged: (event, members) => {
+    const owner = event.payload.owner_id;
+    const flagger = nameOf(members, event.actor_id);
+    return [
+      ...draft(
+        members.filter((member) => member.id === owner),
+        `${flagger} さんが「怪しい」と指摘しました`,
+        `${text(event.payload.comment)} ／ ${formatJstTime(text(event.payload.resend_due_at))} までなら何度でも証拠を送り直せます`,
+        logUrl(event),
+        true,
+      ),
+      ...draft(
+        everyoneExcept(members, owner, event.actor_id),
+        `${flagger} さんが ${nameOf(members, owner)} さんの提出に「怪しい」を押しました`,
+        text(event.payload.comment),
+        logUrl(event),
+      ),
+    ];
+  },
+
+  evidence_resent: (event, members) => {
+    const flaggers = Array.isArray(event.payload.flagger_ids) ? event.payload.flagger_ids : [];
+    const found = event.payload.passphrase_found ? "合言葉あり" : "合言葉なし";
+    return draft(
+      members.filter((member) => flaggers.includes(member.id)),
+      `${nameOf(members, event.actor_id)} さんが証拠を送り直しました`,
+      `AI: ${event.payload.score} 点・${found}。納得したら取り下げてください`,
+      logUrl(event),
+      true,
+    );
+  },
+
+  flag_withdrawn: (event, members) =>
+    draft(
+      members.filter((member) => member.id === event.payload.owner_id),
+      `${nameOf(members, event.actor_id)} さんが指摘を取り下げました（${event.payload.withdrawn}/${event.payload.total}）`,
+      "",
+      logUrl(event),
+    ),
+
+  reminder_resend_due: (event, members) =>
+    draft(
+      members.filter((member) => member.id === event.actor_id),
+      "証拠を送り直せるのはあと 15 分",
+      "取り下げがそろわないと、全員の最終審査になります",
+      logUrl(event),
+      true,
+    ),
+
+  dispute_final_review_started: (event, members) => {
+    const reviewers = Array.isArray(event.payload.reviewer_ids) ? event.payload.reviewer_ids : [];
+    const owner = nameOf(members, event.actor_id);
+    return [
+      ...draft(
+        members.filter((member) => reviewers.includes(member.id)),
+        `${owner} さんの提出を最終審査してください`,
+        `今日 ${formatJstTime(text(event.payload.review_due_at))} まで。却下するときは理由が必要です`,
+        logUrl(event),
+        true,
+      ),
+      ...draft(
+        members.filter((member) => member.id === event.actor_id),
+        "あなたの提出は最終審査になりました",
+        "理由付きの却下が 1 人でもあれば証拠不認定です",
+        logUrl(event),
+      ),
+    ];
+  },
+
+  dispute_upheld: (event, members) =>
+    draft(members, `${nameOf(members, event.actor_id)} さんの達成が認められました`, "", logUrl(event)),
+
+  dispute_invalidated: (event, members) =>
+    draft(
+      members,
+      `${nameOf(members, event.actor_id)} さんの証拠は不認定になりました`,
+      `${nameOf(members, event.payload.rejected_by)} さん: ${text(event.payload.comment)} ／ ${yen(event.payload)}`,
+      logUrl(event),
+    ),
+
   // --- Rest days (F2) ---------------------------------------------------------------------
   rest_day_registered: (event, members) =>
     draft(
@@ -190,6 +274,15 @@ const RULES: Record<string, Rule> = {
   },
 
   review_vote_cast: (event, members) => {
+    if (event.payload.subject_type === "dispute") {
+      const verdict = event.payload.verdict === "accept" ? "認めました" : "却下しました";
+      return draft(
+        members.filter((member) => member.id === event.payload.owner_id),
+        `${nameOf(members, event.actor_id)} さんが最終審査で${verdict}`,
+        text(event.payload.comment),
+        logUrl(event),
+      );
+    }
     if (event.payload.subject_type !== "leave") return [];
     const verdict = event.payload.verdict === "accept" ? "承認" : "却下";
     return draft(

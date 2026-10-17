@@ -22,7 +22,7 @@ export async function dispatch(eventId: string): Promise<void> {
   try {
     const admin = createAdminClient();
     const [{ data: event, error: eventError }, { data: members, error: membersError }] = await Promise.all([
-      admin.from("activity_events").select("id, type, actor_id, payload").eq("id", eventId).single(),
+      admin.from("activity_events").select("id, type, actor_id, study_log_id, payload").eq("id", eventId).single(),
       admin.from("profiles").select("id, display_name").is("deactivated_at", null),
     ]);
     if (eventError) throw eventError;

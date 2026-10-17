@@ -186,6 +186,7 @@ function SubmissionResult({
             feedback: submission.ai_feedback ?? "",
             disputeWindowEndsAt: null,
             attemptsLeft,
+            hideFooter: submission.status === "passed" || attemptsLeft === 0,
           }}
         />
       ) : null}

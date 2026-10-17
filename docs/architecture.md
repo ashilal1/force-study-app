@@ -122,7 +122,7 @@ sequenceDiagram
     SA-->>U: 「〇〇が怪しいと指摘。1 時間以内なら何度でも送り直せます」
     loop 1 時間以内なら何度でも
         U->>SA: 証拠を送り直す（写真 + 説明）
-        SA->>DB: rpc resend_evidence() → /api/judge で合言葉・内容を確認
+        SA->>DB: rpc resend_evidence() → lib/judging で合言葉・内容を確認
         SA-->>F: 「送り直しました」
     end
     alt 指摘した全員が取り下げ
@@ -137,6 +137,7 @@ sequenceDiagram
     end
 ```
 誰も押さないまま 3 時間たったら、tick の `confirm_passed_logs()` が `completed` にする。
+- 画面はその日の詳細 `/logs/[id]`（宣言・合言葉・すべての提出の写真と AI の判定・「軽すぎる」「怪しい」・最終審査）。「怪しい」・取り下げ・送り直し・最終審査はここから行い、通知もここへリンクする。
 
 ### 2.4 未達成 → 理由申告 → 審査
 ```mermaid
@@ -286,6 +287,7 @@ flowchart LR
     │   ├── validation/            # フォーム入力の zod スキーマ
     │   ├── gemini/judge.ts        # Gemini への指示・出力スキーマ
     │   ├── judging.ts             # 1 件の提出を判定する（写真の取得 → Gemini → record_judgement）
+    │   ├── log-detail.ts          # その日の詳細（/logs/[id]）の読み込みと、見ている人にできること
     │   ├── evidence-client.ts     # ブラウザ側: 写真の圧縮（WebP）と Storage へのアップロード
     │   ├── passphrase.ts          # 合言葉の単語リストと生成
     │   ├── notify/                # rules.ts（受信者と文言）・push.ts（web-push）・index.ts（dispatch / sendTestPush）

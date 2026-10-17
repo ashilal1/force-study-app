@@ -12,7 +12,7 @@ const MESSAGES: Record<string, string> = {
   invalid_deadline: "提出締切は、今から 30 分以降・21:00 までにしてください",
   own_declaration: "自分の宣言には指摘できません",
   already_revised: "書き直した宣言には指摘できません",
-  flag_closed: "この宣言に指摘できる時間は過ぎています",
+  flag_closed: "指摘できる時間は過ぎています",
   invalid_comment: "指摘の理由を 1〜300 文字で書いてください",
   already_flagged: "この宣言にはもう指摘しています",
   no_revision_needed: "書き直しは必要ありません",
@@ -40,6 +40,13 @@ const MESSAGES: Record<string, string> = {
   invalid_images: "写真を 1〜3 枚選んでください",
   invalid_reflection: "学んだこと・できなかったことを書いてください",
   invalid_rating: "自己評価を選んでください",
+  // Disputes (怪しい)
+  own_submission: "自分の提出には指摘できません",
+  resend_closed: "証拠を送り直せる時間は過ぎています",
+  invalid_explanation: "何を送り直したのか説明を書いてください",
+  withdraw_closed: "もう取り下げられません",
+  not_flagged: "この提出には指摘していません",
+  comment_required: "却下するときは理由を書いてください",
   // Reviews
   invalid_verdict: "承認か却下を選んでください",
   not_a_reviewer: "この審査に加わっていません",

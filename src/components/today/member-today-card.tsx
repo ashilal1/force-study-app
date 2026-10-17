@@ -37,8 +37,18 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
           ) : null}
           <PassphraseCard value={state.log.passphrase!} compact />
           <SubmissionLine log={state.log} />
+          {state.log.dispute === "resending" || state.log.dispute === "final_review" ? (
+            <p className="m-0 text-xs font-bold text-red">
+              「怪しい」の指摘あり ・ {state.log.dispute === "resending" ? "証拠の送り直し受付中" : "最終審査中"}
+            </p>
+          ) : null}
           <FlagList flags={state.log.flags} />
           {member.canFlag ? <FlagForm logId={state.log.id} ownerName={member.name} /> : null}
+          {state.log.latest ? (
+            <Link href={`/logs/${state.log.id}`} className="text-sm font-bold underline underline-offset-2">
+              {state.log.status === "passed" && !member.isMe ? "証拠を見る（怪しければ指摘）→" : "証拠と判定を見る →"}
+            </Link>
+          ) : null}
           {member.isMe && state.log.status === "pending" ? (
             <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
               提出する
@@ -88,6 +98,12 @@ function Badge({ member }: { member: TodayMember }) {
     case "undeclared":
       return <Pill variant="outline">未宣言</Pill>;
     case "declared":
+      if (member.state.log.status === "invalidated") {
+        return <Stamp tone="red" label="不認定" className="text-base" />;
+      }
+      if (member.state.log.dispute === "resending" || member.state.log.dispute === "final_review") {
+        return <Stamp tone="blue" label="審査中" sub="怪しい" className="text-base" />;
+      }
       if (member.state.log.status === "passed" || member.state.log.status === "completed") {
         return (
           <Stamp

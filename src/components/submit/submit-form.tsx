@@ -5,13 +5,11 @@ import { useRouter } from "next/navigation";
 import { createSubmission, judgeMySubmission } from "@/actions/submissions";
 import { ActionButton } from "@/components/brand/action-button";
 import { Sticker } from "@/components/brand/sticker";
-import { Tape } from "@/components/brand/tape";
 import { FieldLabel, TextArea } from "@/components/form/fields";
 import { FieldError } from "@/components/form/submit-button";
 import { uploadEvidence } from "@/lib/evidence-client";
 import { cn } from "@/lib/utils";
-
-const MAX_PHOTOS = 3;
+import { PhotoPicker, type PickedPhoto } from "./photo-picker";
 
 type Props = {
   goal: string;
@@ -32,7 +30,7 @@ const PHASE_LABEL: Record<Phase, string> = {
 
 export function SubmitForm({ goal, passphrase, attemptsLeft, live }: Props) {
   const router = useRouter();
-  const [photos, setPhotos] = useState<{ file: File; url: string }[]>([]);
+  const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [learned, setLearned] = useState("");
   const [struggled, setStruggled] = useState("");
   const [rating, setRating] = useState(0);
@@ -42,22 +40,6 @@ export function SubmitForm({ goal, passphrase, attemptsLeft, live }: Props) {
 
   const busy = phase !== "idle";
   const ready = photos.length > 0 && learned.trim() && struggled.trim() && rating > 0 && !busy;
-
-  function addPhotos(files: FileList | null) {
-    if (!files) return;
-    const next = [...files]
-      .filter((file) => file.type.startsWith("image/"))
-      .slice(0, MAX_PHOTOS - photos.length)
-      .map((file) => ({ file, url: URL.createObjectURL(file) }));
-    setPhotos((current) => [...current, ...next]);
-  }
-
-  function removePhoto(index: number) {
-    setPhotos((current) => {
-      URL.revokeObjectURL(current[index].url);
-      return current.filter((_, i) => i !== index);
-    });
-  }
 
   function submit(event: React.FormEvent) {
     event.preventDefault();
@@ -98,54 +80,7 @@ export function SubmitForm({ goal, passphrase, attemptsLeft, live }: Props) {
         </span>
       </Sticker>
 
-      <section className="grid gap-2">
-        <span className="font-sans text-base font-black">
-          証拠の写真（{photos.length} / {MAX_PHOTOS}）
-        </span>
-        <div className="grid grid-cols-3 gap-3">
-          {photos.map((photo, index) => (
-            <Sticker key={photo.url} shadow="sm" className="relative aspect-square overflow-hidden">
-              {/* eslint-disable-next-line @next/next/no-img-element -- local object URL preview */}
-              <img src={photo.url} alt={`写真 ${index + 1}`} className="size-full object-cover" />
-              <button
-                type="button"
-                onClick={() => removePhoto(index)}
-                disabled={busy}
-                className="absolute top-1 right-1 rounded-full border-2 border-ink bg-card px-1.5 text-xs"
-                aria-label={`写真 ${index + 1} を外す`}
-              >
-                ✕
-              </button>
-            </Sticker>
-          ))}
-          {photos.length < MAX_PHOTOS ? (
-            <label
-              className={cn(
-                "relative grid aspect-square cursor-pointer place-items-center rounded-[14px] border-[3px] border-dashed border-ink bg-card text-center text-sm",
-                photos.length === 0 && "col-span-3 aspect-[16/9]",
-              )}
-            >
-              {photos.length === 0 ? <Tape className="-top-3 left-1/2 -ml-9" /> : null}
-              <span>
-                ＋ 写真を撮る・選ぶ
-                <br />
-                <span className="text-xs text-sub">ノート・画面など</span>
-              </span>
-              <input
-                type="file"
-                accept="image/*"
-                multiple
-                disabled={busy}
-                className="sr-only"
-                onChange={(event) => {
-                  addPhotos(event.target.files);
-                  event.target.value = "";
-                }}
-              />
-            </label>
-          ) : null}
-        </div>
-      </section>
+      <PhotoPicker photos={photos} onChange={setPhotos} disabled={busy} />
 
       <div className="grid gap-1.5">
         <FieldLabel htmlFor="learned">学んだこと</FieldLabel>

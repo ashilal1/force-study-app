@@ -372,15 +372,17 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `create_submission(user_id, study_log_id, image_paths[], thumb_path, learned, struggled, self_rating)` | 本人の今日の `pending` か、`now() < target_end_time` か（提出時刻で判定）、判定中の提出がないか、試行回数（`error` を除く）が上限未満か、パスが `{user_id}/{学習日}/{uuid}.webp` の形か（1〜3 枚）を検査 → `regular` / `judging` で insert。経過時間を計算して `submitted` を記録 |
 | `record_judgement(submission_id, score, passphrase_found, feedback, model)` | `judging` か `error` の提出だけ。書き直し待ちなら `revision_pending`、`regular` で log が `pending` でなければ `not_open`。合格 = 点数 >= 合格点 かつ 合言葉あり。`regular` の合格なら log を `passed` にして `dispute_window_ends_at = least(今 + dispute_window_hours, 当日の dispute_cutoff)`。`judged_passed` / `judged_rejected`（残り回数つき）を記録 |
 | `record_judge_error(submission_id, message)` | `error` にする（試行回数に数えない。あとで判定し直せる） |
-| `flag_submission(flagger_id, study_log_id, comment)` | 本人以外か、`passed` で `dispute_window_ends_at` 前か、`final_review` に入っていないかを検査。最初の 1 件なら `submission_disputes(resending)` を作る |
-| `resend_evidence(user_id, study_log_id, paths[], explanation)` | 本人の `resending` で `resend_due_at` 前か → `resend` の提出を作る（回数制限なし。判定は `/api/judge`） |
-| `withdraw_flag(flagger_id, study_log_id)` | 自分の指摘を取り下げる。全員取り下げたら `upheld` → log を `completed` |
+| `flag_submission(flagger_id, study_log_id, comment)` | 本人以外か、`passed` で `dispute_window_ends_at` 前か、疑義があれば `resending` で `resend_due_at` 前か、同じ人の二度押しでないかを検査。最初の 1 件なら `submission_disputes(resending, resend_due_at = least(今 + resend_minutes, 当日の resend_cutoff))` を作る |
+| `resend_evidence(user_id, study_log_id, image_paths[], thumb_path, explanation)` | 本人の `resending` で `resend_due_at` 前か、判定中の提出がないかを検査 → `resend` の提出を作る（回数制限なし。判定は `lib/judging`）。判定が出たら `record_judgement` が `evidence_resent`（点数・合言葉・まだ取り下げていない指摘者）を記録する |
+| `withdraw_flag(flagger_id, study_log_id)` | `resending` の間だけ、自分の指摘を取り下げる。全員取り下げたら `upheld` → log を `completed` |
+| `advance_disputes()`（定期実行。M6 で予定に入れる） | 送り直しの 15 分前のリマインド。`resend_due_at` を過ぎた `resending` → `final_review`（期限は学習日の `review_deadline`、審査者を `peer_reviews('dispute')` に固定。審査者がいなければ `upheld`）。`review_due_at` を過ぎた `final_review` → `upheld` |
+| `cast_review(..., 'dispute', ...)` | 最終審査。却下は理由が必須（`comment_required`）。却下 1 件で `invalidated` + P8、全員が認めたら `upheld` |
 
 ### 未達成・審査
 | 関数 | 処理 |
 |---|---|
 | `file_failure_report(user_id, study_log_id, category, reason, next_plan)` | 本人の `awaiting_report` か、期限内か、必須テキストと文字数を検査。<br>・`unrealistic`: 連続回数を計算 → しきい値以上なら penalty、`resolved`<br>・`slacked`: penalty、`resolved`<br>・`sudden_plan` / `other`: `under_review` にして、`peer_reviews('excuse')` の行を作る |
-| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う。**M4 では `leave` だけ**（ほかは `not_supported`。M5・M7 で足す） |
+| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う。**`leave`（M4）と `dispute`（M5）に対応**。`excuse` は M7 で足す |
 
 ### 精算
 | 関数 | 処理 |

@@ -40,6 +40,8 @@ export type TodayLog = Pick<
   latest: { status: string; score: number | null } | null;
   /** Score of the passing submission, once passed. */
   passedScore: number | null;
+  /** 「怪しい」 dispute status, if anyone flagged the passed submission. */
+  dispute: string | null;
 };
 
 export type TodayState =
@@ -116,7 +118,11 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
   for (const result of [profiles, logs, rests, leaves]) if (result.error) throw result.error;
 
   const logIds = logs.data!.map((log) => log.id);
-  const [{ data: flags, error }, { data: submissions, error: submissionsError }] = logIds.length
+  const [
+    { data: flags, error },
+    { data: submissions, error: submissionsError },
+    { data: disputes, error: disputesError },
+  ] = logIds.length
     ? await Promise.all([
         supabase
           .from("declaration_flags")
@@ -129,13 +135,16 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
           .in("study_log_id", logIds)
           .eq("kind", "regular")
           .order("submitted_at"),
+        supabase.from("submission_disputes").select("study_log_id, status").in("study_log_id", logIds),
       ])
     : [
+        { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
       ];
   if (error) throw error;
   if (submissionsError) throw submissionsError;
+  if (disputesError) throw disputesError;
 
   const names = new Map(profiles.data!.map((profile) => [profile.id, profile.display_name]));
   const now = Date.now();
@@ -150,6 +159,7 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
           attempts: mine.filter((submission) => submission.status !== "error").length,
           latest: latest ? { status: latest.status, score: latest.ai_score } : null,
           passedScore: mine.find((submission) => submission.status === "passed")?.ai_score ?? null,
+          dispute: disputes!.find((dispute) => dispute.study_log_id === row.id)?.status ?? null,
           flags: flags!
             .filter((flag) => flag.study_log_id === row.id)
             .map((flag) => ({

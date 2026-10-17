@@ -40,7 +40,7 @@
 - [x] RPC `create_submission` / `record_judgement` / `record_judge_error`
 - [x] AI 判定（Gemini、structured output、合言葉の確認）。Route Handler ではなく Server Action + `lib/judging.ts`（ADR-030）
 - [x] 結果の表示・再提出・再判定・経過時間の表示
-- [ ] 「怪しい」指摘: RPC `flag_submission` / `resend_evidence` / `withdraw_flag`、最終審査
+- [x] 「怪しい」指摘: RPC `flag_submission` / `resend_evidence` / `withdraw_flag` / `advance_disputes` / `cast_review('dispute')`、その日の詳細画面 `/logs/[id]`（`advance_disputes` の定期実行は M6）
 
 ## M6. 定期実行・宣言なし
 - [ ] RPC `run_declaration_reminders` / `close_declarations` / `expire_revisions` / `close_overdue_logs` / `due_submit_reminders` / `confirm_passed_logs` / `advance_disputes` / `due_deadline_reminders`

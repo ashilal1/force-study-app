@@ -1,5 +1,6 @@
 "use client";
 
+import { Suspense } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { UnreadBadge } from "@/components/notifications/unread-badge";
@@ -13,9 +14,26 @@ const TABS = [
   { href: "/notifications", label: "通知" },
 ] as const;
 
-/** `live` shows the unread badge (off in the /preview gallery, which has no session). */
-export function BottomNav({ basePath = "", live = false }: { basePath?: string; live?: boolean }) {
-  const pathname = usePathname();
+type Props = { basePath?: string; live?: boolean };
+
+/**
+ * `live` shows the unread badge (off in the /preview gallery, which has no session).
+ * The current path is request data on dynamic routes (/logs/[id]), so the highlighted tab
+ * streams in behind Suspense; until then the menu shows without a highlight.
+ */
+export function BottomNav(props: Props) {
+  return (
+    <Suspense fallback={<Nav {...props} pathname={null} />}>
+      <CurrentNav {...props} />
+    </Suspense>
+  );
+}
+
+function CurrentNav(props: Props) {
+  return <Nav {...props} pathname={usePathname()} />;
+}
+
+function Nav({ basePath = "", live = false, pathname }: Props & { pathname: string | null }) {
   return (
     <nav
       aria-label="メインメニュー"
