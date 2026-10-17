@@ -2,8 +2,9 @@ import { randomUUID } from "node:crypto";
 import { describe, expect, it } from "vitest";
 import { createMember, createTestDb, setNow, type Db } from "./harness";
 
-// M5b: 「怪しい」 (F5b). Times are JST on Tuesday 2026-10-20. aki passes at 13:00, so the
-// dispute window runs to 16:00 and a flag at 14:00 leaves until 15:00 to resend.
+// M5b: 「怪しい」 (F5b), with the 24-hour windows of ADR-032. Times are JST. aki submits and passes
+// at 13:00 on Tuesday 10-20, so 「怪しい」 is open until 13:00 on 10-21; a flag at 14:00 on 10-20
+// leaves 24 hours (until 14:00 on 10-21) to resend, and the final review gets 24 hours more.
 
 type Event = { type: string; study_log_id: string; submission_id: string; payload: Record<string, unknown> };
 
@@ -52,22 +53,25 @@ async function state(db: Db, logId: string) {
 }
 
 describe("flag_submission", () => {
-  it("opens a dispute on the first flag with a resend window capped by the hour", async () => {
+  it("opens a dispute on the first flag with 24 hours to resend", async () => {
     const { db, aki, ben, cho, logId } = await setup();
     await setNow(db, "2026-10-20 14:00");
     await expect(flag(db, aki, logId)).rejects.toThrow(/own_submission/);
     const { rows } = await flag(db, ben, logId);
     expect(rows[0]).toMatchObject({ type: "submission_flagged", payload: { owner_id: aki, flag_count: 1 } });
-    expect(new Date(String(rows[0].payload.resend_due_at)).toISOString()).toBe("2026-10-20T06:00:00.000Z"); // 15:00
+    expect(new Date(String(rows[0].payload.resend_due_at)).toISOString()).toBe("2026-10-21T05:00:00.000Z"); // 10-21 14:00
     await flag(db, cho, logId, "合言葉が読めない");
     await expect(flag(db, ben, logId)).rejects.toThrow(/already_flagged/);
     expect(await state(db, logId)).toEqual({ log: "passed", dispute: "resending" });
   });
 
-  it("closes when the dispute window ends", async () => {
-    const { db, ben, logId } = await setup();
-    await setNow(db, "2026-10-20 16:00");
-    await expect(flag(db, ben, logId)).rejects.toThrow(/flag_closed/);
+  it("stays open through the night and closes 24 hours after the submission", async () => {
+    const { db, cho, logId } = await setup();
+    await setNow(db, "2026-10-21 12:59");
+    await expect(flag(db, cho, logId)).resolves.toBeDefined();
+    const fresh = await setup();
+    await setNow(fresh.db, "2026-10-21 13:00");
+    await expect(flag(fresh.db, fresh.ben, fresh.logId)).rejects.toThrow(/flag_closed/);
   });
 });
 
@@ -99,7 +103,7 @@ describe("resend and withdraw", () => {
     await expect(
       db.query("select public.resend_evidence($1, $2, $3, null, '説明')", [ben, logId, [photo(ben)]]),
     ).rejects.toThrow(/not_found/);
-    await setNow(db, "2026-10-20 15:00");
+    await setNow(db, "2026-10-21 14:00");
     await expect(
       db.query("select public.resend_evidence($1, $2, $3, null, '説明')", [aki, logId, [photo(aki)]]),
     ).rejects.toThrow(/resend_closed/);
@@ -111,13 +115,14 @@ describe("advance_disputes and the final review", () => {
     const ctx = await setup();
     await setNow(ctx.db, "2026-10-20 14:00");
     await flag(ctx.db, ctx.ben, ctx.logId);
-    await setNow(ctx.db, "2026-10-20 14:50");
+    await setNow(ctx.db, "2026-10-21 13:10");
     const reminders = await ctx.db.query<Event>("select * from public.advance_disputes()");
     expect(reminders.rows.map((e) => e.type)).toEqual(["reminder_resend_due"]);
-    await setNow(ctx.db, "2026-10-20 15:01");
+    await setNow(ctx.db, "2026-10-21 14:01");
     const started = await ctx.db.query<Event>("select * from public.advance_disputes()");
     expect(started.rows.map((e) => e.type)).toEqual(["dispute_final_review_started"]);
     expect(started.rows[0].payload.reviewer_ids).toEqual([ctx.ben, ctx.cho]);
+    expect(new Date(String(started.rows[0].payload.review_due_at)).toISOString()).toBe("2026-10-22T05:01:00.000Z"); // 24 hours
     expect((await ctx.db.query("select * from public.advance_disputes()")).rows).toHaveLength(0);
     return ctx;
   }
@@ -139,10 +144,10 @@ describe("advance_disputes and the final review", () => {
     expect(await state(db, logId)).toEqual({ log: "completed", dispute: "upheld" });
   });
 
-  it("upholds when nobody rejects by 23:59", async () => {
+  it("upholds when nobody rejects within 24 hours", async () => {
     const { db, ben, logId } = await toFinalReview();
     await vote(db, ben, logId, "accept");
-    await setNow(db, "2026-10-21 00:00:30");
+    await setNow(db, "2026-10-22 14:02");
     const { rows } = await db.query<Event>("select * from public.advance_disputes()");
     expect(rows.map((e) => e.type)).toEqual(["dispute_upheld"]);
     expect(await state(db, logId)).toEqual({ log: "completed", dispute: "upheld" });

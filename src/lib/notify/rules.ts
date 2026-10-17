@@ -1,5 +1,5 @@
 import { SETTING_FIELDS } from "@/lib/group-settings";
-import { formatJstDay, formatJstTime } from "@/lib/time";
+import { formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 
 // Who hears about an event, and what it says (requirements N1). Pure so it can be tested without
 // a database: lib/notify/index.ts loads the event and the members and records what this returns.
@@ -79,7 +79,7 @@ const RULES: Record<string, Rule> = {
     draft(
       everyoneExcept(members, event.actor_id),
       `${nameOf(members, event.actor_id)} さんが宣言しました`,
-      `「${text(event.payload.declaration)}」（締切 ${formatJstTime(text(event.payload.target_end_time))}）`,
+      `「${text(event.payload.declaration)}」（締切 ${formatJstDateTime(text(event.payload.target_end_time))}）`,
       "/",
     ),
 
@@ -136,7 +136,7 @@ const RULES: Record<string, Rule> = {
   judged_passed: (event, members) => {
     if (event.payload.kind === "resend") return [];
     const name = nameOf(members, event.actor_id);
-    const until = formatJstTime(text(event.payload.dispute_window_ends_at));
+    const until = formatJstDateTime(text(event.payload.dispute_window_ends_at));
     return [
       ...draft(
         members.filter((member) => member.id === event.actor_id),
@@ -163,7 +163,9 @@ const RULES: Record<string, Rule> = {
         members.filter((member) => member.id === event.actor_id),
         `不合格でした（${event.payload.score} 点）`,
         `${reason}${text(event.payload.feedback)} ／ ${
-          left > 0 ? `残り ${left} 回（締切 ${formatJstTime(text(event.payload.deadline))}）` : "今日の提出回数を使い切りました"
+          left > 0
+            ? `残り ${left} 回（締切 ${formatJstDateTime(text(event.payload.deadline))}）`
+            : "提出回数を使い切りました。宣言の画面で「できなかった」を押して、理由を申告してください"
         }`,
         "/submit",
         left > 0,
@@ -185,7 +187,7 @@ const RULES: Record<string, Rule> = {
       ...draft(
         members.filter((member) => member.id === owner),
         `${flagger} さんが「怪しい」と指摘しました`,
-        `${text(event.payload.comment)} ／ ${formatJstTime(text(event.payload.resend_due_at))} までなら何度でも証拠を送り直せます`,
+        `${text(event.payload.comment)} ／ ${formatJstDateTime(text(event.payload.resend_due_at))} までなら何度でも証拠を送り直せます`,
         logUrl(event),
         true,
       ),
@@ -221,7 +223,7 @@ const RULES: Record<string, Rule> = {
   reminder_resend_due: (event, members) =>
     draft(
       members.filter((member) => member.id === event.actor_id),
-      "証拠を送り直せるのはあと 15 分",
+      "証拠を送り直せるのはあと 1 時間",
       "取り下げがそろわないと、全員の最終審査になります",
       logUrl(event),
       true,
@@ -234,7 +236,7 @@ const RULES: Record<string, Rule> = {
       ...draft(
         members.filter((member) => reviewers.includes(member.id)),
         `${owner} さんの提出を最終審査してください`,
-        `今日 ${formatJstTime(text(event.payload.review_due_at))} まで。却下するときは理由が必要です`,
+        `${formatJstDateTime(text(event.payload.review_due_at))} まで。却下するときは理由が必要です`,
         logUrl(event),
         true,
       ),
@@ -259,11 +261,18 @@ const RULES: Record<string, Rule> = {
     ),
 
   // --- Scheduled (F9): reminders and the day's outcomes -----------------------------------
+  // previous_open: yesterday still has to be finished before declaring (ADR-032).
   reminder_declare_midnight: (event, members) =>
     draft(
       self(members, event),
-      `今日の宣言をしましょう（${formatJstTime(text(event.payload.cutoff))} まで）`,
-      "宣言すると今日の合言葉が出ます",
+      event.payload.previous_open
+        ? "昨日の分を済ませてから、今日の宣言をしましょう"
+        : `今日の宣言をしましょう（${formatJstTime(text(event.payload.cutoff))} まで）`,
+      event.payload.previous_open === "pending"
+        ? `昨日の分を提出して合格するか「できなかった」を押すと宣言できます（${formatJstTime(text(event.payload.cutoff))} まで）`
+        : event.payload.previous_open
+          ? `昨日の分の理由を申告すると宣言できます（${formatJstTime(text(event.payload.cutoff))} まで）`
+          : "宣言すると今日の合言葉が出ます",
       "/declare",
       true,
     ),
@@ -272,7 +281,11 @@ const RULES: Record<string, Rule> = {
     draft(
       self(members, event),
       `宣言の締切まであと 1 時間（${formatJstTime(text(event.payload.cutoff))}）`,
-      `過ぎると宣言なしになり、${yen(event.payload)}`,
+      event.payload.previous_open === "pending"
+        ? `昨日の分がまだです。このままだと昨日は未達成、今日は宣言なし（${yen(event.payload)}）になります`
+        : event.payload.previous_open
+          ? `先に昨日の分の理由を申告してください。過ぎると宣言なしで ${yen(event.payload)}`
+          : `過ぎると宣言なしになり、${yen(event.payload)}`,
       "/declare",
       true,
     ),
@@ -284,7 +297,7 @@ const RULES: Record<string, Rule> = {
     draft(
       self(members, event),
       "提出締切まであと 1 時間",
-      `締切 ${formatJstTime(text(event.payload.deadline))}。まだ合格していません`,
+      `締切 ${formatJstDateTime(text(event.payload.deadline))}。まだ合格していません`,
       "/submit",
       true,
     ),
@@ -292,8 +305,8 @@ const RULES: Record<string, Rule> = {
   missed: (event, members) => [
     ...draft(
       self(members, event),
-      "未達成でした",
-      `今日 ${formatJstTime(text(event.payload.report_due_at))} までに理由を申告してください。申告しないとサボり扱いです`,
+      event.payload.gave_up ? "未達成にしました" : "未達成でした",
+      `${formatJstDateTime(text(event.payload.report_due_at))} までに理由を申告してください。申告しないとサボり扱いです`,
       reportUrl(event),
       true,
     ),
@@ -316,7 +329,7 @@ const RULES: Record<string, Rule> = {
     const reviewers = Array.isArray(event.payload.reviewer_ids) ? event.payload.reviewer_ids : [];
     return draft(
       members.filter((member) => reviewers.includes(member.id)),
-      `${nameOf(members, event.actor_id)} さんの理由を審査してください（今日 ${formatJstTime(text(event.payload.review_due_at))} まで）`,
+      `${nameOf(members, event.actor_id)} さんの理由を審査してください（${formatJstDateTime(text(event.payload.review_due_at))} まで）`,
       text(event.payload.text),
       reportUrl(event),
       true,
@@ -340,7 +353,7 @@ const RULES: Record<string, Rule> = {
   reminder_report_due: (event, members) =>
     draft(
       self(members, event),
-      `理由申告の期限は今日 ${formatJstTime(text(event.payload.report_due_at))} です`,
+      `理由申告の期限は ${formatJstDateTime(text(event.payload.report_due_at))} です`,
       `申告しないとサボり扱いで ${yen(event.payload)}`,
       reportUrl(event),
       true,
@@ -351,13 +364,13 @@ const RULES: Record<string, Rule> = {
 
   reminder_review_due: (event, members) => {
     const owner = nameOf(members, event.payload.owner_id);
-    const due = formatJstTime(text(event.payload.review_due_at));
+    const due = formatJstDateTime(text(event.payload.review_due_at));
     if (event.payload.subject_type === "excuse") {
-      return draft(self(members, event), `${owner} さんの理由の審査の期限が近づいています`, `今日 ${due} まで`, reportUrl(event), true);
+      return draft(self(members, event), `${owner} さんの理由の審査の期限が近づいています`, `${due} まで`, reportUrl(event), true);
     }
     return event.payload.subject_type === "dispute"
-      ? draft(self(members, event), `${owner} さんの最終審査の期限が近づいています`, `今日 ${due} まで`, logUrl(event), true)
-      : draft(self(members, event), `${owner} さんの休会の審査の期限が近づいています`, `今日 ${due} まで`, "/leave", true);
+      ? draft(self(members, event), `${owner} さんの最終審査の期限が近づいています`, `${due} まで`, logUrl(event), true)
+      : draft(self(members, event), `${owner} さんの休会の審査の期限が近づいています`, `${due} まで`, "/leave", true);
   },
 
   trial_ending: (event, members) =>

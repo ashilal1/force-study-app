@@ -79,19 +79,23 @@ describe("declaration reminders and P1", () => {
   });
 });
 
-describe("submission deadlines", () => {
-  it("reminds an hour before the deadline, then closes the day as missed with a report due 23:00", async () => {
+describe("submission deadlines (ADR-032: until the next day's 12:00)", () => {
+  it("reminds an hour before, then closes the day as missed with the report due 23:00 that day", async () => {
     const { db, aki } = await setup();
     await setNow(db, "2026-10-20 09:00");
     const logId = await declare(db, aki);
-    await setNow(db, "2026-10-20 14:05");
+    await setNow(db, "2026-10-20 23:30");
+    expect(await run(db, "due_submit_reminders")).toHaveLength(0);
+    await setNow(db, "2026-10-21 11:05");
     expect(types(await run(db, "due_submit_reminders"))).toEqual(["reminder_submit"]);
     expect(await run(db, "due_submit_reminders")).toHaveLength(0);
 
-    await setNow(db, "2026-10-20 15:00");
+    await setNow(db, "2026-10-21 11:59");
+    expect(await run(db, "close_overdue_logs")).toHaveLength(0);
+    await setNow(db, "2026-10-21 12:00");
     const missed = await run(db, "close_overdue_logs");
     expect(types(missed)).toEqual(["missed"]);
-    expect(new Date(String(missed[0].payload.report_due_at)).toISOString()).toBe("2026-10-20T14:00:00.000Z");
+    expect(new Date(String(missed[0].payload.report_due_at)).toISOString()).toBe("2026-10-21T14:00:00.000Z");
     const { rows } = await db.query("select status from public.failure_reports where study_log_id = $1", [logId]);
     expect(rows).toEqual([{ status: "awaiting_report" }]);
     expect(await run(db, "close_overdue_logs")).toHaveLength(0);
@@ -101,19 +105,19 @@ describe("submission deadlines", () => {
     const { db, aki } = await setup();
     await setNow(db, "2026-10-20 09:00");
     const logId = await declare(db, aki);
-    await setNow(db, "2026-10-20 14:59");
+    await setNow(db, "2026-10-21 11:59");
     await db.query("select public.create_submission($1, $2, $3, null, 'a', 'b', 3)", [
       aki,
       logId,
       [`${aki}/2026-10-20/${randomUUID()}.webp`],
     ]);
-    await setNow(db, "2026-10-20 15:30");
+    await setNow(db, "2026-10-21 12:30");
     expect(await run(db, "close_overdue_logs")).toHaveLength(0);
-    await setNow(db, "2026-10-20 16:00");
+    await setNow(db, "2026-10-21 13:00");
     expect(types(await run(db, "close_overdue_logs"))).toEqual(["missed"]);
   });
 
-  it("confirms a pass when nobody disputed it in time", async () => {
+  it("confirms a pass when nobody disputed it within 24 hours", async () => {
     const { db, aki } = await setup();
     await setNow(db, "2026-10-20 09:00");
     const logId = await declare(db, aki);
@@ -123,13 +127,37 @@ describe("submission deadlines", () => {
       [aki, logId, [`${aki}/2026-10-20/${randomUUID()}.webp`]],
     );
     await db.query("select public.record_judgement($1, 80, true, 'ok', 'test')", [rows[0].submission_id]);
-    await setNow(db, "2026-10-20 15:59");
+    await setNow(db, "2026-10-21 12:59");
     expect(await run(db, "confirm_passed_logs")).toHaveLength(0);
-    await setNow(db, "2026-10-20 16:00");
+    await setNow(db, "2026-10-21 13:00");
     expect(types(await run(db, "confirm_passed_logs"))).toEqual(["completion_confirmed"]);
     expect((await db.query("select status from public.study_logs where id = $1", [logId])).rows).toEqual([
       { status: "completed" },
     ]);
+  });
+
+  it("tells a member with yesterday still open to finish it before declaring", async () => {
+    const { db, aki } = await setup();
+    await setNow(db, "2026-10-20 09:00");
+    await declare(db, aki);
+    await setNow(db, "2026-10-21 00:05");
+    const midnight = await run(db, "run_declaration_reminders");
+    const mine = midnight.find((e) => e.actor_id === aki)!;
+    expect(mine.payload.previous_open).toBe("pending");
+    expect(midnight.filter((e) => e.actor_id !== aki).every((e) => e.payload.previous_open === null)).toBe(true);
+  });
+
+  it("waives a trial-week day decided after the trial ended", async () => {
+    const { db, aki } = await setup();
+    await db.query("update public.profiles set trial_ends_at = '2026-10-25 00:00+09' where id = $1", [aki]);
+    await setNow(db, "2026-10-24 09:00"); // Saturday, the last trial day
+    await declare(db, aki);
+    await setNow(db, "2026-10-25 12:00");
+    await run(db, "close_overdue_logs");
+    await setNow(db, "2026-10-25 23:01");
+    await run(db, "expire_reports");
+    const { rows } = await db.query("select reason, waived from public.penalties where user_id = $1 order by created_at", [aki]);
+    expect(rows).toEqual([{ reason: "not_reported", waived: "trial" }]);
   });
 });
 

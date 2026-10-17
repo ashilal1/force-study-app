@@ -6,7 +6,7 @@ import { FlagList } from "@/components/declare/flag-list";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import Link from "next/link";
 import { actionButtonVariants } from "@/components/brand/action-button";
-import { formatJstTime } from "@/lib/time";
+import { formatJstDateTime, formatJstDay } from "@/lib/time";
 import type { TodayLog, TodayMember } from "@/lib/today";
 import { FlagForm } from "./flag-form";
 
@@ -28,6 +28,8 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
         </div>
         <Badge member={member} />
       </div>
+
+      {member.previous ? <PreviousLine member={member} log={member.previous} /> : null}
 
       {state.kind === "declared" ? (
         <>
@@ -78,6 +80,38 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
   );
 }
 
+/** Yesterday's day while it is still in play (ADR-032), in one line. */
+function PreviousLine({ member, log }: { member: TodayMember; log: TodayLog }) {
+  const day = formatJstDay(log.date);
+  const disputed = log.dispute === "resending" || log.dispute === "final_review";
+  const [text, href, link] =
+    log.status === "pending"
+      ? [`${day} の分は提出待ち（${formatJstDateTime(log.target_end_time!)} まで）`, member.isMe ? "/submit" : `/logs/${log.id}`, member.isMe ? "提出する →" : null]
+      : log.status === "missed"
+        ? [
+            log.report === "awaiting_report" ? `${day} の分は未達成・理由の申告待ち` : `${day} の分は未達成・理由を審査中`,
+            `/reports/${log.id}`,
+            member.isMe && log.report === "awaiting_report" ? "理由を申告する →" : "理由を見る →",
+          ]
+        : disputed
+          ? [`${day} の分に「怪しい」の指摘あり`, `/logs/${log.id}`, "証拠を見る →"]
+          : [
+              `${day} の分は合格（「怪しい」は ${formatJstDateTime(log.dispute_window_ends_at!)} まで）`,
+              `/logs/${log.id}`,
+              member.isMe ? null : "証拠を見る（怪しければ指摘）→",
+            ];
+  return (
+    <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-2 rounded-[8px] border-[1.5px] border-dashed border-ink px-2.5 py-1.5 text-xs font-bold">
+      <span>{text}</span>
+      {link ? (
+        <Link href={href} className="underline underline-offset-2">
+          {link}
+        </Link>
+      ) : null}
+    </p>
+  );
+}
+
 function SubmissionLine({ log }: { log: TodayLog }) {
   if (!log.latest) return null;
   const text =
@@ -102,7 +136,7 @@ function headline({ state }: TodayMember): string {
     case "no_declaration":
       return "宣言なし";
     case "declared":
-      return state.log.revision_due_at && !state.log.revised_at ? "書き直し待ち" : `締切 ${formatJstTime(state.log.target_end_time!)}`;
+      return state.log.revision_due_at && !state.log.revised_at ? "書き直し待ち" : `締切 ${formatJstDateTime(state.log.target_end_time!)}`;
   }
 }
 

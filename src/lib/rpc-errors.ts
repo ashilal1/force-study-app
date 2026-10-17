@@ -10,6 +10,8 @@ const MESSAGES: Record<string, string> = {
   already_declared: "今日はもう宣言しています",
   invalid_declaration: "宣言の内容を 1〜500 文字で書いてください",
   invalid_deadline: "提出締切は、今から 30 分以降・21:00 までにしてください",
+  previous_day_open: "昨日の分がまだ終わっていません。提出して合格するか、「できなかった」を押してください",
+  previous_report_due: "昨日の分の理由を申告すると、今日の宣言ができます",
   own_declaration: "自分の宣言には指摘できません",
   already_revised: "書き直した宣言には指摘できません",
   flag_closed: "指摘できる時間は過ぎています",
@@ -33,7 +35,7 @@ const MESSAGES: Record<string, string> = {
   leave_finished: "取り消せる日が残っていません",
   // Submissions
   already_passed: "今日はもう合格しています",
-  not_open: "今日の提出は受け付けていません",
+  not_open: "この日の提出は受け付けていません",
   deadline_passed: "提出締切を過ぎています",
   judging_in_progress: "前の提出を判定中です。結果が出てからもう一度提出してください",
   no_attempts_left: "今日の提出回数を使い切りました",

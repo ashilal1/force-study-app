@@ -19,7 +19,7 @@ async function setup() {
   return { db, aki, ben, cho };
 }
 
-/** Declares on `date` (YYYY-MM-DD), then lets the 15:00 deadline pass: the day is missed. */
+/** Declares on `date` (YYYY-MM-DD), then gives up at 15:05 (「できなかった」): the day is missed. */
 async function missDay(db: Db, userId: string, date: string): Promise<string> {
   await setNow(db, `${date} 09:00`);
   const { rows } = await db.query<{ study_log_id: string }>(
@@ -27,7 +27,7 @@ async function missDay(db: Db, userId: string, date: string): Promise<string> {
     [userId],
   );
   await setNow(db, `${date} 15:05`);
-  await db.query("select * from public.close_overdue_logs()");
+  await db.query("select * from public.give_up_day($1, $2)", [userId, rows[0].study_log_id]);
   return rows[0].study_log_id;
 }
 
@@ -70,20 +70,20 @@ describe("file_failure_report", () => {
     expect(await pointsFor(db, aki)).toEqual([{ reason: "slacked", points: 700 }]);
   });
 
-  it("needs a long enough next plan or reason, and closes at 23:00", async () => {
+  it("needs a long enough next plan or reason, and closes at 23:00 the next day", async () => {
     const { db, aki } = await setup();
     const logId = await missDay(db, aki, "2026-10-20");
     await expect(report(db, aki, logId, "unrealistic", "短い")).rejects.toThrow(/reason_too_short/);
-    await setNow(db, "2026-10-20 23:00:30");
+    await setNow(db, "2026-10-21 23:00:30");
     await expect(report(db, aki, logId, "unrealistic", PLAN)).rejects.toThrow(/report_closed/);
   });
 
-  it("charges P5 when nothing is reported by 23:00", async () => {
+  it("charges P5 when nothing is reported by 23:00 the next day", async () => {
     const { db, aki } = await setup();
     await missDay(db, aki, "2026-10-20");
-    await setNow(db, "2026-10-20 22:59");
+    await setNow(db, "2026-10-21 22:59");
     expect((await db.query("select * from public.expire_reports()")).rows).toHaveLength(0);
-    await setNow(db, "2026-10-20 23:01");
+    await setNow(db, "2026-10-21 23:01");
     const expired = await db.query<Event>("select * from public.expire_reports()");
     expect(expired.rows.map((e) => [e.type, e.payload.points])).toEqual([["report_expired", 700]]);
     expect(await pointsFor(db, aki)).toEqual([{ reason: "not_reported", points: 700 }]);
@@ -135,7 +135,7 @@ describe("P3: unrealistic in a row", () => {
   it("stops at a day that isn't settled yet", async () => {
     const { db, aki } = await setup();
     await report(db, aki, await missDay(db, aki, "2026-10-19"), "unrealistic");
-    await missDay(db, aki, "2026-10-20"); // left awaiting a report
+    await report(db, aki, await missDay(db, aki, "2026-10-20"), "other", REASON); // still under review
     const [event] = await report(db, aki, await missDay(db, aki, "2026-10-21"), "unrealistic");
     expect(event.payload.streak).toBe(1);
   });
@@ -170,26 +170,47 @@ describe("excuse reviews (P4)", () => {
     expect(await pointsFor(db, aki)).toEqual([{ reason: "excuse_rejected", points: 500 }]);
   });
 
-  it("charges P4 when the votes aren't in by 23:59", async () => {
+  it("charges P4 when the votes aren't in within 24 hours", async () => {
     const { db, aki, ben } = await setup();
     const logId = await missDay(db, aki, "2026-10-20");
     await report(db, aki, logId, "other", REASON);
     await db.query("select * from public.cast_review($1, 'excuse', $2, 'accept', null)", [ben, logId]);
-    await setNow(db, "2026-10-21 00:01");
+    await setNow(db, "2026-10-21 15:04");
+    expect((await db.query("select * from public.expire_reviews()")).rows).toHaveLength(0);
+    await setNow(db, "2026-10-21 15:06");
     const { rows } = await db.query<Event>("select * from public.expire_reviews()");
     expect(rows.map((e) => [e.type, e.payload.expired])).toEqual([["review_rejected", true]]);
     expect(await pointsFor(db, aki)).toEqual([{ reason: "excuse_expired", points: 500 }]);
   });
 });
 
+describe("review reminders", () => {
+  it("reminds reviewers 3 hours and 1 hour before a reason review closes", async () => {
+    const { db, aki, ben } = await setup();
+    const logId = await missDay(db, aki, "2026-10-20");
+    await report(db, aki, logId, "other", REASON); // review due 10-21 15:05
+    await setNow(db, "2026-10-21 12:04");
+    expect((await db.query("select * from public.due_deadline_reminders()")).rows).toHaveLength(0);
+    await setNow(db, "2026-10-21 12:10");
+    const first = await db.query<Event>("select * from public.due_deadline_reminders()");
+    expect(first.rows.map((e) => [e.type, e.actor_id]).sort()).toHaveLength(2);
+    await setNow(db, "2026-10-21 14:10");
+    const second = await db.query<Event>("select * from public.due_deadline_reminders()");
+    expect(second.rows.filter((e) => e.actor_id === ben)).toHaveLength(1);
+    expect((await db.query("select * from public.due_deadline_reminders()")).rows).toHaveLength(0);
+  });
+});
+
 describe("evening reminders for reports", () => {
-  it("reminds at 22:00 and 22:45 while the report is owed", async () => {
+  it("reminds at 22:00 and 22:45 on the day the report is due", async () => {
     const { db, aki } = await setup();
     await missDay(db, aki, "2026-10-20");
     await setNow(db, "2026-10-20 22:01");
+    expect((await db.query("select * from public.due_deadline_reminders()")).rows).toHaveLength(0);
+    await setNow(db, "2026-10-21 22:01");
     const first = await db.query<Event>("select * from public.due_deadline_reminders()");
     expect(first.rows.map((e) => e.type)).toEqual(["reminder_report_due"]);
-    await setNow(db, "2026-10-20 22:46");
+    await setNow(db, "2026-10-21 22:46");
     const second = await db.query<Event>("select * from public.due_deadline_reminders()");
     expect(second.rows.map((e) => e.type)).toEqual(["reminder_report_due"]);
     expect((await db.query("select * from public.due_deadline_reminders()")).rows).toHaveLength(0);

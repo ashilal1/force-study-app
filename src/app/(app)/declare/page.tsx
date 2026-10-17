@@ -9,11 +9,12 @@ import { Stamp } from "@/components/brand/stamp";
 import { Sticker } from "@/components/brand/sticker";
 import { DeclareForm } from "@/components/declare/declare-form";
 import { FlagList } from "@/components/declare/flag-list";
+import { GiveUpButton } from "@/components/declare/give-up-button";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import { RestDayPlanner, type PlannerDay } from "@/components/declare/rest-day-planner";
 import { ReviseForm } from "@/components/declare/revise-form";
 import { createClient } from "@/lib/supabase/server";
-import { addDays, formatJstDateTime, formatJstTime } from "@/lib/time";
+import { addDays, formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 import { getTodayBoard, isOnLeave, type TodayLog } from "@/lib/today";
 
 export const metadata: Metadata = { title: "宣言 | Commit or Treat" };
@@ -69,7 +70,17 @@ async function Today() {
           </Notice>
         );
       }
-      return <DeclareForm cutoff={cutoff} deadlineMax={settings.submit_deadline_max.slice(0, 5)} nextPlan={await lastNextPlan(me.id)} />;
+      // Yesterday has to be finished first (ADR-032).
+      if (me.previous && (me.previous.status === "pending" || me.previous.report === "awaiting_report")) {
+        return <PreviousDay log={me.previous} cutoff={cutoff} />;
+      }
+      return (
+        <DeclareForm
+          cutoff={cutoff}
+          submitBy={new Date(`${addDays(date, 1)}T${settings.declaration_cutoff}+09:00`).toISOString()}
+          nextPlan={await lastNextPlan(me.id)}
+        />
+      );
   }
 }
 
@@ -80,8 +91,12 @@ function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
       <Sticker className="grid gap-3 px-4 py-4">
         <div className="flex items-center justify-between gap-2">
           <Pill variant="outline">宣言 {formatJstTime(log.declared_at!)}</Pill>
-          <span className="font-en text-lg">
-            締切 {formatJstTime(log.target_end_time!)}（あと <Countdown until={log.target_end_time!} />）
+          <span className="text-right text-sm font-bold">
+            提出締切 {formatJstDateTime(log.target_end_time!)}
+            <br />
+            <span className="font-en text-lg">
+              あと <Countdown until={log.target_end_time!} />
+            </span>
           </span>
         </div>
         <p className="m-0 text-[1.05rem] leading-snug font-bold whitespace-pre-wrap">{log.declaration}</p>
@@ -117,11 +132,53 @@ function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
         </Link>
       ) : null}
       {log.status === "pending" ? (
-        <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
-          <span>提出する</span>
-          <span className="font-sans text-xs font-bold">合言葉を紙に書いて、成果物と一緒に撮る</span>
-        </Link>
+        <>
+          <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
+            <span>提出する</span>
+            <span className="font-sans text-xs font-bold">合言葉を紙に書いて、成果物と一緒に撮る</span>
+          </Link>
+          {log.latest?.status !== "judging" ? <GiveUpButton logId={log.id} /> : null}
+        </>
       ) : null}
+    </div>
+  );
+}
+
+/** Yesterday is still open or its reason is owed: finish it, then today's form appears. */
+function PreviousDay({ log, cutoff }: { log: TodayLog; cutoff: string }) {
+  const day = formatJstDay(log.date);
+  if (log.status !== "pending") {
+    return (
+      <div className="grid gap-3">
+        <Notice title={`${day} の分の理由を申告してください`} tone="red">
+          未達成の理由を申告すると、今日の宣言ができます。今日の宣言の締切は {formatJstTime(cutoff)} です。
+        </Notice>
+        <Link href={`/reports/${log.id}`} className={actionButtonVariants({ tone: "red" })}>
+          理由を申告する
+        </Link>
+      </div>
+    );
+  }
+  return (
+    <div className="grid gap-3">
+      <Notice title={`${day} の分がまだ終わっていません`} tone="red">
+        提出して合格するか、「できなかった」を押すと今日の宣言ができます。{formatJstTime(cutoff)} を過ぎると、{day}{" "}
+        は未達成、今日は宣言なしになります。
+      </Notice>
+      <Sticker shadow="sm" className="grid gap-1 px-3.5 py-2.5">
+        <small className="text-xs text-sub">{day} の宣言</small>
+        <p className="m-0 text-sm font-bold whitespace-pre-wrap">{log.declaration}</p>
+      </Sticker>
+      {log.latest?.status === "judging" ? (
+        <Notice title="AI が判定中です">結果が出るまで少し待ってください。</Notice>
+      ) : (
+        <>
+          <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
+            {day} の分を提出する
+          </Link>
+          <GiveUpButton logId={log.id} />
+        </>
+      )}
     </div>
   );
 }
