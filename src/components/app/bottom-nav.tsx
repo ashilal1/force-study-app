@@ -39,7 +39,7 @@ function Nav({ basePath = "", live = false, pathname }: Props & { pathname: stri
       aria-label="メインメニュー"
       className="fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-ink bg-paper pb-[env(safe-area-inset-bottom,0px)]"
     >
-      <ul className="mx-auto flex max-w-[440px] list-none justify-around p-0 py-2">
+      <ul className="mx-auto flex max-w-[440px] list-none md:max-w-[720px] justify-around p-0 py-2">
         {TABS.map((tab) => {
           const href = `${basePath}${tab.href === "/" ? "" : tab.href}` || "/";
           const active = pathname === href;

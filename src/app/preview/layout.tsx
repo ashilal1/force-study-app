@@ -9,7 +9,7 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
   return (
     <>
       <div className="bg-ink px-4 py-2 text-xs text-white">
-        <div className="mx-auto flex max-w-[440px] flex-wrap gap-x-3 gap-y-1">
+        <div className="mx-auto flex max-w-[440px] flex-wrap gap-x-3 md:max-w-[720px] gap-y-1">
           <span className="font-black">PREVIEW（サンプルデータ）</span>
           <Link href="/preview">ホーム</Link>
           <Link href="/preview/submit">提出</Link>

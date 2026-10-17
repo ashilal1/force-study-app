@@ -19,8 +19,8 @@ import { getTodos } from "@/lib/todo";
 // week's penalties and the group timeline. Each section streams in on its own.
 export default function HomePage() {
   return (
-    <div className="grid gap-6">
-      <header className="flex items-center justify-between gap-3">
+    <div data-wide className="grid gap-6 lg:grid-cols-2 lg:gap-x-10">
+      <header className="flex items-center justify-between gap-3 lg:col-span-2">
         <h1 className="m-0 font-en text-[clamp(1.4rem,7vw,1.8rem)] leading-none whitespace-nowrap [text-shadow:3px_3px_0_#fff,5px_5px_0_var(--ink)]">
           COMMIT OR TREAT
         </h1>
@@ -29,35 +29,45 @@ export default function HomePage() {
         </Suspense>
       </header>
 
-      <Suspense fallback={null}>
-        <Trial />
-      </Suspense>
-
-      <section className="grid gap-2.5">
-        <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">あなたがやること</h2>
-        <Suspense fallback={<PageLoading />}>
-          <Todos />
+      <div className="empty:hidden lg:col-span-2">
+        <Suspense fallback={null}>
+          <Trial />
         </Suspense>
-      </section>
+      </div>
 
-      <Suspense fallback={<PageLoading />}>
-        <Missions />
-      </Suspense>
+      {/* PC: what to do on the left, the group's week on the right. On a phone the columns
+          dissolve (contents) and the sections stack in the original order. */}
+      <div className="contents lg:grid lg:content-start lg:gap-6">
+        <section className="grid gap-2.5">
+          <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">あなたがやること</h2>
+          <Suspense fallback={<PageLoading />}>
+            <Todos />
+          </Suspense>
+        </section>
 
-      <Suspense fallback={null}>
-        <Ranking />
-      </Suspense>
-
-      <section className="grid gap-3">
-        <h2 className="m-0 font-en text-[1.4rem] leading-none">TIMELINE</h2>
         <Suspense fallback={<PageLoading />}>
-          <GroupTimeline />
+          <Missions />
         </Suspense>
-      </section>
 
-      <Suspense fallback={null}>
-        <Invite />
-      </Suspense>
+        <div className="order-last empty:hidden lg:order-none">
+          <Suspense fallback={null}>
+            <Invite />
+          </Suspense>
+        </div>
+      </div>
+
+      <div className="contents lg:grid lg:content-start lg:gap-6">
+        <Suspense fallback={null}>
+          <Ranking />
+        </Suspense>
+
+        <section className="grid gap-3">
+          <h2 className="m-0 font-en text-[1.4rem] leading-none">TIMELINE</h2>
+          <Suspense fallback={<PageLoading />}>
+            <GroupTimeline />
+          </Suspense>
+        </section>
+      </div>
     </div>
   );
 }
