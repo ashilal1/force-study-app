@@ -59,8 +59,8 @@ Web Push はローカルでも `localhost` なら試せる。iPhone で試すに
 
 | ブランチ | Vercel の環境 | URL | Supabase |
 |---|---|---|---|
-| `main` | Production（公開用） | 本番のドメイン | 開発用（M9 で本番用に切り替える） |
-| `develop` | Preview（テスト用） | `<プロジェクト名>-git-develop-<アカウント名>.vercel.app`（ブランチ専用の固定 URL） | 開発用 |
+| `main` | Production（公開用） | https://force-study-app.vercel.app | 開発用（M9 で本番用に切り替える） |
+| `develop` | Preview（テスト用） | https://force-study-app-staging.vercel.app（`develop` に割り当てたドメイン） | 開発用 |
 | 作業ブランチ | Preview | コミットごとの URL | 開発用 |
 
 普段の流れ: 作業ブランチ → `develop` に PR してマージ → テスト用 URL で確かめる（iPhone もここで）→ `develop` → `main` に PR してマージ → 公開用 URL に出る。
@@ -73,7 +73,7 @@ Web Push はローカルでも `localhost` なら試せる。iPhone で試すに
    - `SUPABASE_SECRET_KEY`
 3. Deploy。関数は `vercel.json` で東京（`hnd1`）に置く（Supabase と同じリージョン）
 4. Settings → Deployment Protection → Vercel Authentication を **オフ**にする。Hobby の既定では `main` 以外の URL に Vercel のログインが要り、iPhone のホーム画面アプリ（Safari とログイン状態を共有しない）からテスト用 URL を開けない。アプリ自体は Google ログインと招待コードで守られている
-5. `develop` を一度 push して（またはマージして）テスト用 URL を作る。正確な URL は Deployments で `develop` のデプロイを開くと Domains に出る
+5. Settings → Domains で `force-study-app-staging.vercel.app` を追加し、Git Branch に `develop` を指定する（自動で付くブランチ URL は長く、途中が省略されるため）
 6. Supabase ダッシュボード → Authentication → URL Configuration
    - Redirect URLs に、公開用とテスト用の両方の `https://<ドメイン>/auth/callback` を追加
    - Site URL を公開用の `https://<本番のドメイン>` にする（Redirect URLs に合わない戻り先が来たときの行き先）
