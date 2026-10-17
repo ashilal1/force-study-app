@@ -211,9 +211,11 @@ export type Database = {
           flag_window_hours: number
           id: boolean
           image_retention_days: number
+          invite_minutes: number
           judge_grace_minutes: number
           last_declaration_reminder: string
           max_attempts: number
+          max_members: number
           min_explanation_chars: number
           passing_score: number
           penalty_excuse_rejected: number
@@ -245,9 +247,11 @@ export type Database = {
           flag_window_hours?: number
           id?: boolean
           image_retention_days?: number
+          invite_minutes?: number
           judge_grace_minutes?: number
           last_declaration_reminder?: string
           max_attempts?: number
+          max_members?: number
           min_explanation_chars?: number
           passing_score?: number
           penalty_excuse_rejected?: number
@@ -279,9 +283,11 @@ export type Database = {
           flag_window_hours?: number
           id?: boolean
           image_retention_days?: number
+          invite_minutes?: number
           judge_grace_minutes?: number
           last_declaration_reminder?: string
           max_attempts?: number
+          max_members?: number
           min_explanation_chars?: number
           passing_score?: number
           penalty_excuse_rejected?: number
@@ -307,6 +313,51 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      invites: {
+        Row: {
+          code_hash: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code_hash: string
+          created_at?: string
+          created_by: string
+          expires_at: string
+          id?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code_hash?: string
+          created_at?: string
+          created_by?: string
+          expires_at?: string
+          id?: string
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       leave_requests: {
         Row: {
@@ -960,10 +1011,30 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_invite: {
+        Args: { p_code_hash: string; p_user_id: string }
+        Returns: {
+          code_hash: string
+          created_at: string
+          created_by: string
+          expires_at: string
+          id: string
+          used_at: string | null
+          used_by: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       join_group: {
         Args: {
           p_avatar_url: string
+          p_bootstrap?: boolean
           p_display_name: string
+          p_invite_hash: string
           p_user_id: string
         }
         Returns: {

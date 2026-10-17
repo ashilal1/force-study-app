@@ -23,6 +23,7 @@ erDiagram
     activity_events ||--o{ notifications : "fans out"
     profiles ||--o{ notifications : "receives"
     profiles ||--o{ push_subscriptions : "has"
+    profiles ||--o{ invites : "発行 / 使用"
 ```
 
 ## 2. テーブル
@@ -63,6 +64,8 @@ erDiagram
 | settlement_time | time | `23:59` | 精算する時刻（その日の決着のあと） |
 | image_retention_days | int | 60 | 証拠画像の保持日数 |
 | storage_soft_limit_mb | int | 800 | これを超えたら古い画像から消す |
+| max_members | int | 6 | メンバー（抜けた人を除く）の上限。達したら招待の発行も参加もできない |
+| invite_minutes | int | 15 | 招待コードの有効時間（分） |
 
 ### profiles
 | 列 | 型 | 説明 |
@@ -72,13 +75,26 @@ erDiagram
 | avatar_url | text | |
 | paypay_link | text | `https://` で始まるもの |
 | payee_id | uuid → profiles null | 支払先。**管理者が入力する**（グループで話し合って決める）。`check (payee_id <> id)` |
-| is_admin | boolean default false | 最初のユーザーを true にする（トリガー） |
+| is_admin | boolean default false | 最初のユーザーを true にする（`join_group`） |
 | trial_ends_at | timestamptz | お試し期間の終わり = 登録後の最初の日曜 0:00 JST（日曜に登録したら翌週の日曜） |
 | notifications_verified_at | timestamptz null | テスト通知を本人が確認した時刻（F0）。null のあいだはアプリを使えない |
 | deactivated_at | timestamptz null | 抜けたメンバー。**profiles も `auth.users` も消さず**、ログインを止める（Auth の ban）だけにする。記録を残すため |
 | created_at | timestamptz | |
 
-Google でログインしただけでは作らない。招待コードを確かめた Server Action が `join_group()` で作る（`display_name`・`avatar_url` は Google の情報を初期値にする）。**profile があり `deactivated_at` が null の人だけがメンバー**で、RLS はこれを `private.is_member()` で判定する。
+Google でログインしただけでは作らない。招待コードを確かめた Server Action が `join_group()` で作る（`display_name`・`avatar_url` は Google の情報を初期値にする。`is_admin` は最初の 1 人だけ true）。**profile があり `deactivated_at` が null の人だけがメンバー**で、RLS はこれを `private.is_member()` で判定する。
+
+### invites（招待コード。1 回だけ使える・短命。ADR-026）
+| 列 | 型 | 説明 |
+|---|---|---|
+| id | uuid PK | |
+| code_hash | text **unique** | コードを正規化（大文字・区切りなし）した SHA-256（16 進 64 文字）。**コードそのものは保存しない** |
+| created_by | uuid → profiles | 発行したメンバー |
+| created_at | timestamptz | |
+| expires_at | timestamptz | `created_at + invite_minutes`。判定は DB の `now()` |
+| used_by | uuid → profiles **unique** null | 使って参加した人 |
+| used_at | timestamptz null | `(used_by is null) = (used_at is null)` |
+
+コードは 10 文字（紛らわしい 0/O・1/I/L を除いた 31 文字、約 49.5 ビット）を Node の `crypto.randomInt` で作る。表示は `K7QM-3XRP-WD`。削除は禁止、更新は `used_by`・`used_at` だけ。
 
 ### rest_days
 | 列 | 型 | 説明 |
@@ -263,7 +279,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - 休会: `leave_requested` / `leave_approved` / `leave_rejected` / `leave_ending`
 - 振り返り: `weekly_review_created`
 - 精算: `payee_assigned` / `settlement_created` / `weekly_summary` / `settlement_sent` / `settlement_completed` / `settlement_not_received` / `late_payment`
-- その他: `penalized` / `trial_ending`
+- その他: `penalized` / `trial_ending` / `member_joined`（payload に `invited_by`）
 - リマインド: `reminder_declare_midnight` / `reminder_declare_last_call` / `reminder_submit` / `reminder_revision_due` / `reminder_resend_due` / `reminder_report_due` / `reminder_review_due` / `reminder_late_payment`
 
 `reminder_*` と `review_vote_cast` は本人（または未回答者）にだけ届けるので、タイムラインには出さない。誰に届けるかは `lib/notify` の受信者ルール（requirements N1 の表）で決める。
@@ -330,7 +346,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `jst_today()` | `(now() at time zone 'Asia/Tokyo')::date` |
 | `day_at(date, time)` | 学習日 + 時刻 → timestamptz (JST)。期限の計算はすべてこれを使う |
 | `is_member()` | 呼び出した人がメンバーか（RLS で使う。`authenticated` が実行できる唯一の関数） |
-| `join_group(user_id, display_name, avatar_url)` | 招待コードを確かめた後に profile を作る。最初の 1 人を管理者にする（advisory lock で同時実行を防ぐ） |
+| `create_invite(user_id, code_hash)` | 招待を発行する。発行者がメンバーか、上限人数に達していないかを確かめ、`expires_at = now() + invite_minutes` で insert |
+| `join_group(user_id, display_name, avatar_url, invite_hash, bootstrap)` | profile を作る。`bootstrap` なら（Server Action が `INVITE_CODE` と照合済み）グループが空のときだけ通す（`bootstrap_closed`）。それ以外は未使用・期限内の招待を `for update` で取り、profile を作ったあと使用済みにする（`invalid_invite`。違う・期限切れ・使用済みは区別しない）。上限人数なら `group_full`。最初の 1 人を管理者にし、`member_joined` を記録する。advisory lock で同時実行を 1 件ずつにする |
+| `active_member_count()` | 抜けた人を除くメンバー数 |
 | `add_penalty(user_id, study_log_id, reason, points)` | `dedupe_key` つきで insert。本人がお試し期間中なら `waived = 'trial'` |
 | `reviewers_for(user_id)` | 本人以外で、今日休会中でないメンバー |
 
@@ -403,6 +421,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 全行 | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
+| invites | なし（RLS は有効、GRANT なし。サーバーだけが読む） | なし（`create_invite` / `join_group`） |
 
 `anon` ロールにはどのテーブルも許可しない。上の「全行」はすべて「メンバーなら全行」（`private.is_member()`）。Google でログインしただけの人は何も読めない。
 

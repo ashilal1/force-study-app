@@ -15,10 +15,11 @@
 - [x] `supabase gen types` → `src/types/database.ts`
 
 ## M2. 認証・プロフィール
-- [ ] Google ログイン（`/login`、`/auth/callback`）と招待コードでの参加（`/join`、`rpc join_group`）（ADR-025）
+- [x] Google ログイン（`/login`、`/auth/callback`）と招待コードでの参加（`/join`、`rpc join_group`）（ADR-025）
+- [x] 招待コードをメンバーがその場で発行する（1 回だけ・15 分。ADR-026）
 - [ ] iPhone の PWA で Google ログインが戻ってくるかを実機で確認。だめならメールのワンタイムコードを追加
-- [ ] プロフィール編集（表示名・アバター・PayPay リンク）
-- [ ] お試し期間（`trial_ends_at`）
+- [x] プロフィール編集（表示名・アバター・PayPay リンク）
+- [x] お試し期間（`trial_ends_at`）の表示
 
 ## M3. 通知基盤（後の機能はすべてこれを使うので先に作る）
 - [ ] `activity_events` → `notifications` の配信 (`lib/notify`)
