@@ -313,7 +313,7 @@ flowchart LR
 - データの集計は DB のビュー（`daily_history`・`weekly_stats`・`user_stats`・`received_objections`）で行い、Server Component で取って、グラフの Client Component に渡す。ブラウザでは集計しない。
 - 結果の色（達成・未達成・宣言なし・休み）とペナルティ理由の色は 1 か所（`src/lib/chart-colors.ts`）で決め、全グラフで同じ色にする。
 - 画面: 週の振り返り `/members/[id]/weeks/[weekEnd]`（G1・その週の 7 マス・G7・AI のまとめ・本人のメモ）、検索 `/search`（`ilike` + trigram インデックス）、書き出し `/api/export?format=csv|json`（本人の記録だけ。CSV は 1 日 1 行で Excel 用に BOM 付き）、個人の振り返り `/members/[id]`（G1〜G10・次の計画の追跡）、グループの比較 `/review`（G11〜G14。下部メニューの「振り返り」）、その日の詳細 `/logs/[id]` に「この日のタイムライン」。期間は `?range=4w|3m|all`。
-- 画面の幅: スマホ（〜767px）は 440px の 1 列。768px からは 720px に広げる。1024px からは、`data-wide` を付けたページ（ホーム・`/review`・`/members/[id]`）だけ 1040px の 2 列にする（`AppShell` が `:has([data-wide])` で判定）。入力フォームは横に伸びすぎないよう 720px のまま。
+- 画面の幅: スマホ（〜767px）は 440px の 1 列。768px からは 720px に広げる。1024px からは、`data-wide` を付けたページ（ホーム・`/review`・`/members/[id]`）だけ 1040px の 2 列にする（`AppShell` が `:has([data-wide])` で判定）。入力フォームは横に伸びすぎないよう 720px のまま。文字は 768px から基準を 106.25%、1024px から 112.5% にする（大きさ・余白は rem なので一緒に大きくなる）。
 - TanStack Table は v9（`useTable` + `tableFeatures`）。学習ログの表は並べ替えだけを TanStack に任せ、結果での絞り込みは渡す前に行う。
 
 ## 6. 無料枠の見積もり（6 人想定）

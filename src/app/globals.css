@@ -123,8 +123,17 @@
     @apply bg-background text-foreground;
     font-synthesis: none;
   }
+  /* Sizes are in rem, so raising the root scales text and spacing together. Phones keep the
+     browser default; tablets and PCs read from farther away. Percentages respect the user's
+     own font-size setting. */
   html {
     @apply font-sans;
+    @variant md {
+      font-size: 106.25%;
+    }
+    @variant lg {
+      font-size: 112.5%;
+    }
   }
 }
 
