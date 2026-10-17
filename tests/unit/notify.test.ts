@@ -290,3 +290,15 @@ describe("draftNotifications (M8a)", () => {
     expect(draft.body).toBe("サボり・申告なし（P2・P5）: 1000、宣言の締切: 11:30、合格点: 75点");
   });
 });
+
+describe("draftNotifications (M8c)", () => {
+  it("tells each member their own weekly review is ready", () => {
+    const drafts = draftNotifications(
+      { id: "e", type: "weekly_review_created", actor_id: "ben", payload: { week_end: "2026-10-24", completed: 5, counted: 6 } },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.title, d.url])).toEqual([
+      ["ben", "今週の振り返りができました（達成 5/6）", "/members/ben/weeks/2026-10-24"],
+    ]);
+  });
+});
