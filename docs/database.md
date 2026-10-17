@@ -389,8 +389,10 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | 関数 | 処理 |
 |---|---|
 | `save_weekly_note(user_id, week_end, note)` | 本人の週の振り返りメモを保存 |
-| `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ。支払先を設定して全員に通知 |
-| `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで状態を進める・戻す |
+| `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ（`not_admin`）。自分自身・抜けた人は不可（`invalid_payee`）、同じなら `unchanged`。`payee_assigned` で全員に通知 |
+| `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで `open` → `sent` → `completed`、「届いていない」は `sent` → `open` |
+| `run_weekly_settlement()`（定期実行。tick の最後） | `current_period_end()`（設定の曜日・時刻を過ぎた直近の締め日）について 1 回だけ。① 前の週までの `open` の精算に P7（`late:{settlement}:{締め日}`）② 人ごとに、締め日までの学習日（P7 は作成時刻）の未精算・`waived` でないペナルティを束ねて支払先への精算を作る（支払先が未設定なら作らずに持ち越して `payee_missing` を管理者へ）③ その週に記録があれば `weekly_summary` |
+| `late_payment_reminders()`（定期実行） | 次の締めの 24 時間前に、`open` の精算の本人へ |
 
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |
@@ -439,6 +441,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 全行 | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
+| penalty_summary（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
 | invites | なし（RLS は有効、GRANT なし。サーバーだけが読む） | なし（`create_invite` / `join_group`） |
 
 `anon` ロールにはどのテーブルも許可しない。上の「全行」はすべて「メンバーなら全行」（`private.is_member()`）。Google でログインしただけの人は何も読めない。

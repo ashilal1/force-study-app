@@ -81,6 +81,13 @@ export type Database = {
             foreignKeyName: "activity_events_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "activity_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -134,6 +141,13 @@ export type Database = {
           study_log_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "declaration_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "declaration_flags_flagger_id_fkey"
             columns: ["flagger_id"]
@@ -347,8 +361,22 @@ export type Database = {
             foreignKeyName: "invites_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: true
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "invites_used_by_fkey"
@@ -400,6 +428,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "leave_requests_user_id_fkey"
             columns: ["user_id"]
@@ -458,6 +493,13 @@ export type Database = {
             foreignKeyName: "notifications_recipient_id_fkey"
             columns: ["recipient_id"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -495,6 +537,13 @@ export type Database = {
           verdict?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "peer_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "peer_reviews_reviewer_id_fkey"
             columns: ["reviewer_id"]
@@ -567,6 +616,13 @@ export type Database = {
             foreignKeyName: "penalties_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "penalties_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -610,6 +666,13 @@ export type Database = {
           trial_ends_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "profiles_payee_id_fkey"
             columns: ["payee_id"]
@@ -658,6 +721,13 @@ export type Database = {
             foreignKeyName: "push_subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -680,6 +750,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "rest_days_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "rest_days_user_id_fkey"
             columns: ["user_id"]
@@ -728,8 +805,22 @@ export type Database = {
             foreignKeyName: "settlements_debtor_id_fkey"
             columns: ["debtor_id"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_debtor_id_fkey"
+            columns: ["debtor_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "settlements_payee_id_fkey"
@@ -803,6 +894,13 @@ export type Database = {
             foreignKeyName: "study_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "study_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -866,6 +964,13 @@ export type Database = {
           withdrawn_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "submission_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
           {
             foreignKeyName: "submission_flags_flagger_id_fkey"
             columns: ["flagger_id"]
@@ -1001,6 +1106,13 @@ export type Database = {
             foreignKeyName: "weekly_reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "weekly_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
           },
@@ -1008,7 +1120,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      penalty_summary: {
+        Row: {
+          display_name: string | null
+          open_settlement_id: string | null
+          this_week_points: number | null
+          total_points: number | null
+          trial_points: number | null
+          unsettled_points: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       advance_disputes: {
@@ -1030,6 +1153,27 @@ export type Database = {
           to: "activity_events"
           isOneToOne: false
           isSetofReturn: true
+        }
+      }
+      assign_payee: {
+        Args: { p_admin_id: string; p_payee_id: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
         }
       }
       cancel_leave: {
@@ -1180,6 +1324,27 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "push_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      confirm_settlement: {
+        Args: { p_payee_id: string; p_settlement_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1490,9 +1655,51 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      late_payment_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       mark_notifications_pushed: {
         Args: { p_ids: string[] }
         Returns: undefined
+      }
+      mark_settlement_sent: {
+        Args: { p_debtor_id: string; p_settlement_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       record_judge_error: {
         Args: { p_message: string; p_submission_id: string }
@@ -1528,6 +1735,27 @@ export type Database = {
       record_push_success: { Args: { p_endpoint: string }; Returns: undefined }
       register_rest_day: {
         Args: { p_date: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      report_not_received: {
+        Args: { p_payee_id: string; p_settlement_id: string }
         Returns: {
           actor_id: string | null
           created_at: string
@@ -1638,6 +1866,27 @@ export type Database = {
         }
       }
       run_declaration_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      run_weekly_settlement: {
         Args: never
         Returns: {
           actor_id: string | null
