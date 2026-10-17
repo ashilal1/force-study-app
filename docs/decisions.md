@@ -158,7 +158,7 @@
 - **Consequences**: 1 週間（日〜土）の出来事がすべてその週の精算に入り、持ち越しがなくなる。実際の処理は日曜 0:00〜0:05 の tick で行われる。お試し期間の終わり（日曜 0:00）とも区切りがそろう。
 
 ## ADR-024: 開発はクラウドの Supabase 開発用プロジェクトで行う
-- **Status**: Accepted (2026-10-16)
+- **Status**: Accepted (2026-10-16)。M9 からはこのプロジェクトを本番と共有する（ADR-031）
 - **Context**: ローカルの Supabase は Docker で 10 前後のコンテナを動かし、開発機（メモリ 8GB）には重い。
 - **Decision**: Supabase の無料プラン（2 プロジェクトまで）で、開発用と本番用のプロジェクトを分ける。開発中は開発用プロジェクトに直接つなぎ、マイグレーションは `supabase db push` で反映する。キーは新形式（publishable / secret）を使う。
 - **Consequences**: Docker が不要。オフラインでは開発できない。データを作り直すときは `supabase db reset --linked`（開発用プロジェクトだけに使う）。7 日使わないと一時停止するので、再開してから作業する。pg_cron から開発機の tick は呼べないので、開発中は tick を手動で呼ぶ。
@@ -189,7 +189,7 @@
   - ハッシュに salt は付けない。50 ビット弱のコードは DB が漏れれば総当たりで戻せなくはないが、短命・1 回限りで、DB が漏れた時点でデータはすでに見えているため、この用途では十分とする。
 
 ## ADR-027: Vercel では `main` を公開用、`develop` をテスト用にし、関数は東京リージョンに置く
-- **Status**: Accepted (2026-10-17)
+- **Status**: Accepted (2026-10-17)。Supabase を分ける部分は ADR-031 で変更
 - **Context**: iPhone の PWA（Google ログインから戻れるか、Web Push）は HTTPS でしか確かめられないので、M9 より前に公開 URL が要る。公開する前に同じ構成で確かめる場所も欲しい（オーナーの要望）。Vercel の既定では関数が米国東部で動き、東京の Supabase と往復するたびに遅くなる。Hobby の Preview の URL は既定で Vercel のログインで保護されている。
 - **Decision**:
   - `main` を Vercel の Production（公開用）、`develop` を Preview（テスト用）にする。作業ブランチ → `develop` でテスト用 URL（`develop` に割り当てた `force-study-app-staging.vercel.app`）に出し、確かめてから `develop` → `main` で公開する。
@@ -225,3 +225,16 @@
 - **Decision**: 判定の本体は `lib/judging.ts` の `judgeSubmission(submissionId)`（写真を Storage から取得 → Gemini → `record_judgement`、失敗したら `record_judge_error`）。ブラウザは Server Action `judgeMySubmission` を呼び、そこで本人の提出かを確かめてから実行する。M6 の cron tick も同じ関数で `error` の提出を判定し直す。写真の入力は `capture` 属性を付けず、端末の「カメラで撮る / 写真を選ぶ」の選択に任せる（`capture` を付けるとギャラリーから選べない端末があるため）。
 - **Consequences**: 認証は Server Action の仕組み（Origin の確認と Cookie のセッション）に乗る。判定は数秒〜数十秒かかるので、その間ボタンを「AI が判定中…」にする。途中で画面を閉じても提出は記録済みで、「もう一度判定する」で続きができる。
 
+## ADR-031: Supabase は 1 つのプロジェクトを本番とテスト用で共有する
+- **Status**: Accepted (2026-10-18)。ADR-024 と ADR-027 の「M9 で本番用プロジェクトを分ける」を置き換える
+- **Context**: Supabase の無料プロジェクトは、Owner・Admin になっている organization 全部で同時に 2 つまで。もう 1 つの枠はオーナーの仕事で使っている。有料プランは使わない（ADR-003）。
+- **Decision**:
+  - 今のプロジェクト（`nvckqojuwkelguayshta`。organization `force-study-app`、Tokyo）を本番として使い、公開用（`main`）もテスト用（`develop`）もローカル開発もここにつなぐ。
+  - 定期実行（pg_cron の `tick_url`）は公開用の URL を呼ぶ。テスト用は呼ばない（1 つの DB に対して tick は 1 か所）。
+  - マイグレーションは `develop` にマージする前に適用されるので、**公開中の `main` の古いコードでも動く形**（列・関数の追加だけ、既存の引数や戻り値を変えない）にする。ルールの確認は PGlite のテストで済ませる。
+  - 仲間を招待する前に残っているテストのデータは、必要なら一度だけ消す（`supabase db reset --linked`）。仲間が参加したあとは使わない。
+- **Consequences**:
+  - テスト用 URL やローカルで操作すると、本物の記録として残る（記録は消せない。ADR-020）。テスト用 URL は新しい画面の表示確認に使い、ためしの宣言・提出・ペナルティは作らない。
+  - 環境変数は Production・Preview・ローカルで Supabase の値が同じになる。
+  - 無料枠（DB 500MB・Storage 1GB）は 1 つ分だけで足りる見積もり（architecture.md §6）。
+  - 将来、無料の枠が空いたら本番用を分けられる。そのときは Production の環境変数と `tick_url` を差し替える。

@@ -59,9 +59,11 @@ Web Push はローカルでも `localhost` なら試せる。iPhone で試すに
 
 | ブランチ | Vercel の環境 | URL | Supabase |
 |---|---|---|---|
-| `main` | Production（公開用） | https://force-study-app.vercel.app | 開発用（M9 で本番用に切り替える） |
-| `develop` | Preview（テスト用） | https://force-study-app-staging.vercel.app（`develop` に割り当てたドメイン） | 開発用 |
-| 作業ブランチ | Preview | コミットごとの URL | 開発用 |
+| `main` | Production（公開用） | https://force-study-app.vercel.app | 共有（ADR-031） |
+| `develop` | Preview（テスト用） | https://force-study-app-staging.vercel.app（`develop` に割り当てたドメイン） | 共有 |
+| 作業ブランチ | Preview | コミットごとの URL | 共有 |
+
+Supabase の無料プロジェクトは 1 人 2 つまでなので、本番・テスト用・ローカルで 1 つのプロジェクトを共有する（ADR-031）。テスト用 URL やローカルでの操作も本物の記録になるので、表示の確認にとどめる。
 
 普段の流れ: 作業ブランチ → `develop` に PR してマージ → テスト用 URL で確かめる（iPhone もここで）→ `develop` → `main` に PR してマージ → 公開用 URL に出る。
 
@@ -90,10 +92,10 @@ select vault.create_secret('<CRON_SECRET と同じ値>', 'cron_secret', 'Bearer 
 select vault.create_secret('https://<このプロジェクトを使うデプロイ>/api/cron/tick', 'tick_url', 'Deployment that runs the tick');
 ```
 
-- 開発用プロジェクトはテスト用 URL（`force-study-app-staging.vercel.app`）を呼ぶ。本番用プロジェクトは M9 で本番の URL を入れる
+- `tick_url` は公開用の URL（`https://force-study-app.vercel.app/api/cron/tick`）にする。テスト用は呼ばない（ADR-031）
 - `CRON_SECRET` は Vercel の環境変数（Production と Preview）にも同じ値を入れる
 - 動いているかは `select * from cron.job_run_details order by start_time desc limit 5;` と `select status_code, created from net._http_response order by created desc limit 5;` で確かめる
 
 ### 注意
 - `NEXT_PUBLIC_` の変数はビルド時に埋め込まれる。値を変えたら再デプロイする
-- M9 で本番用の Supabase プロジェクトを作ったら、環境変数の **Production だけ**を本番用の値に差し替える。Preview（テスト用）は開発用のまま
+- Supabase の値は Production・Preview とも同じ（ADR-031）。将来本番用プロジェクトを分けたら、Production だけを差し替えて `tick_url` も変える
