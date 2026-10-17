@@ -187,3 +187,10 @@
   - 漏れたコードが使えるのは最長 15 分・1 人だけ。誰が誰を招待したかが `invites` と `member_joined` に残る。
   - 相手がすぐに開けないと期限が切れるので、送る直前に発行する運用になる。切れたら発行し直す。
   - ハッシュに salt は付けない。50 ビット弱のコードは DB が漏れれば総当たりで戻せなくはないが、短命・1 回限りで、DB が漏れた時点でデータはすでに見えているため、この用途では十分とする。
+
+## ADR-027: Vercel では `main` を公開し、関数は東京リージョンに置く
+- **Status**: Accepted (2026-10-17)
+- **Context**: iPhone の PWA（Google ログインから戻れるか、Web Push）は HTTPS でしか確かめられないので、M9 より前に公開 URL が要る。Vercel の既定では関数が米国東部で動き、東京の Supabase と往復するたびに遅くなる。Hobby のプレビュー URL は Vercel のログインで保護されている。
+- **Decision**: `main` を Vercel の本番ブランチにし、作業は `develop` に集めて、公開したいときに `develop` → `main` をマージする。`vercel.json` の `regions` を `hnd1`（東京）にする。M9 で本番用の Supabase プロジェクトを作るまでは、本番 URL も開発用プロジェクトにつなぐ。`package.json` の `engines` で Node 22 以上を指定する。
+- **Consequences**: 公開している版が `main` で分かる。iPhone ではいつも同じ URL で試せる。M9 までは公開 URL と開発中のデータが同じ DB を使うので、メンバーへの本格的な案内は M9 のあとにする。
+
