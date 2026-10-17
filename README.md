@@ -39,8 +39,8 @@ npm run dev                         # http://localhost:3000
 | 変数 | 取得元 |
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` | Supabase ダッシュボード → Project Settings → API Keys |
-| `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/)。モデル ID は無料枠のある Flash 系を選ぶ |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` |
+| `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/apikey) で API キーを作る（無料枠）。モデル ID は無料枠のある Flash 系（AI Studio のモデル一覧で確かめる。常に最新の Flash を使うなら `gemini-flash-latest`） |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`。`VAPID_SUBJECT` は `mailto:` か公開用の `https://` URL。鍵を変えると全端末の購読が無効になるので、作ったら変えない |
 | `CRON_SECRET` | `openssl rand -hex 32` |
 | `INVITE_CODE` | **最初の 1 人（管理者）が参加するためだけ**のコード（自分で決める。4 文字以上）。グループが空のときしか使えない。2 人目からは、アプリでメンバーが発行する招待コードで参加する |
 
@@ -55,21 +55,47 @@ Web Push はローカルでも `localhost` なら試せる。iPhone で試すに
 
 ## デプロイ（Vercel Hobby）
 
-`main` ブランチが本番 URL に出る。作業は `develop` に集め、公開したい時点で `develop` → `main` の PR をマージする（ADR-027）。M9 までは、本番 URL も **Supabase の開発用プロジェクト**につなぐ。
+ブランチと環境を 2 段に分ける（ADR-027）。
+
+| ブランチ | Vercel の環境 | URL | Supabase |
+|---|---|---|---|
+| `main` | Production（公開用） | https://force-study-app.vercel.app | 共有（ADR-031） |
+| `develop` | Preview（テスト用） | https://force-study-app-staging.vercel.app（`develop` に割り当てたドメイン） | 共有 |
+| 作業ブランチ | Preview | コミットごとの URL | 共有 |
+
+Supabase の無料プロジェクトは 1 人 2 つまでなので、本番・テスト用・ローカルで 1 つのプロジェクトを共有する（ADR-031）。テスト用 URL やローカルでの操作も本物の記録になるので、表示の確認にとどめる。
+
+普段の流れ: 作業ブランチ → `develop` に PR してマージ → テスト用 URL で確かめる（iPhone もここで）→ `develop` → `main` に PR してマージ → 公開用 URL に出る。
 
 ### 初回だけ
-1. [Vercel](https://vercel.com) に GitHub アカウントでサインアップ（Hobby）。「Add New → Project」でこのリポジトリを Import する（非公開リポジトリなので Vercel の GitHub アプリに許可を出す）
-2. Import 画面の Environment Variables に、`.env.local` と同じ値を入れる（今使うのは下の 3 つ。ほかは使う機能ができたら足す）
+1. [Vercel](https://vercel.com) に GitHub アカウントでサインアップ（Hobby）。「Add New → Project」でこのリポジトリを Import する（非公開リポジトリなので Vercel の GitHub アプリに許可を出す）。Production Branch は `main`
+2. Import 画面の Environment Variables に、`.env.local` と同じ値を入れる（対象は Production と Preview の両方。今使うのは下の 3 つ。ほかは使う機能ができたら足す）
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SECRET_KEY`
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`（通知。M3 から）
+   - `GEMINI_API_KEY` / `GEMINI_MODEL`（AI 判定。M5 から）
+   - `CRON_SECRET`（定期実行。M6 から）
 3. Deploy。関数は `vercel.json` で東京（`hnd1`）に置く（Supabase と同じリージョン）
-4. Supabase ダッシュボード → Authentication → URL Configuration
-   - Redirect URLs に `https://<本番のドメイン>/auth/callback` を追加
-   - Site URL を `https://<本番のドメイン>` にする（Redirect URLs に合わない戻り先が来たときの行き先）
-5. Google Cloud の OAuth クライアントは変更不要（戻り先は Supabase の `/auth/v1/callback` のまま）
+4. Settings → Deployment Protection → Vercel Authentication を **オフ**にする。Hobby の既定では `main` 以外の URL に Vercel のログインが要り、iPhone のホーム画面アプリ（Safari とログイン状態を共有しない）からテスト用 URL を開けない。アプリ自体は Google ログインと招待コードで守られている
+5. Settings → Domains で `force-study-app-staging.vercel.app` を追加し、Git Branch に `develop` を指定する（自動で付くブランチ URL は長く、途中が省略されるため）
+6. Supabase ダッシュボード → Authentication → URL Configuration
+   - Redirect URLs に、公開用とテスト用の両方の `https://<ドメイン>/auth/callback` を追加
+   - Site URL を公開用の `https://<本番のドメイン>` にする（Redirect URLs に合わない戻り先が来たときの行き先）
+7. Google Cloud の OAuth クライアントは変更不要（戻り先は Supabase の `/auth/v1/callback` のまま）
+
+### 定期実行（pg_cron）
+マイグレーションが `pg_cron` と `pg_net` を有効にして、5 分ごとのジョブ `tick` を登録する。どのデプロイを呼ぶかとシークレットは、**Supabase のプロジェクトごとに** Vault に入れる（SQL Editor か `supabase db query --linked` で 1 回だけ。シークレットを Git に入れない）。
+
+```sql
+select vault.create_secret('<CRON_SECRET と同じ値>', 'cron_secret', 'Bearer token for /api/cron/tick');
+select vault.create_secret('https://<このプロジェクトを使うデプロイ>/api/cron/tick', 'tick_url', 'Deployment that runs the tick');
+```
+
+- `tick_url` は公開用の URL（`https://force-study-app.vercel.app/api/cron/tick`）にする。テスト用は呼ばない（ADR-031）
+- `CRON_SECRET` は Vercel の環境変数（Production と Preview）にも同じ値を入れる
+- 動いているかは `select * from cron.job_run_details order by start_time desc limit 5;` と `select status_code, created from net._http_response order by created desc limit 5;` で確かめる
 
 ### 注意
 - `NEXT_PUBLIC_` の変数はビルド時に埋め込まれる。値を変えたら再デプロイする
-- プレビュー（`main` 以外のブランチ）の URL は Vercel のログインで保護されている（Hobby の既定）。iPhone での確認は本番 URL で行う
-
+- Supabase の値は Production・Preview とも同じ（ADR-031）。将来本番用プロジェクトを分けたら、Production だけを差し替えて `tick_url` も変える

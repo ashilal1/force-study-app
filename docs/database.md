@@ -319,21 +319,23 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | created_at, self_note_updated_at | timestamptz | |
 
 ### ビュー: daily_history
-1 メンバー × 1 日 = 1 行（登録日から今日まで、`generate_series` で日付を埋める）。カレンダーと統計の元。
-`user_id, date, kind (completed / missed / no_declaration / invalidated / rest / leave / pending / trial), declaration, final_score, attempts, elapsed_minutes, penalty_points, failure_category`
+1 メンバー × 1 日 = 1 行（登録日から今日まで、`generate_series` で日付を埋める。「今日」は `private.jst_today()`）。カレンダーと統計の元。
+`user_id, date, kind (completed / missed / no_declaration / invalidated / pending / rest / leave / none), study_log_id, declaration, final_score, attempts, elapsed_minutes, submitted_hour, penalty_points, trial_points, penalty_reason, failure_category, in_trial`
+`pending` は今日か確定待ち、`none` は記録のない日（定期実行が入る前や、締切後に参加した日）。
 
 ### ビュー: weekly_stats
 1 メンバー × 1 週 = 1 行。G3・G7・G11・G13 の元。
-`user_id, week_end, declared_days, completed_days, achievement_rate, avg_score, avg_elapsed_minutes, penalty_points, penalty_by_reason (jsonb)`
+`user_id, week_end（土曜）, counted_days, completed_days, achievement_rate, avg_score, avg_elapsed_minutes, penalty_points, trial_points`
+達成率 = 達成 ÷（達成 + 未達成 + 証拠不認定 + 宣言なし）。理由ごとのペナルティ（G7）は画面側で `penalties` から週ごとに集める。
 
 ### ビュー: user_stats
-期間（週・月・全期間）ごとの達成率・連続達成日数（今と最長）・平均点・平均経過時間・ペナルティ合計。`daily_history` から集計する。
+**ビューは作らず**、`src/lib/stats.ts`（サーバー側の純粋な関数・テストあり）で `daily_history` から計算する。連続達成日数は休み・休会・進行中・記録なしを飛ばし、未達成・宣言なし・証拠不認定で切れる。
 
 ### ビュー: received_objections
-本人が受けた指摘・却下の一覧（`declaration_flags`、`submission_flags`、`peer_reviews` の `reject`、AI の不合格）を 1 つの形にそろえたもの: `user_id, occurred_at, kind, by_user_id, reason, study_log_id`。
+本人が受けた指摘・却下の一覧（`declaration_flags`、`submission_flags`、`peer_reviews` の `reject`、AI の不合格）を 1 つの形にそろえたもの: `user_id, occurred_at, kind (too_light / suspicious / excuse_rejected / dispute_rejected / leave_rejected / ai_rejected), by_user_id, reason, study_log_id`。
 
 ### ビュー: penalty_summary
-`user_id, display_name, total_points, unsettled_points, this_week_points, trial_points, open_settlement_id`
+`user_id, display_name, total_points, unsettled_points, this_week_points, trial_points, open_settlement_id, this_week_trial_points`
 ダッシュボードのランキングと「奢り確定」バッジに使う。`waived` の行は `trial_points` にだけ数える。`security_invoker = true` にする。
 
 ## 3. RPC（Postgres 関数）
@@ -343,7 +345,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 共通の関数
 | 関数 | 処理 |
 |---|---|
-| `jst_today()` | `(now() at time zone 'Asia/Tokyo')::date` |
+| `now()`（private） | ルールが使う現在時刻。ふだんは `now()`。テストのセッションだけ `set app.now = '...'` で固定できる（ADR-029） |
+| `jst_today()` | `(private.now() at time zone 'Asia/Tokyo')::date` |
 | `day_at(date, time)` | 学習日 + 時刻 → timestamptz (JST)。期限の計算はすべてこれを使う |
 | `is_member()` | 呼び出した人がメンバーか（RLS で使う。`authenticated` が実行できる唯一の関数） |
 | `create_invite(user_id, code_hash)` | 招待を発行する。発行者がメンバーか、上限人数に達していないかを確かめ、`expires_at = now() + invite_minutes` で insert |
@@ -351,58 +354,81 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `active_member_count()` | 抜けた人を除くメンバー数 |
 | `add_penalty(user_id, study_log_id, reason, points)` | `dedupe_key` つきで insert。本人がお試し期間中なら `waived = 'trial'` |
 | `reviewers_for(user_id)` | 本人以外で、今日休会中でないメンバー |
+| `is_on_leave(user_id, date)` / `is_rest_day(user_id, date)` | その日が休会か（その日の 0:00 より前に承認・期間内・`cancelled_from` より前）/ 休息日か |
+| `week_start(date)` | その週の日曜（週は日〜土） |
+| `require_member(user_id)` | メンバーでなければ `not_a_member` |
 
 ### 宣言・休み
 | 関数 | 処理 |
 |---|---|
-| `declare_goal(user_id, declaration, end_time_hhmm)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。`target_end_time` を「今日 HH:mm」に変換して範囲（+30 分〜当日 `submit_deadline_max`）を検査。合言葉を発行して insert |
-| `register_rest_day(user_id, date)` / `cancel_rest_day` | 明日以降か、週の上限内か、その日に宣言していないか |
-| `request_leave(user_id, start, end, reason)` / `cancel_leave(...)` | 休会の申請と取り消し。審査は `cast_review('leave', ...)` |
-| `flag_declaration(flagger_id, study_log_id, comment)` | 本人以外か、宣言から `flag_window_hours` 以内かつ提出締切前か、まだ書き直していないかを検査。最初の指摘なら `revision_due_at` を入れる |
-| `revise_declaration(user_id, study_log_id, declaration)` | 本人の書き直し待ちか、期限内かを検査。`original_declaration` を残して上書き |
+| `declare_goal(user_id, declaration, end_time, passphrase)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。`target_end_time` を「今日 HH:mm」に変換して範囲（+30 分〜当日 `submit_deadline_max`）を検査。合言葉はサーバー（`lib/passphrase.ts`）が作って渡す。`declared` を記録 |
+| `register_rest_day(user_id, date)` / `cancel_rest_day` | 明日以降（60 日先まで）か、週（日〜土）の上限内か、休会と重ならないかを検査（人ごとの advisory lock で同時登録を防ぐ）。取り消しも明日以降の日だけ |
+| `request_leave(user_id, start, end, reason)` | 開始日は明日以降、理由は `min_explanation_chars` 以上、自分の休会と重ならないかを検査。審査者（`reviewers_for`）ぶんの `peer_reviews('leave')` を作って固定し、期限は申請した日の `review_deadline`。審査者がいなければその場で承認 |
+| `cancel_leave(user_id, leave_request_id)` | 審査中なら取り下げ、承認済みなら明日以降（開始前なら全部）を取り消す（`cancelled_from`） |
+| `flag_declaration(flagger_id, study_log_id, comment)` | 本人以外か、今日の `pending` か、宣言から `flag_window_hours` 以内かつ提出締切前か、まだ書き直していないか、同じ人が二度押していないかを検査。最初の指摘なら `revision_due_at` を入れる |
+| `revise_declaration(user_id, study_log_id, declaration)` | 本人の書き直し待ちか、期限内か、内容が変わったかを検査。`original_declaration` を残して上書き（1 回だけ） |
 
 ### 提出・疑義
 | 関数 | 処理 |
 |---|---|
-| `create_submission(user_id, study_log_id, paths[], ...)` | `pending` か、`now() < target_end_time` か、試行回数が上限未満か、パスが `{user_id}/` で始まるかを検査 → `regular` / `judging` で insert。経過時間を計算 |
-| `record_judgement(submission_id, score, passphrase_found, feedback, model)` | 合格 = 点数 >= 合格点 かつ 合言葉あり。`regular` の合格なら log を `passed` にして `dispute_window_ends_at` を入れる |
-| `record_judge_error(submission_id, message)` | `error` にする |
-| `flag_submission(flagger_id, study_log_id, comment)` | 本人以外か、`passed` で `dispute_window_ends_at` 前か、`final_review` に入っていないかを検査。最初の 1 件なら `submission_disputes(resending)` を作る |
-| `resend_evidence(user_id, study_log_id, paths[], explanation)` | 本人の `resending` で `resend_due_at` 前か → `resend` の提出を作る（回数制限なし。判定は `/api/judge`） |
-| `withdraw_flag(flagger_id, study_log_id)` | 自分の指摘を取り下げる。全員取り下げたら `upheld` → log を `completed` |
+| `create_submission(user_id, study_log_id, image_paths[], thumb_path, learned, struggled, self_rating)` | 本人の今日の `pending` か、`now() < target_end_time` か（提出時刻で判定）、判定中の提出がないか、試行回数（`error` を除く）が上限未満か、パスが `{user_id}/{学習日}/{uuid}.webp` の形か（1〜3 枚）を検査 → `regular` / `judging` で insert。経過時間を計算して `submitted` を記録 |
+| `record_judgement(submission_id, score, passphrase_found, feedback, model)` | `judging` か `error` の提出だけ。書き直し待ちなら `revision_pending`、`regular` で log が `pending` でなければ `not_open`。合格 = 点数 >= 合格点 かつ 合言葉あり。`regular` の合格なら log を `passed` にして `dispute_window_ends_at = least(今 + dispute_window_hours, 当日の dispute_cutoff)`。`judged_passed` / `judged_rejected`（残り回数つき）を記録 |
+| `record_judge_error(submission_id, message)` | `error` にする（試行回数に数えない。あとで判定し直せる） |
+| `flag_submission(flagger_id, study_log_id, comment)` | 本人以外か、`passed` で `dispute_window_ends_at` 前か、疑義があれば `resending` で `resend_due_at` 前か、同じ人の二度押しでないかを検査。最初の 1 件なら `submission_disputes(resending, resend_due_at = least(今 + resend_minutes, 当日の resend_cutoff))` を作る |
+| `resend_evidence(user_id, study_log_id, image_paths[], thumb_path, explanation)` | 本人の `resending` で `resend_due_at` 前か、判定中の提出がないかを検査 → `resend` の提出を作る（回数制限なし。判定は `lib/judging`）。判定が出たら `record_judgement` が `evidence_resent`（点数・合言葉・まだ取り下げていない指摘者）を記録する |
+| `withdraw_flag(flagger_id, study_log_id)` | `resending` の間だけ、自分の指摘を取り下げる。全員取り下げたら `upheld` → log を `completed` |
+| `advance_disputes()`（定期実行。M6 で予定に入れる） | 送り直しの 15 分前のリマインド。`resend_due_at` を過ぎた `resending` → `final_review`（期限は学習日の `review_deadline`、審査者を `peer_reviews('dispute')` に固定。審査者がいなければ `upheld`）。`review_due_at` を過ぎた `final_review` → `upheld` |
+| `cast_review(..., 'dispute', ...)` | 最終審査。却下は理由が必須（`comment_required`）。却下 1 件で `invalidated` + P8、全員が認めたら `upheld` |
 
 ### 未達成・審査
 | 関数 | 処理 |
 |---|---|
-| `file_failure_report(user_id, study_log_id, category, reason, next_plan)` | 本人の `awaiting_report` か、期限内か、必須テキストと文字数を検査。<br>・`unrealistic`: 連続回数を計算 → しきい値以上なら penalty、`resolved`<br>・`slacked`: penalty、`resolved`<br>・`sudden_plan` / `other`: `under_review` にして、`peer_reviews('excuse')` の行を作る |
-| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う |
+| `file_failure_report(user_id, study_log_id, category, text)` | 本人の `awaiting_report` か、期限内か、`slacked` 以外は `min_explanation_chars` 以上かを検査（1 回だけ）。<br>・`unrealistic`: `text` を次の計画にして、`private.unrealistic_streak()` で連続回数を計算 → しきい値以上なら P3、`resolved`<br>・`slacked`: P2、`resolved`（`text` は任意のひとこと）<br>・`sudden_plan` / `other`: `under_review`（期限は学習日の `review_deadline`）にして、審査者ぶんの `peer_reviews('excuse')` を作る（審査者がいなければその場で承認）。`reported`（と `review_requested`）を記録 |
+| `expire_reports()`（定期実行） | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + P5 |
+| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う。**`leave`（M4）・`dispute`（M5）・`excuse`（M7）に対応**。`excuse` は却下 1 件で P4、全員納得で 0 円 |
 
 ### 精算
 | 関数 | 処理 |
 |---|---|
-| `save_weekly_note(user_id, week_end, note)` | 本人の週の振り返りメモを保存 |
-| `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ。支払先を設定して全員に通知 |
-| `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで状態を進める・戻す |
+| `update_group_settings(admin_id, changes jsonb)` | 管理者だけ。決まったキーだけを受け付け（`invalid_setting`）、表の制約と 1 日の時刻の順番（リマインド < 宣言締切 < 提出締切の上限 ≤ 「怪しい」 ≤ 送り直し ≤ 審査の期限、理由申告 ≤ 審査の期限）を検査（`invalid_schedule`）。変わった項目だけを `settings_changed` に記録 |
+| `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ（`not_admin`）。自分自身・抜けた人は不可（`invalid_payee`）、同じなら `unchanged`。`payee_assigned` で全員に通知 |
+| `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで `open` → `sent` → `completed`、「届いていない」は `sent` → `open` |
+| `run_weekly_settlement()`（定期実行。tick の最後） | `current_period_end()`（設定の曜日・時刻を過ぎた直近の締め日）について 1 回だけ。① 前の週までの `open` の精算に P7（`late:{settlement}:{締め日}`）② 人ごとに、締め日までの学習日（P7 は作成時刻）の未精算・`waived` でないペナルティを束ねて支払先への精算を作る（支払先が未設定なら作らずに持ち越して `payee_missing` を管理者へ）③ その週に記録があれば `weekly_summary` |
+| `late_payment_reminders()`（定期実行） | 次の締めの 24 時間前に、`open` の精算の本人へ |
 
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |
 |---|---|
 | `run_declaration_reminders()` | 0:00 と 11:00 を過ぎていて未宣言・休息日でも休会中でもない人に、`dedupe_key` つきでリマインドを作る |
 | `close_declarations()` | 12:00 を過ぎた今日、レコードも休息日も休会もないメンバー → `no_declaration` + penalty (P1) |
-| `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す。残り 15 分のリマインドも作る |
+| `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す（M5 で追加）。残り 15 分のリマインドも作る。**M4 で実装済み、定期実行は M6** |
 | `due_submit_reminders()` | 提出締切の 1 時間前で、まだ合格していない人にリマインドを作る |
 | `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `missed` + `failure_reports(awaiting_report)` |
 | `confirm_passed_logs()` | `passed` で `dispute_window_ends_at` を過ぎ、疑義のないもの → `completed` |
 | `advance_disputes()` | `resend_due_at` を過ぎた `resending` → `final_review`（`peer_reviews('dispute')` を作る）。`review_due_at` を過ぎた `final_review` → `upheld`。送り直しの残り 15 分のリマインドも作る |
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5) |
-| `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は penalty） |
+| `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は P4 `excuse_expired`） |
 | `due_deadline_reminders()` | `report_reminder_times`・`review_reminder_times` に、その日の理由申告・審査・最終審査で未対応の人へリマインドを作る |
-| `create_weekly_reviews()` | 土曜 23:59 以降、その週に 1 回だけ。全員の `weekly_reviews` を `stats` 付きで作る（`ai_summary` は tick が Gemini で埋める） |
+| `create_weekly_reviews()` | 土曜 23:59 以降（精算のあと）、その週に記録があれば 1 回だけ。全員の `weekly_reviews` を `stats`（達成・対象日・休み・達成率・平均点・平均時間・ペナルティと理由別・未達成の理由）付きで作り、本人に `weekly_review_created`。`ai_summary` は tick（Route Handler）が Gemini で 1 回 2 件まで埋める |
+| `record_weekly_summary(user_id, week_end, summary, model)` | まだ空の `ai_summary` だけを埋める |
+| `save_weekly_note(user_id, week_end, note)` | 本人の振り返りメモ（4000 字まで）。あとから何度でも書き換えられる唯一の列 |
+| `due_image_purges(limit)` | 原寸の写真を消す対象を古い順に返す: `submitted_at` が `image_retention_days` を過ぎたもの、またはバケットの合計（`storage.objects.metadata.size`）が 800MB を超えているあいだの古いもの。判定中の提出と、まだ決着していない日（`pending`・`passed`）は除く。**tick とは別に** Route Handler が呼ぶ（Storage の削除は Storage API でしかできないため） |
+| `mark_images_purged(submission_ids)` | Storage API でファイルを消したあとに、`image_paths` を空にして `images_purged_at` を記録する。`thumb_path` は残す |
 | `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
 
 **P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed','invalidated')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed`（達成）かほかの理由の未達成で止まる。理由申告待ち・審査中・確定待ちの日があればそこでも止める（確定していないため）。
 
 同時実行対策: 確定系は `for update skip locked` で対象行をロックし、penalties・settlements の一意制約を最終防衛線にする。
+
+### 通知（M3）
+| 関数 | 処理 |
+|---|---|
+| `save_push_subscription(user_id, endpoint, p256dh, auth, user_agent)` | 端末を登録（endpoint で upsert）。同じ人・同じ鍵なら確認済みのまま、別の人に移った・鍵が変わったら `verified_at` を消す。メンバーでなければ `not_a_member`、`https://` 以外は `invalid_endpoint` |
+| `confirm_push_subscription(user_id, endpoint)` | テスト通知を本人が確かめた。端末の `verified_at` と `profiles.notifications_verified_at` を記録。本人の端末でなければ `unknown_subscription` |
+| `delete_push_subscription(endpoint, user_id?)` | 端末を消す。`user_id` を付けたら本人の端末だけ（自分で解除）、付けなければ Push が 404/410 を返したとき |
+| `record_push_success(endpoint)` | `last_success_at` を更新 |
+| `create_notifications(event_id, items jsonb)` | `lib/notify` が決めた受信者ごとに通知を作る。抜けたメンバーは飛ばす。`(recipient_id, event_id)` で重複しない。今回作った行だけを返す（再実行で二重に Push しない） |
+| `mark_notifications_pushed(ids)` | Push が届いた通知に `pushed_at` を付ける（1 回だけ） |
 
 ### 記録の保全（追記だけ）
 - 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
@@ -421,6 +447,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 全行 | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
+| penalty_summary・daily_history・weekly_stats・received_objections（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
+
+関数の EXECUTE は `private.is_member()` に加えて、ビューが「今日」を求めるための `private.now()`・`private.jst_today()` だけを `authenticated` に許可する（時刻を返すだけ）。
 | invites | なし（RLS は有効、GRANT なし。サーバーだけが読む） | なし（`create_invite` / `join_group`） |
 
 `anon` ロールにはどのテーブルも許可しない。上の「全行」はすべて「メンバーなら全行」（`private.is_member()`）。Google でログインしただけの人は何も読めない。
@@ -432,6 +461,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - バケットの制限: `file_size_limit = 1MB`、`allowed_mime_types = {image/webp, image/jpeg, image/png}`
 
 ## 5. pg_cron
+マイグレーション（`20261017000006_tick.sql`）が `pg_cron` と `pg_net` を有効にして、次のジョブを登録する（PGlite のテストでは拡張が無いので飛ばす）。URL とシークレットは**プロジェクトごとに Vault に入れる**（README の手順）。入っていなければジョブは何もしない。
 
 ```sql
 -- 5 分ごとに Vercel の tick を呼ぶ（URL とシークレットは Vault から読む）
@@ -442,10 +472,23 @@ select cron.schedule('tick', '*/5 * * * *', $$
       'Authorization', 'Bearer ' || (select decrypted_secret from vault.decrypted_secrets where name = 'cron_secret'),
       'Content-Type', 'application/json'),
     body    := '{}'::jsonb,
-    timeout_milliseconds := 30000
-  );
+    timeout_milliseconds := 60000
+  )
+  where exists (select 1 from vault.decrypted_secrets where name = 'tick_url');
 $$);
 ```
+
+tick の DB 側（すべて `service_role` だけが呼べる）:
+| 関数 | 処理 |
+|---|---|
+| `tick()` | 下の手順と、M4・M5 の `expire_revisions` / `advance_disputes` / `expire_reviews` を順に呼ぶ。`pg_try_advisory_xact_lock` で同時実行を防ぐ |
+| `run_declaration_reminders()` | 締切前、まだ宣言していない人（休息日・休会・締切後に参加した人を除く）に 0:00 と 11:00 のリマインド |
+| `close_declarations()` | 締切を過ぎたら、宣言していない人に `no_declaration` の log + P1 |
+| `due_submit_reminders()` | 提出締切の 1 時間前、まだ合格していない人に |
+| `close_overdue_logs()` | 提出締切を過ぎた `pending` を `missed` にして `failure_reports(awaiting_report, 期限 = 当日 report_deadline)` を作る。締切前に出した提出が判定待ち・エラーなら `judge_grace_minutes` 待つ |
+| `confirm_passed_logs()` | 「怪しい」の受付が終わって疑義のない `passed` → `completed` |
+| `due_deadline_reminders()` | `report_reminder_times` にまだ申告していない人へ、`review_reminder_times` にまだ審査していない人へ（休会・最終審査・理由） |
+| `trial_ending_reminders()` | お試し期間の最終日に本人へ |
 
 ## 6. Realtime
 `notifications`、`study_logs`、`submissions`、`submission_flags`、`submission_disputes`、`failure_reports`、`peer_reviews`、`activity_events` を `supabase_realtime` パブリケーションに追加する。RLS が効くので、クライアントには読める行だけが届く。

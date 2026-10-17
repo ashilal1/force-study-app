@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { signInWithGoogle } from "@/actions/auth";
 import { Sticker } from "@/components/brand/sticker";
 import { Tape } from "@/components/brand/tape";
@@ -39,6 +40,9 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <p className="m-0 text-center text-xs text-sub">
         はじめての人は、ログインのあとにメンバーからもらった招待コードを入れます。
       </p>
+      <Link href="/guide" className="text-center text-sm font-bold underline underline-offset-2">
+        はじめての人へ（使い方） →
+      </Link>
     </Sticker>
   );
 }

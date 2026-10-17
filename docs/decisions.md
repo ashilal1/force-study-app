@@ -158,7 +158,7 @@
 - **Consequences**: 1 週間（日〜土）の出来事がすべてその週の精算に入り、持ち越しがなくなる。実際の処理は日曜 0:00〜0:05 の tick で行われる。お試し期間の終わり（日曜 0:00）とも区切りがそろう。
 
 ## ADR-024: 開発はクラウドの Supabase 開発用プロジェクトで行う
-- **Status**: Accepted (2026-10-16)
+- **Status**: Accepted (2026-10-16)。M9 からはこのプロジェクトを本番と共有する（ADR-031）
 - **Context**: ローカルの Supabase は Docker で 10 前後のコンテナを動かし、開発機（メモリ 8GB）には重い。
 - **Decision**: Supabase の無料プラン（2 プロジェクトまで）で、開発用と本番用のプロジェクトを分ける。開発中は開発用プロジェクトに直接つなぎ、マイグレーションは `supabase db push` で反映する。キーは新形式（publishable / secret）を使う。
 - **Consequences**: Docker が不要。オフラインでは開発できない。データを作り直すときは `supabase db reset --linked`（開発用プロジェクトだけに使う）。7 日使わないと一時停止するので、再開してから作業する。pg_cron から開発機の tick は呼べないので、開発中は tick を手動で呼ぶ。
@@ -188,9 +188,53 @@
   - 相手がすぐに開けないと期限が切れるので、送る直前に発行する運用になる。切れたら発行し直す。
   - ハッシュに salt は付けない。50 ビット弱のコードは DB が漏れれば総当たりで戻せなくはないが、短命・1 回限りで、DB が漏れた時点でデータはすでに見えているため、この用途では十分とする。
 
-## ADR-027: Vercel では `main` を公開し、関数は東京リージョンに置く
-- **Status**: Accepted (2026-10-17)
-- **Context**: iPhone の PWA（Google ログインから戻れるか、Web Push）は HTTPS でしか確かめられないので、M9 より前に公開 URL が要る。Vercel の既定では関数が米国東部で動き、東京の Supabase と往復するたびに遅くなる。Hobby のプレビュー URL は Vercel のログインで保護されている。
-- **Decision**: `main` を Vercel の本番ブランチにし、作業は `develop` に集めて、公開したいときに `develop` → `main` をマージする。`vercel.json` の `regions` を `hnd1`（東京）にする。M9 で本番用の Supabase プロジェクトを作るまでは、本番 URL も開発用プロジェクトにつなぐ。`package.json` の `engines` で Node 22 以上を指定する。
-- **Consequences**: 公開している版が `main` で分かる。iPhone ではいつも同じ URL で試せる。M9 までは公開 URL と開発中のデータが同じ DB を使うので、メンバーへの本格的な案内は M9 のあとにする。
+## ADR-027: Vercel では `main` を公開用、`develop` をテスト用にし、関数は東京リージョンに置く
+- **Status**: Accepted (2026-10-17)。Supabase を分ける部分は ADR-031 で変更
+- **Context**: iPhone の PWA（Google ログインから戻れるか、Web Push）は HTTPS でしか確かめられないので、M9 より前に公開 URL が要る。公開する前に同じ構成で確かめる場所も欲しい（オーナーの要望）。Vercel の既定では関数が米国東部で動き、東京の Supabase と往復するたびに遅くなる。Hobby の Preview の URL は既定で Vercel のログインで保護されている。
+- **Decision**:
+  - `main` を Vercel の Production（公開用）、`develop` を Preview（テスト用）にする。作業ブランチ → `develop` でテスト用 URL（`develop` に割り当てた `force-study-app-staging.vercel.app`）に出し、確かめてから `develop` → `main` で公開する。
+  - Deployment Protection の Vercel Authentication はオフにする（iPhone のホーム画面アプリから開けるように）。アプリは Google ログインと招待コードで守る。
+  - Supabase は、M9 まで両方とも開発用プロジェクトにつなぐ。M9 で本番用プロジェクトを作ったら、Production の環境変数だけを差し替える。
+  - `vercel.json` の `regions` を `hnd1`（東京）にする。`package.json` の `engines` で Node 22 以上を指定する。
+- **Consequences**:
+  - 公開している版は `main`、確かめている版は `develop` で分かる。iPhone ではいつも同じテスト用 URL で試せる。
+  - M9 までは公開用 URL も開発中のデータと同じ DB を使うので、メンバーへの本格的な案内は M9 のあとにする。
+  - M9 以降は、テスト用（開発用 Supabase）と公開用（本番用 Supabase）でデータが分かれる。定期実行（pg_cron → `/api/cron/tick`）も、各 Supabase プロジェクトが自分の環境の URL を呼ぶ。
 
+## ADR-028: 通知の配信の作り（M3）
+- **Status**: Accepted (2026-10-17)
+- **Context**: M3 で `activity_events` → `notifications` → Web Push の配信と、通知ゲート（F0）を作る。CLAUDE.md の「通知は `activity_events` に書いて `lib/notify` に渡す」を守りつつ、F0 のテスト通知のようにタイムラインに出さない Push もある。
+- **Decision**:
+  - 受信者と文言はイベントの種類ごとのルール（`lib/notify/rules.ts`、純粋な関数）で決め、DB は `create_notifications` で記録するだけにする（受信者ルールは TypeScript でテストしやすく、DB は冪等さと「抜けた人に送らない」を守る）。
+  - 呼び出し側は RPC でイベントを記録したあと、`after()` の中で `dispatch(eventId)` を呼ぶ。配信の失敗はログだけで、元の操作は失敗させない（通知はアプリ内の一覧に残る）。
+  - F0 のテスト通知だけは `activity_events` を通さず、`lib/notify` の `sendTestPush` がその端末にだけ送る。Server Action から直接 web-push を呼ばない、というルールは保つ。
+  - 端末（endpoint）は 1 人に属する。同じブラウザで別の人がログインして登録したら、その人に移して確認をやり直させる。
+  - 未読数は下部メニューの「通知」タブのバッジで見せる（ヘッダーのベルは置かない。画面が狭く、下部メニューに通知タブがあるため）。
+  - `VAPID_SUBJECT` は公開用の `https://` URL にする（個人のメールアドレスを Push サービスに渡さない）。
+- **Consequences**: 新しい通知は `rules.ts` にルールを足すだけで、配信・Push・既読は共通になる。M6 の cron は、`pushed_at` が null の通知を送り直す処理を足せる。
+
+## ADR-029: ルールの「現在時刻」は `private.now()` にまとめ、テストで固定できるようにする
+- **Status**: Accepted (2026-10-17)
+- **Context**: 宣言締切（12:00）・提出締切（21:00）・指摘の 3 時間・書き直しの 1 時間・休会の 23:59 など、M4 以降のルールはほとんどが時刻で決まる。DB のテスト（PGlite）を実行した時刻によって結果が変わると、テストが壊れやすい。
+- **Decision**: RPC が使う現在時刻は `private.now()`（ふだんは `now()`）にまとめ、`jst_today()` もこれを使う。テストのセッションだけ `set app.now = '...'` で固定する（`tests/db/harness.ts` の `setNow`）。行の `created_at` などの既定値は `now()` のまま。
+- **Consequences**: 時刻に関わるルールを、決まった日時で再現性よくテストできる。`app.now` を設定できるのは SQL を直接実行できる人だけで、API からは設定できず、RPC も `service_role` だけが呼べるので、本番で時刻をずらされることはない。
+
+## ADR-030: AI 判定は Route Handler ではなく Server Action から呼ぶ
+- **Status**: Accepted (2026-10-17)
+- **Context**: 設計では、ブラウザが提出を記録したあと `/api/judge` に POST して判定する予定だった。Route Handler にすると、ログインと本人確認を自前で書く必要がある。
+- **Decision**: 判定の本体は `lib/judging.ts` の `judgeSubmission(submissionId)`（写真を Storage から取得 → Gemini → `record_judgement`、失敗したら `record_judge_error`）。ブラウザは Server Action `judgeMySubmission` を呼び、そこで本人の提出かを確かめてから実行する。M6 の cron tick も同じ関数で `error` の提出を判定し直す。写真の入力は `capture` 属性を付けず、端末の「カメラで撮る / 写真を選ぶ」の選択に任せる（`capture` を付けるとギャラリーから選べない端末があるため）。
+- **Consequences**: 認証は Server Action の仕組み（Origin の確認と Cookie のセッション）に乗る。判定は数秒〜数十秒かかるので、その間ボタンを「AI が判定中…」にする。途中で画面を閉じても提出は記録済みで、「もう一度判定する」で続きができる。
+
+## ADR-031: Supabase は 1 つのプロジェクトを本番とテスト用で共有する
+- **Status**: Accepted (2026-10-18)。ADR-024 と ADR-027 の「M9 で本番用プロジェクトを分ける」を置き換える
+- **Context**: Supabase の無料プロジェクトは、Owner・Admin になっている organization 全部で同時に 2 つまで。もう 1 つの枠はオーナーの仕事で使っている。有料プランは使わない（ADR-003）。
+- **Decision**:
+  - 今のプロジェクト（`nvckqojuwkelguayshta`。organization `force-study-app`、Tokyo）を本番として使い、公開用（`main`）もテスト用（`develop`）もローカル開発もここにつなぐ。
+  - 定期実行（pg_cron の `tick_url`）は公開用の URL を呼ぶ。テスト用は呼ばない（1 つの DB に対して tick は 1 か所）。
+  - マイグレーションは `develop` にマージする前に適用されるので、**公開中の `main` の古いコードでも動く形**（列・関数の追加だけ、既存の引数や戻り値を変えない）にする。ルールの確認は PGlite のテストで済ませる。
+  - 仲間を招待する前に残っているテストのデータは、必要なら一度だけ消す（`supabase db reset --linked`）。仲間が参加したあとは使わない。
+- **Consequences**:
+  - テスト用 URL やローカルで操作すると、本物の記録として残る（記録は消せない。ADR-020）。テスト用 URL は新しい画面の表示確認に使い、ためしの宣言・提出・ペナルティは作らない。
+  - 環境変数は Production・Preview・ローカルで Supabase の値が同じになる。
+  - 無料枠（DB 500MB・Storage 1GB）は 1 つ分だけで足りる見積もり（architecture.md §6）。
+  - 将来、無料の枠が空いたら本番用を分けられる。そのときは Production の環境変数と `tick_url` を差し替える。

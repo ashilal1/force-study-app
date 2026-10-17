@@ -81,8 +81,29 @@ export type Database = {
             foreignKeyName: "activity_events_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "activity_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "activity_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "activity_events_leave_request_id_fkey"
@@ -97,6 +118,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "settlements"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "activity_events_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
           },
           {
             foreignKeyName: "activity_events_study_log_id_fkey"
@@ -138,8 +166,36 @@ export type Database = {
             foreignKeyName: "declaration_flags_flagger_id_fkey"
             columns: ["flagger_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "declaration_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "declaration_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "declaration_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "declaration_flags_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
           },
           {
             foreignKeyName: "declaration_flags_study_log_id_fkey"
@@ -347,8 +403,43 @@ export type Database = {
             foreignKeyName: "invites_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: true
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: true
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "invites_used_by_fkey"
@@ -356,6 +447,13 @@ export type Database = {
             isOneToOne: true
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: true
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -404,8 +502,29 @@ export type Database = {
             foreignKeyName: "leave_requests_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -458,8 +577,29 @@ export type Database = {
             foreignKeyName: "notifications_recipient_id_fkey"
             columns: ["recipient_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -499,8 +639,29 @@ export type Database = {
             foreignKeyName: "peer_reviews_reviewer_id_fkey"
             columns: ["reviewer_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "peer_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "peer_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "peer_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -560,6 +721,13 @@ export type Database = {
             foreignKeyName: "penalties_study_log_id_fkey"
             columns: ["study_log_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
+          },
+          {
+            foreignKeyName: "penalties_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: false
             referencedRelation: "study_logs"
             referencedColumns: ["id"]
           },
@@ -567,8 +735,29 @@ export type Database = {
             foreignKeyName: "penalties_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "penalties_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "penalties_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "penalties_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -614,8 +803,29 @@ export type Database = {
             foreignKeyName: "profiles_payee_id_fkey"
             columns: ["payee_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -658,8 +868,29 @@ export type Database = {
             foreignKeyName: "push_subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -684,8 +915,29 @@ export type Database = {
             foreignKeyName: "rest_days_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "rest_days_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "rest_days_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "rest_days_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -728,8 +980,43 @@ export type Database = {
             foreignKeyName: "settlements_debtor_id_fkey"
             columns: ["debtor_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_debtor_id_fkey"
+            columns: ["debtor_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_debtor_id_fkey"
+            columns: ["debtor_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_debtor_id_fkey"
+            columns: ["debtor_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
           },
           {
             foreignKeyName: "settlements_payee_id_fkey"
@@ -737,6 +1024,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "settlements_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -803,8 +1097,29 @@ export type Database = {
             foreignKeyName: "study_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "study_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "study_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -834,6 +1149,13 @@ export type Database = {
           study_log_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "submission_disputes_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: true
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
+          },
           {
             foreignKeyName: "submission_disputes_study_log_id_fkey"
             columns: ["study_log_id"]
@@ -870,8 +1192,36 @@ export type Database = {
             foreignKeyName: "submission_flags_flagger_id_fkey"
             columns: ["flagger_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "submission_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "submission_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "submission_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "submission_flags_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
           },
           {
             foreignKeyName: "submission_flags_study_log_id_fkey"
@@ -1001,16 +1351,308 @@ export type Database = {
             foreignKeyName: "weekly_reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "weekly_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "weekly_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      daily_history: {
+        Row: {
+          attempts: number | null
+          date: string | null
+          declaration: string | null
+          elapsed_minutes: number | null
+          failure_category: string | null
+          final_score: number | null
+          in_trial: boolean | null
+          kind: string | null
+          penalty_points: number | null
+          penalty_reason: string | null
+          study_log_id: string | null
+          submitted_hour: number | null
+          trial_points: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      penalty_summary: {
+        Row: {
+          display_name: string | null
+          open_settlement_id: string | null
+          this_week_points: number | null
+          this_week_trial_points: number | null
+          total_points: number | null
+          trial_points: number | null
+          unsettled_points: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      received_objections: {
+        Row: {
+          by_user_id: string | null
+          kind: string | null
+          occurred_at: string | null
+          reason: string | null
+          study_log_id: string | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      weekly_stats: {
+        Row: {
+          achievement_rate: number | null
+          avg_elapsed_minutes: number | null
+          avg_score: number | null
+          completed_days: number | null
+          counted_days: number | null
+          penalty_points: number | null
+          trial_points: number | null
+          user_id: string | null
+          week_end: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
+      advance_disputes: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      assign_payee: {
+        Args: { p_admin_id: string; p_payee_id: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_leave: {
+        Args: { p_leave_request_id: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cancel_rest_day: {
+        Args: { p_date: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cast_review: {
+        Args: {
+          p_comment: string
+          p_reviewer_id: string
+          p_subject_id: string
+          p_subject_type: string
+          p_verdict: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      close_declarations: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      close_overdue_logs: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      confirm_passed_logs: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      confirm_push_subscription: {
+        Args: { p_endpoint: string; p_user_id: string }
+        Returns: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+          verified_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "push_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      confirm_settlement: {
+        Args: { p_payee_id: string; p_settlement_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_invite: {
         Args: { p_code_hash: string; p_user_id: string }
         Returns: {
@@ -1025,6 +1667,295 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "invites"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_notifications: {
+        Args: { p_event_id: string; p_items: Json }
+        Returns: {
+          body: string
+          created_at: string
+          event_id: string
+          id: string
+          pushed_at: string | null
+          read_at: string | null
+          recipient_id: string
+          requires_action: boolean
+          title: string
+          url: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notifications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      create_submission: {
+        Args: {
+          p_image_paths: string[]
+          p_learned: string
+          p_self_rating: number
+          p_struggled: string
+          p_study_log_id: string
+          p_thumb_path: string
+          p_user_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      create_weekly_reviews: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      declare_goal: {
+        Args: {
+          p_declaration: string
+          p_end_time: string
+          p_passphrase: string
+          p_user_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      delete_push_subscription: {
+        Args: { p_endpoint: string; p_user_id?: string }
+        Returns: undefined
+      }
+      due_deadline_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      due_image_purges: {
+        Args: { p_limit?: number }
+        Returns: {
+          image_paths: string[]
+          submission_id: string
+        }[]
+      }
+      due_submit_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      expire_reports: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      expire_reviews: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      expire_revisions: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      file_failure_report: {
+        Args: {
+          p_category: string
+          p_study_log_id: string
+          p_text: string
+          p_user_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      flag_declaration: {
+        Args: {
+          p_comment: string
+          p_flagger_id: string
+          p_study_log_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      flag_submission: {
+        Args: {
+          p_comment: string
+          p_flagger_id: string
+          p_study_log_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
           isOneToOne: true
           isSetofReturn: false
         }
@@ -1054,6 +1985,385 @@ export type Database = {
           to: "profiles"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      late_payment_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      mark_images_purged: {
+        Args: { p_submission_ids: string[] }
+        Returns: number
+      }
+      mark_notifications_pushed: {
+        Args: { p_ids: string[] }
+        Returns: undefined
+      }
+      mark_settlement_sent: {
+        Args: { p_debtor_id: string; p_settlement_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      record_judge_error: {
+        Args: { p_message: string; p_submission_id: string }
+        Returns: undefined
+      }
+      record_judgement: {
+        Args: {
+          p_feedback: string
+          p_model: string
+          p_passphrase_found: boolean
+          p_score: number
+          p_submission_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      record_push_success: { Args: { p_endpoint: string }; Returns: undefined }
+      record_weekly_summary: {
+        Args: {
+          p_model: string
+          p_summary: string
+          p_user_id: string
+          p_week_end: string
+        }
+        Returns: undefined
+      }
+      register_rest_day: {
+        Args: { p_date: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      report_not_received: {
+        Args: { p_payee_id: string; p_settlement_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      request_leave: {
+        Args: {
+          p_end: string
+          p_reason: string
+          p_start: string
+          p_user_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      resend_evidence: {
+        Args: {
+          p_explanation: string
+          p_image_paths: string[]
+          p_study_log_id: string
+          p_thumb_path: string
+          p_user_id: string
+        }
+        Returns: {
+          ai_feedback: string | null
+          ai_model: string | null
+          ai_passphrase_found: boolean | null
+          ai_score: number | null
+          attempt_no: number | null
+          elapsed_minutes: number | null
+          explanation: string | null
+          id: string
+          image_paths: string[]
+          images_purged_at: string | null
+          judge_error: string | null
+          judged_at: string | null
+          kind: string
+          learned_text: string | null
+          reject_reason: string | null
+          self_rating: number | null
+          status: string
+          struggled_text: string | null
+          study_log_id: string
+          submitted_at: string
+          thumb_path: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "submissions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      revise_declaration: {
+        Args: {
+          p_declaration: string
+          p_study_log_id: string
+          p_user_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      run_declaration_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      run_weekly_settlement: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      save_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent: string
+          p_user_id: string
+        }
+        Returns: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+          verified_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "push_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      save_weekly_note: {
+        Args: { p_note: string; p_user_id: string; p_week_end: string }
+        Returns: undefined
+      }
+      tick: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      trial_ending_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      update_group_settings: {
+        Args: { p_admin_id: string; p_changes: Json }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      withdraw_flag: {
+        Args: { p_flagger_id: string; p_study_log_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
     }
