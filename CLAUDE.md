@@ -15,7 +15,7 @@
 Next.js 16 (App Router, `src/`, Turbopack) / React 19 / TypeScript / Tailwind v4 / shadcn/ui ・ Supabase (Postgres, Auth, Storage, Realtime, pg_cron) ・ Gemini API（`@google/genai`、モデルは `GEMINI_MODEL`） ・ Web Push（`web-push` + `public/sw.js`） ・ Vercel Hobby
 
 ## コマンド
-開発はクラウドの Supabase 開発用プロジェクトにつなぐ（ローカルの Docker 版は使わない。ADR-024）。
+Supabase はクラウドのプロジェクト 1 つを、本番・テスト用・ローカル開発で共有している（ローカルの Docker 版は使わない。ADR-024・ADR-031）。ローカルやテスト用 URL での操作も本物の記録になる。
 ```bash
 npm run dev                         # 開発サーバー
 npm run lint                        # ESLint
@@ -24,7 +24,7 @@ supabase db push                    # 新しいマイグレーションを開発
 supabase migration new <name>       # マイグレーションを追加
 supabase gen types typescript --linked > src/types/database.ts
 ```
-`supabase db reset --linked` は開発用プロジェクトのデータを全部消す。本番には絶対に向けない。
+`supabase db reset --linked` は本番のデータを全部消すので使わない。マイグレーションは公開中の古いコードでも動く形（追加だけ）にする。
 
 ## 守るべきルール
 - **書き込みはサーバーだけ。** クライアントは RLS 越しに読むだけにする。状態を変える処理は Server Action / Route Handler → service role → Postgres RPC の順で通す（ADR-004）。`authenticated` への GRANT を増やすときは必ず `docs/database.md` の §4 を更新する。

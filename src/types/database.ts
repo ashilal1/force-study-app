@@ -1793,6 +1793,13 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      due_image_purges: {
+        Args: { p_limit?: number }
+        Returns: {
+          image_paths: string[]
+          submission_id: string
+        }[]
+      }
       due_submit_reminders: {
         Args: never
         Returns: {
@@ -2000,6 +2007,10 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      mark_images_purged: {
+        Args: { p_submission_ids: string[] }
+        Returns: number
       }
       mark_notifications_pushed: {
         Args: { p_ids: string[] }

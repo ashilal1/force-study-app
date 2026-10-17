@@ -38,7 +38,11 @@ function IssuedInvite({ code, url, expiresAt }: { code: string; url: string; exp
   const secondsLeft = useSecondsUntil(expiresAt);
   const [copied, setCopied] = useState(false);
   const expired = secondsLeft === 0;
-  const message = `Commit or Treat に招待します。リンクを開いて Google でログインしてください（コード ${code}）\n${url}`;
+  const message = [
+    `Commit or Treat に招待します。リンクを開いて Google でログインしてください（コード ${code}）`,
+    url,
+    `始める前に使い方を読んでください: ${new URL("/guide", url)}`,
+  ].join("\n");
 
   async function share() {
     try {

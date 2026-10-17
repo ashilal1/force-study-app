@@ -3,7 +3,8 @@ import { createServerClient } from "@supabase/ssr";
 import { supabasePublicEnv } from "@/lib/env";
 
 // /auth/callback must stay reachable while signed out: it is where the session gets created.
-const PUBLIC_PATHS = ["/login", "/auth/callback"];
+// /guide is read before joining (sent along with an invite code).
+const PUBLIC_PATHS = ["/login", "/auth/callback", "/guide"];
 
 /**
  * Refreshes the auth session cookie and sends signed-out users to /login.
