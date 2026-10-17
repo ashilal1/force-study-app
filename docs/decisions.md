@@ -213,3 +213,9 @@
   - `VAPID_SUBJECT` は公開用の `https://` URL にする（個人のメールアドレスを Push サービスに渡さない）。
 - **Consequences**: 新しい通知は `rules.ts` にルールを足すだけで、配信・Push・既読は共通になる。M6 の cron は、`pushed_at` が null の通知を送り直す処理を足せる。
 
+## ADR-029: ルールの「現在時刻」は `private.now()` にまとめ、テストで固定できるようにする
+- **Status**: Accepted (2026-10-17)
+- **Context**: 宣言締切（12:00）・提出締切（21:00）・指摘の 3 時間・書き直しの 1 時間・休会の 23:59 など、M4 以降のルールはほとんどが時刻で決まる。DB のテスト（PGlite）を実行した時刻によって結果が変わると、テストが壊れやすい。
+- **Decision**: RPC が使う現在時刻は `private.now()`（ふだんは `now()`）にまとめ、`jst_today()` もこれを使う。テストのセッションだけ `set app.now = '...'` で固定する（`tests/db/harness.ts` の `setNow`）。行の `created_at` などの既定値は `now()` のまま。
+- **Consequences**: 時刻に関わるルールを、決まった日時で再現性よくテストできる。`app.now` を設定できるのは SQL を直接実行できる人だけで、API からは設定できず、RPC も `service_role` だけが呼べるので、本番で時刻をずらされることはない。
+

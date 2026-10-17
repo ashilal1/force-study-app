@@ -343,7 +343,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 共通の関数
 | 関数 | 処理 |
 |---|---|
-| `jst_today()` | `(now() at time zone 'Asia/Tokyo')::date` |
+| `now()`（private） | ルールが使う現在時刻。ふだんは `now()`。テストのセッションだけ `set app.now = '...'` で固定できる（ADR-029） |
+| `jst_today()` | `(private.now() at time zone 'Asia/Tokyo')::date` |
 | `day_at(date, time)` | 学習日 + 時刻 → timestamptz (JST)。期限の計算はすべてこれを使う |
 | `is_member()` | 呼び出した人がメンバーか（RLS で使う。`authenticated` が実行できる唯一の関数） |
 | `create_invite(user_id, code_hash)` | 招待を発行する。発行者がメンバーか、上限人数に達していないかを確かめ、`expires_at = now() + invite_minutes` で insert |
@@ -351,15 +352,19 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `active_member_count()` | 抜けた人を除くメンバー数 |
 | `add_penalty(user_id, study_log_id, reason, points)` | `dedupe_key` つきで insert。本人がお試し期間中なら `waived = 'trial'` |
 | `reviewers_for(user_id)` | 本人以外で、今日休会中でないメンバー |
+| `is_on_leave(user_id, date)` / `is_rest_day(user_id, date)` | その日が休会か（その日の 0:00 より前に承認・期間内・`cancelled_from` より前）/ 休息日か |
+| `week_start(date)` | その週の日曜（週は日〜土） |
+| `require_member(user_id)` | メンバーでなければ `not_a_member` |
 
 ### 宣言・休み
 | 関数 | 処理 |
 |---|---|
-| `declare_goal(user_id, declaration, end_time_hhmm)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。`target_end_time` を「今日 HH:mm」に変換して範囲（+30 分〜当日 `submit_deadline_max`）を検査。合言葉を発行して insert |
-| `register_rest_day(user_id, date)` / `cancel_rest_day` | 明日以降か、週の上限内か、その日に宣言していないか |
-| `request_leave(user_id, start, end, reason)` / `cancel_leave(...)` | 休会の申請と取り消し。審査は `cast_review('leave', ...)` |
-| `flag_declaration(flagger_id, study_log_id, comment)` | 本人以外か、宣言から `flag_window_hours` 以内かつ提出締切前か、まだ書き直していないかを検査。最初の指摘なら `revision_due_at` を入れる |
-| `revise_declaration(user_id, study_log_id, declaration)` | 本人の書き直し待ちか、期限内かを検査。`original_declaration` を残して上書き |
+| `declare_goal(user_id, declaration, end_time, passphrase)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。`target_end_time` を「今日 HH:mm」に変換して範囲（+30 分〜当日 `submit_deadline_max`）を検査。合言葉はサーバー（`lib/passphrase.ts`）が作って渡す。`declared` を記録 |
+| `register_rest_day(user_id, date)` / `cancel_rest_day` | 明日以降（60 日先まで）か、週（日〜土）の上限内か、休会と重ならないかを検査（人ごとの advisory lock で同時登録を防ぐ）。取り消しも明日以降の日だけ |
+| `request_leave(user_id, start, end, reason)` | 開始日は明日以降、理由は `min_explanation_chars` 以上、自分の休会と重ならないかを検査。審査者（`reviewers_for`）ぶんの `peer_reviews('leave')` を作って固定し、期限は申請した日の `review_deadline`。審査者がいなければその場で承認 |
+| `cancel_leave(user_id, leave_request_id)` | 審査中なら取り下げ、承認済みなら明日以降（開始前なら全部）を取り消す（`cancelled_from`） |
+| `flag_declaration(flagger_id, study_log_id, comment)` | 本人以外か、今日の `pending` か、宣言から `flag_window_hours` 以内かつ提出締切前か、まだ書き直していないか、同じ人が二度押していないかを検査。最初の指摘なら `revision_due_at` を入れる |
+| `revise_declaration(user_id, study_log_id, declaration)` | 本人の書き直し待ちか、期限内か、内容が変わったかを検査。`original_declaration` を残して上書き（1 回だけ） |
 
 ### 提出・疑義
 | 関数 | 処理 |
@@ -375,7 +380,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | 関数 | 処理 |
 |---|---|
 | `file_failure_report(user_id, study_log_id, category, reason, next_plan)` | 本人の `awaiting_report` か、期限内か、必須テキストと文字数を検査。<br>・`unrealistic`: 連続回数を計算 → しきい値以上なら penalty、`resolved`<br>・`slacked`: penalty、`resolved`<br>・`sudden_plan` / `other`: `under_review` にして、`peer_reviews('excuse')` の行を作る |
-| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う |
+| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う。**M4 では `leave` だけ**（ほかは `not_supported`。M5・M7 で足す） |
 
 ### 精算
 | 関数 | 処理 |
@@ -389,13 +394,13 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 |---|---|
 | `run_declaration_reminders()` | 0:00 と 11:00 を過ぎていて未宣言・休息日でも休会中でもない人に、`dedupe_key` つきでリマインドを作る |
 | `close_declarations()` | 12:00 を過ぎた今日、レコードも休息日も休会もないメンバー → `no_declaration` + penalty (P1) |
-| `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す。残り 15 分のリマインドも作る |
+| `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す（M5 で追加）。残り 15 分のリマインドも作る。**M4 で実装済み、定期実行は M6** |
 | `due_submit_reminders()` | 提出締切の 1 時間前で、まだ合格していない人にリマインドを作る |
 | `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `missed` + `failure_reports(awaiting_report)` |
 | `confirm_passed_logs()` | `passed` で `dispute_window_ends_at` を過ぎ、疑義のないもの → `completed` |
 | `advance_disputes()` | `resend_due_at` を過ぎた `resending` → `final_review`（`peer_reviews('dispute')` を作る）。`review_due_at` を過ぎた `final_review` → `upheld`。送り直しの残り 15 分のリマインドも作る |
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5) |
-| `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は penalty） |
+| `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は penalty）。**M4 で `leave` だけ実装、定期実行は M6** |
 | `due_deadline_reminders()` | `report_reminder_times`・`review_reminder_times` に、その日の理由申告・審査・最終審査で未対応の人へリマインドを作る |
 | `create_weekly_reviews()` | 土曜 23:59 以降、その週に 1 回だけ。全員の `weekly_reviews` を `stats` 付きで作る（`ai_summary` は tick が Gemini で埋める） |
 | `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |

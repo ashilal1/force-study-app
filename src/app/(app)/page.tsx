@@ -2,15 +2,16 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { PageLoading } from "@/components/app/page-loading";
 import { Avatar } from "@/components/brand/avatar";
-import { Pill } from "@/components/brand/pill";
-import { Sticker } from "@/components/brand/sticker";
+import { actionButtonVariants } from "@/components/brand/action-button";
 import { InvitePanel } from "@/components/invite/invite-panel";
+import { MemberTodayCard } from "@/components/today/member-today-card";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { requireMember } from "@/lib/auth";
 import { getMaxMembers, isInTrial, listMembers } from "@/lib/members";
+import { getTodayBoard } from "@/lib/today";
 
-// Placeholder home until the real dashboard (M8) has data to show: who's in the group and the
-// trial status. Declarations and submissions arrive in M4/M5.
+// Home: everyone's day (declarations, rest, leave) with 「軽すぎる」. The full dashboard
+// (submissions, ranking, timeline) grows on this in M5-M8.
 export default function HomePage() {
   return (
     <div className="grid gap-5">
@@ -44,37 +45,31 @@ async function MyAvatarLink() {
 }
 
 async function HomeContent() {
+  const [board, maxMembers] = await Promise.all([getTodayBoard(), getMaxMembers()]);
   const me = await requireMember();
-  const [members, maxMembers] = await Promise.all([listMembers(), getMaxMembers()]);
+  const { members } = board;
 
   return (
     <>
       {isInTrial(me.trial_ends_at) ? <TrialNotice trialEndsAt={me.trial_ends_at} /> : null}
 
-      <Sticker className="grid gap-1 px-4 py-3.5">
-        <b>ようこそ、{me.display_name} さん</b>
-        <span className="text-sm font-medium text-sub">宣言と提出はこれから使えるようになります。</span>
-      </Sticker>
+      {board.me.state.kind === "undeclared" ? (
+        <Link href="/declare" className={actionButtonVariants({ tone: "tape" })}>
+          <span>今日の宣言をする</span>
+          <span className="font-sans text-xs font-bold">締切 {board.settings.declaration_cutoff.slice(0, 5)}</span>
+        </Link>
+      ) : null}
 
       <section className="grid gap-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="m-0 font-en text-[1.4rem] leading-none">MEMBERS</h2>
+          <h2 className="m-0 font-en text-[1.4rem] leading-none">TODAY&apos;S MISSIONS</h2>
           <span className="font-en text-base">
             {members.length} / {maxMembers}
           </span>
         </div>
-        <ul className="m-0 grid list-none gap-2.5 p-0">
-          {members.map((member, index) => (
-            <li key={member.id}>
-              <Sticker shadow="sm" className="flex items-center gap-3 px-3 py-2.5">
-                <Avatar name={member.display_name} src={member.avatar_url} colorIndex={index} />
-                <span className="min-w-0 flex-1 truncate font-bold">{member.display_name}</span>
-                {member.id === me.id ? <Pill variant="outline">あなた</Pill> : null}
-                {member.is_admin ? <Pill>管理者</Pill> : null}
-              </Sticker>
-            </li>
-          ))}
-        </ul>
+        {members.map((member) => (
+          <MemberTodayCard key={member.id} member={member} />
+        ))}
       </section>
 
       {members.length < maxMembers ? <InvitePanel /> : null}

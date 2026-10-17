@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { sendPush, type PushPayload, type PushResult } from "./push";
 import { draftNotifications, type ActivityEvent } from "./rules";
@@ -7,6 +8,15 @@ import { draftNotifications, type ActivityEvent } from "./rules";
 // the recipients chosen by rules.ts -> Web Push to each recipient's devices. Callers record the
 // event (in an RPC) and hand its id here, usually inside after() so the response isn't delayed.
 // Failures are logged, never thrown: the event is already recorded and shows in the app.
+
+/** Dispatches the events an RPC recorded once the response has been sent. */
+export function dispatchAfterResponse(events: { id: string }[] | { id: string } | null | undefined): void {
+  const list = events ? (Array.isArray(events) ? events : [events]) : [];
+  if (list.length === 0) return;
+  after(async () => {
+    for (const event of list) await dispatch(event.id);
+  });
+}
 
 export async function dispatch(eventId: string): Promise<void> {
   try {
