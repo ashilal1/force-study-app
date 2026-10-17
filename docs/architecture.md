@@ -218,7 +218,9 @@ flowchart LR
 |---|---|
 | セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ（`/login` と `/auth/callback` だけは未ログインでも開ける）。proxy はログインの有無だけを見る楽観的なチェック |
 | ログイン | Google OAuth（Supabase Auth の Google プロバイダー、PKCE）。`signInWithOAuth` → Google → `/auth/callback` で `exchangeCodeForSession` |
-| 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action が `INVITE_CODE` と定数時間で比べ、`rpc join_group` で profile を作る（最初の 1 人が管理者）。profile のない人は、RLS の `private.is_member()` によって何も読めない |
+| 招待 | メンバーがホームの「招待コードを発行する」を押すと、Server Action が暗号用の乱数でコードを作り、そのハッシュを `rpc create_invite` で保存して、コードとリンクを画面に返す（ADR-026） |
+| 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action がハッシュにして `rpc join_group` に渡し、招待の照合・使用済みへの更新・profile の作成を 1 つのトランザクションで行う。最初の 1 人だけは `INVITE_CODE` と定数時間で比べて通す（グループが空のときだけ）。profile のない人は、RLS の `private.is_member()` によって何も読めない |
+| ログイン後の戻り先 | 未ログインで開いたページ（招待リンクなど）は proxy が `/login?next=…` に付け、ログインの開始時に 10 分の httpOnly Cookie に入れ、`/auth/callback` で戻す。同じサイト内のパスだけを受け付ける（`lib/redirect.ts`） |
 | メンバーの確認 | `src/lib/auth.ts`（Data Access Layer）の `requireMember()`。自分の profile を RLS 越しに読み、見えなければ `/join` へ。`(app)/layout.tsx` が `<Suspense>` の中で呼ぶので、メンバーでない人にはどのページも描画されない。Server Action も毎回これで確かめ直す |
 | DB 読み取り | RLS: **メンバー**（profile があり、抜けていない人）は全行を読める。`notifications` と `push_subscriptions` は本人の行だけ |
 | DB 書き込み | `authenticated` ロールには `profiles` の表示項目の update だけを許可（列単位の GRANT）。プロフィール編集の Server Action はこの権限を使い、本人のセッションで書く。それ以外はサーバーの service role が書く |
@@ -272,7 +274,9 @@ flowchart LR
     ├── lib/
     │   ├── supabase/              # client.ts / server.ts / admin.ts / proxy.ts
     │   ├── auth.ts                # Data Access Layer: getSessionUser / requireMember
-    │   ├── secure-compare.ts      # 招待コード・CRON_SECRET の定数時間比較
+    │   ├── secure-compare.ts      # INVITE_CODE・CRON_SECRET の定数時間比較
+    │   ├── invite.ts              # 招待コードの生成・正規化・ハッシュ
+    │   ├── redirect.ts            # ログイン後の戻り先の検証
     │   ├── validation/            # フォーム入力の zod スキーマ
     │   ├── gemini/                # judge(): プロンプト・スキーマ
     │   ├── passphrase.ts          # 合言葉の単語リストと生成

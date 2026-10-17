@@ -42,7 +42,7 @@ npm run dev                         # http://localhost:3000
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/)。モデル ID は無料枠のある Flash 系を選ぶ |
 | `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` |
 | `CRON_SECRET` | `openssl rand -hex 32` |
-| `INVITE_CODE` | メンバーに配る招待コード（自分で決める。4 文字以上） |
+| `INVITE_CODE` | **最初の 1 人（管理者）が参加するためだけ**のコード（自分で決める。4 文字以上）。グループが空のときしか使えない。2 人目からは、アプリでメンバーが発行する招待コードで参加する |
 
 ### Google ログインの設定（無料）
 1. [Google Cloud Console](https://console.cloud.google.com/) でプロジェクトを作る

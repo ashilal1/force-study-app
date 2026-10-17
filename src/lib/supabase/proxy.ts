@@ -34,7 +34,9 @@ export async function updateSession(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 
   if (!signedIn && !isPublic) {
-    return redirectTo(request, response, "/login");
+    // Remember where they were headed (e.g. an invite link) so login can bring them back.
+    const next = pathname === "/" ? undefined : `${pathname}${request.nextUrl.search}`;
+    return redirectTo(request, response, "/login", next);
   }
   if (signedIn && pathname === "/login") {
     return redirectTo(request, response, "/");
@@ -44,10 +46,10 @@ export async function updateSession(request: NextRequest) {
 }
 
 // Carries over any refreshed session cookies so the redirect doesn't drop them.
-function redirectTo(request: NextRequest, response: NextResponse, pathname: string) {
+function redirectTo(request: NextRequest, response: NextResponse, pathname: string, next?: string) {
   const url = request.nextUrl.clone();
   url.pathname = pathname;
-  url.search = "";
+  url.search = next ? `?${new URLSearchParams({ next })}` : "";
   const redirect = NextResponse.redirect(url);
   response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
   return redirect;

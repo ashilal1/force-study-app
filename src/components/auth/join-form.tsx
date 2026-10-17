@@ -6,7 +6,9 @@ import { FieldLabel, TextInput } from "@/components/form/fields";
 import { FieldError, SubmitButton } from "@/components/form/submit-button";
 import { AvatarChoice } from "@/components/profile/avatar-choice";
 
-export function JoinForm({ defaultName, googleAvatarUrl }: { defaultName: string; googleAvatarUrl: string | null }) {
+type Props = { defaultCode: string; defaultName: string; googleAvatarUrl: string | null };
+
+export function JoinForm({ defaultCode, defaultName, googleAvatarUrl }: Props) {
   const [state, formAction] = useActionState<JoinState, FormData>(joinGroup, {});
   const errors = state.errors ?? {};
   const name = state.values?.displayName ?? defaultName;
@@ -22,6 +24,8 @@ export function JoinForm({ defaultName, googleAvatarUrl }: { defaultName: string
           autoComplete="off"
           autoCapitalize="off"
           spellCheck={false}
+          defaultValue={state.values?.code ?? defaultCode}
+          placeholder="例: K7QM-3XRP-WD"
           aria-invalid={Boolean(errors.code)}
           aria-describedby="code-error"
         />

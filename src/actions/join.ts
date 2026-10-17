@@ -2,7 +2,8 @@
 
 import { redirect } from "next/navigation";
 import { requireUser } from "@/lib/auth";
-import { inviteEnv } from "@/lib/env.server";
+import { bootstrapEnv } from "@/lib/env.server";
+import { hashInviteCode } from "@/lib/invite";
 import { secureEqual } from "@/lib/secure-compare";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { fieldErrors, joinSchema } from "@/lib/validation/profile";
@@ -10,37 +11,52 @@ import { fieldErrors, joinSchema } from "@/lib/validation/profile";
 export type JoinState = {
   errors?: Record<string, string>;
   /** Echoed back so the form keeps what was typed (React resets the form after an action). */
-  values?: { displayName: string; avatar: string };
+  values?: { code: string; displayName: string; avatar: string };
 };
 
-/** Checks the invite code, then creates the caller's profile with join_group (ADR-025). */
+// Raised by join_group; anything else is unexpected.
+const JOIN_ERRORS: Record<string, { field: string; message: string }> = {
+  invalid_invite: {
+    field: "code",
+    message: "このコードは使えません。期限切れか使用済みかもしれないので、新しい招待をもらってください",
+  },
+  bootstrap_closed: { field: "code", message: "このコードは使えません。メンバーに招待を発行してもらってください" },
+  group_full: { field: "form", message: "グループが満員のため参加できません" },
+};
+
+/**
+ * Joins with a single-use invite (ADR-026). The very first member uses INVITE_CODE instead, which
+ * join_group accepts only while the group is still empty.
+ */
 export async function joinGroup(_prev: JoinState, formData: FormData): Promise<JoinState> {
   const user = await requireUser();
 
-  const input = {
+  const values = {
     code: String(formData.get("code") ?? ""),
     displayName: String(formData.get("displayName") ?? ""),
     avatar: String(formData.get("avatar") ?? "initial"),
   };
-  const values = { displayName: input.displayName, avatar: input.avatar };
 
-  const parsed = joinSchema.safeParse(input);
+  const parsed = joinSchema.safeParse(values);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
 
   const { code, displayName, avatar } = parsed.data;
-  if (!secureEqual(code, inviteEnv().INVITE_CODE)) {
-    return { errors: { code: "招待コードが違います" }, values };
-  }
+  const { INVITE_CODE } = bootstrapEnv();
+  const bootstrap = INVITE_CODE !== undefined && secureEqual(code, INVITE_CODE);
 
   // The photo URL comes from the verified session, never from the form.
   const avatarUrl = avatar === "google" ? user.googleAvatarUrl : null;
   const { data: profile, error } = await createAdminClient().rpc("join_group", {
     p_user_id: user.id,
     p_display_name: displayName,
-    // Generated types mark every argument non-null; the column (and the function) accept null.
+    // Generated types mark every argument non-null; the function accepts null for both.
     p_avatar_url: avatarUrl as string,
+    p_invite_hash: (bootstrap ? null : hashInviteCode(code)) as string,
+    p_bootstrap: bootstrap,
   });
   if (error) {
+    const known = JOIN_ERRORS[error.message];
+    if (known) return { errors: { [known.field]: known.message }, values };
     console.error("join_group failed", error);
     return { errors: { form: "参加できませんでした。時間をおいてもう一度試してください" }, values };
   }

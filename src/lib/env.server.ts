@@ -5,8 +5,9 @@ const supabaseSecretSchema = z.object({
   SUPABASE_SECRET_KEY: z.string().min(1),
 });
 
-const inviteSchema = z.object({
-  INVITE_CODE: z.string().min(4),
+// Only for the very first member, while the group is empty (ADR-026). Optional afterwards.
+const bootstrapSchema = z.object({
+  INVITE_CODE: z.preprocess((value) => (value === "" ? undefined : value), z.string().min(4).optional()),
 });
 
 const cronSchema = z.object({
@@ -31,7 +32,7 @@ function lazy<T extends z.ZodType>(schema: T) {
 }
 
 export const supabaseSecretEnv = lazy(supabaseSecretSchema);
-export const inviteEnv = lazy(inviteSchema);
+export const bootstrapEnv = lazy(bootstrapSchema);
 export const cronEnv = lazy(cronSchema);
 export const geminiEnv = lazy(geminiSchema);
 export const pushEnv = lazy(pushSchema);

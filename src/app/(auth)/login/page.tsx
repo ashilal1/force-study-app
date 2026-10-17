@@ -4,6 +4,7 @@ import { signInWithGoogle } from "@/actions/auth";
 import { Sticker } from "@/components/brand/sticker";
 import { Tape } from "@/components/brand/tape";
 import { SubmitButton } from "@/components/form/submit-button";
+import { safeNextPath } from "@/lib/redirect";
 
 export const metadata: Metadata = { title: "ログイン | Commit or Treat" };
 
@@ -12,6 +13,8 @@ const ERRORS: Record<string, string> = {
   oauth: "Google ログインを始められませんでした。もう一度試してください",
   origin: "ログインできませんでした。ページを開き直してください",
 };
+
+type SearchParams = PageProps<"/login">["searchParams"];
 
 export default function LoginPage({ searchParams }: PageProps<"/login">) {
   return (
@@ -26,16 +29,21 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
         <LoginError searchParams={searchParams} />
       </Suspense>
       <form action={signInWithGoogle}>
+        <Suspense>
+          <NextField searchParams={searchParams} />
+        </Suspense>
         <SubmitButton tone="mint" pendingLabel="Google に移動中…">
           Google でログイン
         </SubmitButton>
       </form>
-      <p className="m-0 text-center text-xs text-sub">はじめての人は、ログインのあとに招待コードを入れます。</p>
+      <p className="m-0 text-center text-xs text-sub">
+        はじめての人は、ログインのあとにメンバーからもらった招待コードを入れます。
+      </p>
     </Sticker>
   );
 }
 
-async function LoginError({ searchParams }: Pick<PageProps<"/login">, "searchParams">) {
+async function LoginError({ searchParams }: { searchParams: SearchParams }) {
   const { error } = await searchParams;
   const message = typeof error === "string" ? ERRORS[error] : undefined;
   if (!message) return null;
@@ -44,4 +52,10 @@ async function LoginError({ searchParams }: Pick<PageProps<"/login">, "searchPar
       {message}
     </p>
   );
+}
+
+/** Carries ?next= (set by the proxy, e.g. an invite link) into the sign-in action. */
+async function NextField({ searchParams }: { searchParams: SearchParams }) {
+  const next = safeNextPath((await searchParams).next);
+  return next ? <input type="hidden" name="next" value={next} /> : null;
 }

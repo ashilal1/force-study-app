@@ -1,3 +1,4 @@
+import { randomBytes } from "node:crypto";
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PGlite, type Transaction } from "@electric-sql/pglite";
@@ -32,10 +33,30 @@ export async function createAuthUser(db: Queryable, email: string): Promise<stri
   return rows[0].id;
 }
 
-/** Signs in with Google and joins the group with the invite code (join_group). */
+/** A random 64-hex-char string standing in for the SHA-256 of an invite code. */
+export function randomHash(): string {
+  return randomBytes(32).toString("hex");
+}
+
+/** Issues an invite as `inviterId` (create_invite) and returns the code hash. */
+export async function createInvite(db: Queryable, inviterId: string, hash = randomHash()): Promise<string> {
+  await db.query("select public.create_invite($1, $2)", [inviterId, hash]);
+  return hash;
+}
+
+/**
+ * Signs in with Google and joins the group (join_group): the first member with the bootstrap
+ * code, everyone after that with an invite issued by the first member.
+ */
 export async function createMember(db: Queryable, name: string): Promise<string> {
   const id = await createAuthUser(db, `${name}@example.com`);
-  await db.query("select public.join_group($1, $2, null)", [id, name]);
+  const { rows } = await db.query<{ id: string }>("select id from public.profiles order by created_at limit 1");
+  if (rows.length === 0) {
+    await db.query("select public.join_group($1, $2, null, null, true)", [id, name]);
+  } else {
+    const hash = await createInvite(db, rows[0].id);
+    await db.query("select public.join_group($1, $2, null, $3)", [id, name, hash]);
+  }
   return id;
 }
 

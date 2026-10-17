@@ -25,7 +25,7 @@ describe("membership (ADR-025)", () => {
   });
 
   it("join_group is idempotent", async () => {
-    await db.query("select public.join_group($1, 'aki again', null)", [first]);
+    await db.query("select public.join_group($1, 'aki again', null, null, true)", [first]);
     const { rows } = await db.query<{ display_name: string }>(
       "select display_name from public.profiles where id = $1",
       [first],
@@ -49,7 +49,7 @@ describe("membership (ADR-025)", () => {
 
   it("does not let users call join_group themselves", async () => {
     await expect(
-      asUser(db, outsider, (tx) => tx.query("select public.join_group($1, 'sneaky', null)", [outsider])),
+      asUser(db, outsider, (tx) => tx.query("select public.join_group($1, 'sneaky', null, null, true)", [outsider])),
     ).rejects.toThrow(/permission denied/);
   });
 
