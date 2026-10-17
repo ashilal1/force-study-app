@@ -192,7 +192,7 @@
 - **Status**: Accepted (2026-10-17)
 - **Context**: iPhone の PWA（Google ログインから戻れるか、Web Push）は HTTPS でしか確かめられないので、M9 より前に公開 URL が要る。公開する前に同じ構成で確かめる場所も欲しい（オーナーの要望）。Vercel の既定では関数が米国東部で動き、東京の Supabase と往復するたびに遅くなる。Hobby の Preview の URL は既定で Vercel のログインで保護されている。
 - **Decision**:
-  - `main` を Vercel の Production（公開用）、`develop` を Preview（テスト用）にする。作業ブランチ → `develop` でテスト用 URL（ブランチ専用の固定 URL）に出し、確かめてから `develop` → `main` で公開する。
+  - `main` を Vercel の Production（公開用）、`develop` を Preview（テスト用）にする。作業ブランチ → `develop` でテスト用 URL（`develop` に割り当てた `force-study-app-staging.vercel.app`）に出し、確かめてから `develop` → `main` で公開する。
   - Deployment Protection の Vercel Authentication はオフにする（iPhone のホーム画面アプリから開けるように）。アプリは Google ログインと招待コードで守る。
   - Supabase は、M9 まで両方とも開発用プロジェクトにつなぐ。M9 で本番用プロジェクトを作ったら、Production の環境変数だけを差し替える。
   - `vercel.json` の `regions` を `hnd1`（東京）にする。`package.json` の `engines` で Node 22 以上を指定する。
