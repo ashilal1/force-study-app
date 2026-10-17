@@ -31,14 +31,15 @@ async function setup() {
 }
 
 describe("declare_goal", () => {
-  it("records today's goal, deadline and passphrase", async () => {
+  it("records today's goal and passphrase, due at tomorrow's cutoff", async () => {
     const { db, aki } = await setup();
     await setNow(db, "2026-10-20 09:00");
     const event = await declare(db, aki);
     expect(event.type).toBe("declared");
     const log = await logOf(db, event.study_log_id!);
     expect(log).toMatchObject({ status: "pending", passphrase: "さくら 47" });
-    expect(new Date(log.target_end_time!).toISOString()).toBe("2026-10-20T06:00:00.000Z");
+    // The chosen end time is ignored (ADR-032): due when the next declaration closes.
+    expect(new Date(log.target_end_time!).toISOString()).toBe("2026-10-21T03:00:00.000Z");
     expect(String(log.date)).toContain("2026");
   });
 
@@ -51,12 +52,32 @@ describe("declare_goal", () => {
     await expect(declare(db, ben)).rejects.toThrow(/declaration_closed/);
   });
 
-  it("keeps the deadline between 30 minutes from now and 21:00", async () => {
+  it("needs yesterday finished first: passed, or given up and the reason reported", async () => {
     const { db, aki } = await setup();
-    await setNow(db, "2026-10-20 10:00");
-    await expect(declare(db, aki, "10:29")).rejects.toThrow(/invalid_deadline/);
-    await expect(declare(db, aki, "21:01")).rejects.toThrow(/invalid_deadline/);
-    await expect(declare(db, aki, "10:30")).resolves.toMatchObject({ type: "declared" });
+    await setNow(db, "2026-10-20 09:00");
+    const { study_log_id: yesterday } = await declare(db, aki);
+
+    // Studying late at night: still open the next morning, so today's declaration waits.
+    await setNow(db, "2026-10-21 08:00");
+    await expect(declare(db, aki)).rejects.toThrow(/previous_day_open/);
+
+    const gaveUp = await db.query<Event>("select * from public.give_up_day($1, $2)", [aki, yesterday]);
+    expect(gaveUp.rows[0]).toMatchObject({ type: "missed", payload: { gave_up: true } });
+    expect(new Date(String(gaveUp.rows[0].payload.report_due_at)).toISOString()).toBe("2026-10-21T14:00:00.000Z");
+    await expect(declare(db, aki)).rejects.toThrow(/previous_report_due/);
+
+    await db.query("select * from public.file_failure_report($1, $2, 'slacked', null)", [aki, yesterday]);
+    await expect(declare(db, aki)).resolves.toMatchObject({ type: "declared" });
+  });
+
+  it("lets only the owner give up an open day", async () => {
+    const { db, aki, ben } = await setup();
+    await setNow(db, "2026-10-20 09:00");
+    const { study_log_id: logId } = await declare(db, aki);
+    await expect(db.query("select public.give_up_day($1, $2)", [ben, logId])).rejects.toThrow(/not_found/);
+    await db.query("select public.give_up_day($1, $2)", [aki, logId]);
+    await expect(db.query("select public.give_up_day($1, $2)", [aki, logId])).rejects.toThrow(/not_open/);
+    expect(await logOf(db, logId!)).toMatchObject({ status: "missed" });
   });
 
   it("is not needed (or allowed) on a rest day or on leave", async () => {

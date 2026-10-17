@@ -1,6 +1,7 @@
 import "server-only";
 import { requireMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { formatJstDay } from "@/lib/time";
 import { getTodayBoard } from "@/lib/today";
 
 // 「あなたがやること」 (F10): everything still waiting on the viewer, soonest deadline first.
@@ -25,11 +26,32 @@ export async function getTodos(): Promise<Todo[]> {
   const name = (id: string) => board.members.find((member) => member.id === id)?.name ?? "メンバー";
   const future = (iso: string | null) => iso !== null && new Date(iso).getTime() > now;
 
+  // Yesterday's day, still open until today's cutoff (ADR-032): it comes before today's declaration.
+  const previous = board.me.previous;
+  if (previous?.status === "pending" && future(previous.target_end_time) && previous.latest?.status !== "judging") {
+    todos.push({
+      key: "submit-previous",
+      label: `${formatJstDay(previous.date)} の分を提出する`,
+      detail: "合格するか「できなかった」を押すと、今日の宣言ができます",
+      dueAt: previous.target_end_time,
+      href: "/submit",
+      urgent: true,
+    });
+  }
+
   // Today's own day: declare, rewrite, submit.
   const cutoff = new Date(`${board.date}T${board.settings.declaration_cutoff}+09:00`).toISOString();
   const state = board.me.state;
   if (state.kind === "undeclared" && future(cutoff)) {
-    todos.push({ key: "declare", label: "今日の宣言をする", dueAt: cutoff, href: "/declare", urgent: true });
+    const blocked = previous !== null && (previous.status === "pending" || previous.report === "awaiting_report");
+    todos.push({
+      key: "declare",
+      label: "今日の宣言をする",
+      detail: blocked ? "先に昨日の分を済ませてください" : undefined,
+      dueAt: cutoff,
+      href: "/declare",
+      urgent: true,
+    });
   }
   if (state.kind === "declared") {
     const log = state.log;

@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { dispatchAfterResponse } from "@/lib/notify";
@@ -15,24 +16,19 @@ const declaration = z.string().trim().min(1, "宣言の内容を書いてくだ�
 
 export type FormState = { errors?: Record<string, string>; values?: Record<string, string>; done?: boolean };
 
-const declareSchema = z.object({
-  declaration,
-  endTime: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, "提出締切の時刻を選んでください"),
-});
+const declareSchema = z.object({ declaration });
 
 export async function declareGoal(_prev: FormState, formData: FormData): Promise<FormState> {
   const member = await requireMember();
-  const values = {
-    declaration: String(formData.get("declaration") ?? ""),
-    endTime: String(formData.get("endTime") ?? ""),
-  };
+  const values = { declaration: String(formData.get("declaration") ?? "") };
   const parsed = declareSchema.safeParse(values);
   if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
 
   const { data: event, error } = await createAdminClient().rpc("declare_goal", {
     p_user_id: member.id,
     p_declaration: parsed.data.declaration,
-    p_end_time: parsed.data.endTime,
+    // The deadline is tomorrow's cutoff (ADR-032); the RPC ignores this argument.
+    p_end_time: null as unknown as string,
     p_passphrase: generatePassphrase(),
   });
   if (error) return failed(error, values);
@@ -40,6 +36,22 @@ export async function declareGoal(_prev: FormState, formData: FormData): Promise
   dispatchAfterResponse(event);
   refresh();
   return { done: true };
+}
+
+/** 「できなかった」: closes the member's open day as missed, then on to the reason report. */
+export async function giveUpDay(_prev: FormState, formData: FormData): Promise<FormState> {
+  const member = await requireMember();
+  const logId = z.uuid().safeParse(String(formData.get("logId") ?? ""));
+  if (!logId.success) return { errors: { form: GENERIC_ERROR } };
+
+  const { data: event, error } = await createAdminClient().rpc("give_up_day", {
+    p_user_id: member.id,
+    p_study_log_id: logId.data,
+  });
+  if (error) return failed(error, {});
+
+  dispatchAfterResponse(event);
+  redirect(`/reports/${logId.data}`);
 }
 
 const flagSchema = z.object({

@@ -30,7 +30,10 @@ async function pass(db: Db, userId: string, logId: string, date: string, score: 
     [userId, logId, [`${userId}/${date}/${randomUUID()}.webp`]],
   );
   await db.query("select public.record_judgement($1, $2, true, 'ok', 'test')", [sub.rows[0].submission_id, score]);
-  await setNow(db, `${date} 16:30`);
+  // 「怪しい」 stays open 24 hours (ADR-032).
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + 1);
+  await setNow(db, `${next.toISOString().slice(0, 10)} 13:30`);
   await db.query("select * from public.confirm_passed_logs()");
 }
 
@@ -39,9 +42,9 @@ describe("daily_history and weekly_stats", () => {
     const { db, aki, ben } = await setup();
     // Sun 10-18: aki completes (85). Mon 10-19: aki misses. Tue 10-20: rest. Wed 10-21: no declaration.
     await pass(db, aki, await declare(db, aki, "2026-10-18"), "2026-10-18", 85);
-    await declare(db, aki, "2026-10-19");
+    const missed = await declare(db, aki, "2026-10-19");
     await setNow(db, "2026-10-19 15:05");
-    await db.query("select * from public.close_overdue_logs()");
+    await db.query("select * from public.give_up_day($1, $2)", [aki, missed]);
     await db.query("insert into public.rest_days (user_id, date) values ($1, '2026-10-20')", [aki]);
     await setNow(db, "2026-10-21 12:05");
     await db.query("select * from public.close_declarations()");

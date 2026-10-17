@@ -15,7 +15,7 @@ import { FlagForm } from "@/components/today/flag-form";
 import { Timeline } from "@/components/dashboard/timeline";
 import { getLogDetail, type DetailSubmission, type LogDetail } from "@/lib/log-detail";
 import { getTimeline } from "@/lib/timeline";
-import { formatJstDay, formatJstTime } from "@/lib/time";
+import { formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 
 export const metadata: Metadata = { title: "その日の記録 | Commit or Treat" };
 
@@ -62,7 +62,7 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
       {log.declaration ? (
         <Sticker className="grid gap-2 px-4 py-4">
           <small className="text-xs text-sub">
-            宣言 {log.declaredAt ? formatJstTime(log.declaredAt) : ""} ・ 締切 {log.targetEndTime ? formatJstTime(log.targetEndTime) : ""}
+            宣言 {log.declaredAt ? formatJstTime(log.declaredAt) : ""} ・ 締切 {log.targetEndTime ? formatJstDateTime(log.targetEndTime) : ""}
           </small>
           <p className="m-0 font-bold whitespace-pre-wrap">{log.declaration}</p>
           {log.originalDeclaration ? (
@@ -87,11 +87,20 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
 
       <DisputeSection detail={detail} />
 
+      {log.status === "passed" && detail.submissions.some((submission) => submission.unverified) ? (
+        <Sticker tone="tape" shadow="sm" className="grid gap-1 px-4 py-3">
+          <b className="text-sm">AI が判定できなかったので、みんなで確認してください</b>
+          <span className="text-sm font-medium">
+            写真に合言葉「{log.passphrase}」が写っているか、宣言どおりの内容かを見てください。おかしければ「怪しい」を押せます。
+          </span>
+        </Sticker>
+      ) : null}
+
       {can.flag ? (
         <Sticker shadow="sm" className="grid gap-2 px-4 py-3">
           <span className="text-sm font-medium">
             写真や振り返りが宣言と合わない、合言葉がおかしいなどと思ったら指摘できます（
-            {log.disputeWindowEndsAt ? formatJstTime(log.disputeWindowEndsAt) : ""} まで）。
+            {log.disputeWindowEndsAt ? formatJstDateTime(log.disputeWindowEndsAt) : ""} まで）。
           </span>
           <FlagForm logId={log.id} ownerName={owner.name} target="submission" />
         </Sticker>
@@ -114,7 +123,7 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
         <Sticker tone="tape" className="grid gap-3 px-4 py-4">
           <b>証拠を送り直す</b>
           <span className="text-sm font-medium">
-            {formatJstTime(dispute.resendDueAt)} まで（あと <Countdown until={dispute.resendDueAt} />
+            {formatJstDateTime(dispute.resendDueAt)} まで（あと <Countdown until={dispute.resendDueAt} />
             ）なら何度でも送り直せます。合言葉を写した写真を入れてください。
           </span>
           <ResendForm logId={log.id} userId={detail.meId} date={log.date} />
@@ -143,12 +152,12 @@ function DisputeSection({ detail }: { detail: LogDetail }) {
       </ul>
       {dispute?.status === "resending" ? (
         <p className="m-0 text-xs font-bold">
-          {formatJstTime(dispute.resendDueAt)} までに指摘した全員が取り下げれば達成。そろわなければ全員の最終審査になります。
+          {formatJstDateTime(dispute.resendDueAt)} までに指摘した全員が取り下げれば達成。そろわなければ全員の最終審査になります。
         </p>
       ) : null}
       {dispute?.status === "final_review" && dispute.reviewDueAt ? (
         <p className="m-0 text-xs font-bold">
-          今日 {formatJstTime(dispute.reviewDueAt)} まで。理由付きの却下が 1 人でもあれば証拠不認定、なければ達成で確定します。
+          {formatJstDateTime(dispute.reviewDueAt)} まで。理由付きの却下が 1 人でもあれば証拠不認定、なければ達成で確定します。
         </p>
       ) : null}
       {reviews.length > 0 ? (
@@ -170,7 +179,7 @@ function SubmissionBlock({ submission }: { submission: DetailSubmission }) {
   return (
     <div className="grid gap-2.5">
       <p className="m-0 text-sm font-bold">
-        {submission.kind === "resend" ? "送り直し" : `${submission.attemptNo} 回目`} ・ {formatJstTime(submission.submittedAt)}
+        {submission.kind === "resend" ? "送り直し" : `${submission.attemptNo} 回目`} ・ {formatJstDateTime(submission.submittedAt)}
         {submission.status === "judging" ? " ・ 判定中" : submission.status === "error" ? " ・ 判定待ち" : ""}
       </p>
       {submission.photos.length > 0 ? (
@@ -212,6 +221,7 @@ function SubmissionBlock({ submission }: { submission: DetailSubmission }) {
             feedback: submission.feedback ?? "",
             disputeWindowEndsAt: null,
             attemptsLeft: 0,
+            unverified: submission.unverified,
             hideFooter: true,
           }}
         />

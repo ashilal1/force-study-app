@@ -54,9 +54,15 @@ describe("create_submission", () => {
     expect(event).toMatchObject({ type: "submitted", payload: { attempt_no: 1, elapsed_minutes: 252 } });
   });
 
+  it("takes late-night submissions until the next day's 12:00 (ADR-032)", async () => {
+    const { db, aki, logId } = await setup();
+    await setNow(db, "2026-10-21 04:00");
+    await expect(submit(db, aki, logId)).resolves.toMatchObject({ type: "submitted", payload: { elapsed_minutes: 1140 } });
+  });
+
   it("is judged by submission time: refused from the deadline on", async () => {
     const { db, aki, logId } = await setup();
-    await setNow(db, "2026-10-20 15:00");
+    await setNow(db, "2026-10-21 12:00");
     await expect(submit(db, aki, logId)).rejects.toThrow(/deadline_passed/);
   });
 
@@ -91,28 +97,19 @@ describe("record_judgement", () => {
     expect(event).toMatchObject({ type: "judged_passed", payload: { score: 70 } });
     const log = await logStatus(db, logId);
     expect(log.status).toBe("passed");
-    expect(new Date(log.dispute_window_ends_at!).toISOString()).toBe("2026-10-20T07:00:00.000Z"); // 16:00 JST
+    expect(new Date(log.dispute_window_ends_at!).toISOString()).toBe("2026-10-21T04:00:00.000Z"); // 24 hours after submitting
     await expect(submit(db, aki, logId)).rejects.toThrow(/already_passed/);
   });
 
-  it("caps the dispute window at 22:00", async () => {
-    const { db, aki } = await setup();
-    const db2 = db;
-    await setNow(db2, "2026-10-21 09:00");
-    const { rows } = await db2.query<{ study_log_id: string }>(
-      "select study_log_id from public.declare_goal($1, '演習', '21:00'::time, 'みかん 12')",
-      [aki],
-    );
-    await setNow(db2, "2026-10-21 20:30");
-    const paths = [`${aki}/2026-10-21/${randomUUID()}.webp`];
-    const sub = await db2.query<Event>("select * from public.create_submission($1, $2, $3, null, 'a', 'b', 3)", [
-      aki,
-      rows[0].study_log_id,
-      paths,
-    ]);
-    await judge(db2, sub.rows[0].submission_id, 90);
-    const log = await logStatus(db2, rows[0].study_log_id);
-    expect(new Date(log.dispute_window_ends_at!).toISOString()).toBe("2026-10-21T13:00:00.000Z"); // 22:00 JST
+  it("counts the dispute window from the submission, even when judged later", async () => {
+    const { db, aki, logId } = await setup();
+    await setNow(db, "2026-10-21 02:30");
+    const { submission_id: id } = await submit(db, aki, logId);
+    await db.query("select public.record_judge_error($1, 'rate limited')", [id]);
+    await setNow(db, "2026-10-21 02:40");
+    await judge(db, id, 90);
+    const log = await logStatus(db, logId);
+    expect(new Date(log.dispute_window_ends_at!).toISOString()).toBe("2026-10-21T17:30:00.000Z"); // 10-22 02:30 JST
   });
 
   it("rejects without the passphrase however high the score, and reports attempts left", async () => {
@@ -144,5 +141,60 @@ describe("record_judgement", () => {
     const { rows } = await db.query("select status from public.submissions where id = $1", [id]);
     expect(rows).toEqual([{ status: "error" }]);
     await expect(judge(db, id, 90)).rejects.toThrow(/not_open/);
+  });
+});
+
+describe("AI fallback (ADR-033)", () => {
+  const unjudged = (db: Db) => db.query<Event>("select * from public.pass_unjudged()").then((r) => r.rows);
+
+  it("passes an unjudged submission provisionally after 30 minutes, once", async () => {
+    const { db, aki, logId } = await setup();
+    await setNow(db, "2026-10-20 13:00");
+    const { submission_id: id } = await submit(db, aki, logId);
+    await db.query("select public.record_judge_error($1, 'model overloaded')", [id]);
+
+    await setNow(db, "2026-10-20 13:29");
+    expect(await unjudged(db)).toHaveLength(0);
+    await setNow(db, "2026-10-20 13:30");
+    const events = await unjudged(db);
+    expect(events.map((e) => e.type)).toEqual(["judged_unverified"]);
+    expect(await unjudged(db)).toHaveLength(0);
+
+    const log = await logStatus(db, logId);
+    expect(log.status).toBe("passed");
+    expect(new Date(log.dispute_window_ends_at!).toISOString()).toBe("2026-10-21T04:30:00.000Z"); // 24 hours to check
+    const { rows } = await db.query<{ status: string; ai_score: number | null; unverified: boolean }>(
+      "select status, ai_score, unverified_at is not null as unverified from public.submissions where id = $1",
+      [id],
+    );
+    expect(rows).toEqual([{ status: "passed", ai_score: null, unverified: true }]);
+    // The AI answering late changes nothing.
+    await expect(judge(db, id, 10)).rejects.toThrow(/already_judged/);
+  });
+
+  it("passes at the deadline instead of closing the day as missed", async () => {
+    const { db, aki, logId } = await setup();
+    await setNow(db, "2026-10-21 11:50");
+    await submit(db, aki, logId); // still "judging" (the request never came back)
+    await setNow(db, "2026-10-21 12:00");
+    const events = (await db.query<Event>("select * from public.tick()")).rows;
+    expect(events.map((e) => e.type)).toContain("judged_unverified");
+    expect(events.map((e) => e.type)).not.toContain("missed");
+    expect((await logStatus(db, logId)).status).toBe("passed");
+  });
+
+  it("leaves rejected attempts and pending rewrites alone", async () => {
+    const { db, aki, ben, logId } = await setup();
+    const { submission_id: id } = await submit(db, aki, logId);
+    await judge(db, id, 30);
+    await setNow(db, "2026-10-20 09:40");
+    expect(await unjudged(db)).toHaveLength(0);
+
+    await setNow(db, "2026-10-20 09:41");
+    await db.query("select public.flag_declaration($1, $2, '軽い')", [ben, logId]);
+    await setNow(db, "2026-10-20 09:42");
+    await submit(db, aki, logId);
+    await setNow(db, "2026-10-20 10:20");
+    expect(await unjudged(db)).toHaveLength(0);
   });
 });

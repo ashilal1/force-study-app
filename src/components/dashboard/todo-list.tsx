@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Countdown } from "@/components/brand/countdown";
 import { Sticker } from "@/components/brand/sticker";
-import { formatJstTime } from "@/lib/time";
+import { formatJstDateTime } from "@/lib/time";
 import type { Todo } from "@/lib/todo";
 import { cn } from "@/lib/utils";
 
@@ -27,7 +27,7 @@ export function TodoList({ todos }: { todos: Todo[] }) {
               <b className="text-sm">{todo.label}</b>
               {todo.dueAt ? (
                 <span className={cn("text-right font-en text-sm tabular-nums", todo.urgent && "text-red")}>
-                  {formatJstTime(todo.dueAt)}
+                  {formatJstDateTime(todo.dueAt)}
                   <span className="block text-[0.7rem]">
                     あと <Countdown until={todo.dueAt} />
                   </span>

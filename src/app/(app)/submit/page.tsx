@@ -9,7 +9,7 @@ import { JudgeKarte } from "@/components/submit/judge-karte";
 import { RejudgeButton } from "@/components/submit/rejudge-button";
 import { SubmitForm } from "@/components/submit/submit-form";
 import { createClient } from "@/lib/supabase/server";
-import { formatJstTime } from "@/lib/time";
+import { formatJstDateTime, formatJstDay } from "@/lib/time";
 import { getTodayBoard } from "@/lib/today";
 
 export const metadata: Metadata = { title: "提出 | Commit or Treat" };
@@ -38,11 +38,14 @@ type Submission = {
   judge_error: string | null;
   elapsed_minutes: number | null;
   submitted_at: string;
+  unverified_at: string | null;
 };
 
 async function Submit() {
-  const { me, date, now } = await getTodayBoard();
-  if (me.state.kind !== "declared") {
+  const { me, now } = await getTodayBoard();
+  // Yesterday's day while it is still open (ADR-032), otherwise today's.
+  const log = me.previous?.status === "pending" ? me.previous : me.state.kind === "declared" ? me.state.log : null;
+  if (!log) {
     return (
       <Sticker className="grid gap-3 px-4 py-4">
         <b>今日はまだ提出できません</b>
@@ -54,14 +57,13 @@ async function Submit() {
     );
   }
 
-  const log = me.state.log;
   const supabase = await createClient();
   const [{ data: settings, error: settingsError }, { data: submissions, error }] = await Promise.all([
     supabase.from("group_settings").select("max_attempts").single(),
     supabase
       .from("submissions")
       .select(
-        "id, attempt_no, status, image_paths, learned_text, struggled_text, ai_score, ai_passphrase_found, ai_feedback, judge_error, elapsed_minutes, submitted_at",
+        "id, attempt_no, status, image_paths, learned_text, struggled_text, ai_score, ai_passphrase_found, ai_feedback, judge_error, elapsed_minutes, submitted_at, unverified_at",
       )
       .eq("study_log_id", log.id)
       .eq("kind", "regular")
@@ -78,8 +80,10 @@ async function Submit() {
 
   return (
     <>
-      <Sticker tone="tape" shadow="sm" className="flex items-center justify-between px-3.5 py-2.5">
-        <span className="text-sm font-bold">提出締切 {formatJstTime(log.target_end_time!)}</span>
+      <Sticker tone="tape" shadow="sm" className="flex items-center justify-between gap-2 px-3.5 py-2.5">
+        <span className="text-sm font-bold">
+          {formatJstDay(log.date)} の分 ・ 締切 {formatJstDateTime(log.target_end_time!)}
+        </span>
         <span className="font-en text-xl">
           あと <Countdown until={log.target_end_time!} />
         </span>
@@ -109,7 +113,13 @@ async function Submit() {
         </Sticker>
       ) : attemptsLeft === 0 ? (
         <Sticker className="grid gap-1 border-red px-4 py-3">
-          <b className="text-red">今日の提出回数を使い切りました</b>
+          <b className="text-red">この日の提出回数を使い切りました</b>
+          <span className="text-sm font-medium">
+            <Link href="/declare" className="font-bold underline">
+              宣言の画面
+            </Link>
+            で「できなかった」を押して、理由を申告してください。
+          </span>
         </Sticker>
       ) : log.revision_due_at && !log.revised_at ? (
         <Sticker className="grid gap-1 border-red px-4 py-3">
@@ -129,7 +139,7 @@ async function Submit() {
           goal={log.declaration!}
           passphrase={log.passphrase!}
           attemptsLeft={attemptsLeft}
-          live={{ logId: log.id, userId: me.id, date }}
+          live={{ logId: log.id, userId: me.id, date: log.date }}
         />
       ) : null}
 
@@ -162,7 +172,7 @@ function SubmissionResult({
   return (
     <div className="grid gap-3">
       <p className="m-0 text-sm font-bold">
-        {submission.attempt_no} 回目 ・ {formatJstTime(submission.submitted_at)} に提出
+        {submission.attempt_no} 回目 ・ {formatJstDateTime(submission.submitted_at)} に提出
       </p>
       {photos.length > 0 ? (
         <div className="grid grid-cols-3 gap-2">
@@ -186,6 +196,7 @@ function SubmissionResult({
             feedback: submission.ai_feedback ?? "",
             disputeWindowEndsAt: null,
             attemptsLeft,
+            unverified: submission.unverified_at !== null,
             hideFooter: submission.status === "passed" || attemptsLeft === 0,
           }}
         />

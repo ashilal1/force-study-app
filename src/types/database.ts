@@ -261,6 +261,7 @@ export type Database = {
       }
       group_settings: {
         Row: {
+          ai_fallback_minutes: number
           declaration_cutoff: string
           dispute_cutoff: string
           dispute_window_hours: number
@@ -287,6 +288,7 @@ export type Database = {
           resend_minutes: number
           rest_days_per_week: number
           review_deadline: string
+          review_hours: number
           review_reminder_times: string[]
           revision_minutes: number
           settlement_time: string
@@ -297,6 +299,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ai_fallback_minutes?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -323,6 +326,7 @@ export type Database = {
           resend_minutes?: number
           rest_days_per_week?: number
           review_deadline?: string
+          review_hours?: number
           review_reminder_times?: string[]
           revision_minutes?: number
           settlement_time?: string
@@ -333,6 +337,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ai_fallback_minutes?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -359,6 +364,7 @@ export type Database = {
           resend_minutes?: number
           rest_days_per_week?: number
           review_deadline?: string
+          review_hours?: number
           review_reminder_times?: string[]
           revision_minutes?: number
           settlement_time?: string
@@ -1255,6 +1261,7 @@ export type Database = {
           study_log_id: string
           submitted_at: string
           thumb_path: string | null
+          unverified_at: string | null
           user_id: string
         }
         Insert: {
@@ -1279,6 +1286,7 @@ export type Database = {
           study_log_id: string
           submitted_at?: string
           thumb_path?: string | null
+          unverified_at?: string | null
           user_id: string
         }
         Update: {
@@ -1303,6 +1311,7 @@ export type Database = {
           study_log_id?: string
           submitted_at?: string
           thumb_path?: string | null
+          unverified_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -1960,6 +1969,27 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      give_up_day: {
+        Args: { p_study_log_id: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       join_group: {
         Args: {
           p_avatar_url: string
@@ -2035,6 +2065,27 @@ export type Database = {
           to: "activity_events"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      pass_unjudged: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       record_judge_error: {
@@ -2176,6 +2227,7 @@ export type Database = {
           study_log_id: string
           submitted_at: string
           thumb_path: string | null
+          unverified_at: string | null
           user_id: string
         }
         SetofOptions: {

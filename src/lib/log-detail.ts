@@ -21,6 +21,8 @@ export type DetailSubmission = {
   feedback: string | null;
   elapsedMinutes: number | null;
   submittedAt: string;
+  /** Passed without an AI verdict (ADR-033). */
+  unverified: boolean;
 };
 
 export type DetailFlag = { flaggerId: string; name: string; comment: string; createdAt: string; withdrawnAt: string | null };
@@ -66,7 +68,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
     supabase
       .from("submissions")
       .select(
-        "id, kind, attempt_no, status, image_paths, thumb_path, learned_text, struggled_text, explanation, self_rating, ai_score, ai_passphrase_found, ai_feedback, elapsed_minutes, submitted_at",
+        "id, kind, attempt_no, status, image_paths, thumb_path, learned_text, struggled_text, explanation, self_rating, ai_score, ai_passphrase_found, ai_feedback, elapsed_minutes, submitted_at, unverified_at",
       )
       .eq("study_log_id", logId)
       .order("submitted_at"),
@@ -138,6 +140,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
       feedback: submission.ai_feedback,
       elapsedMinutes: submission.elapsed_minutes,
       submittedAt: submission.submitted_at,
+      unverified: submission.unverified_at !== null,
     })),
     declarationFlags: declarationFlags.data!.map((flag) => ({ name: name(flag.flagger_id), comment: flag.comment })),
     submissionFlags: flags,
