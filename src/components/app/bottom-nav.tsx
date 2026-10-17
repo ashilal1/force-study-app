@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { UnreadBadge } from "@/components/notifications/unread-badge";
 import { cn } from "@/lib/utils";
 
 const TABS = [
@@ -12,7 +13,8 @@ const TABS = [
   { href: "/notifications", label: "通知" },
 ] as const;
 
-export function BottomNav({ basePath = "" }: { basePath?: string }) {
+/** `live` shows the unread badge (off in the /preview gallery, which has no session). */
+export function BottomNav({ basePath = "", live = false }: { basePath?: string; live?: boolean }) {
   const pathname = usePathname();
   return (
     <nav
@@ -29,11 +31,12 @@ export function BottomNav({ basePath = "" }: { basePath?: string }) {
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "block rounded-full px-3 py-1.5 text-xs font-bold",
+                  "relative block rounded-full px-3 py-1.5 text-xs font-bold",
                   active ? "bg-ink text-white" : "text-ink",
                 )}
               >
                 {tab.label}
+                {live && tab.href === "/notifications" ? <UnreadBadge /> : null}
               </Link>
             </li>
           );

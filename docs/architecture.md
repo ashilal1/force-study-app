@@ -202,15 +202,18 @@ flowchart LR
     NT -- Realtime --> BELL["ベル / 未読バッジ"]
     NT --> WP["web-push → 本人の全端末<br/>(404/410 なら購読を削除 → 次に開いたとき F0 へ)"]
 ```
-- `notifications` は Realtime（`postgres_changes`、`recipient_id = 自分` で絞る）でベルに即時反映する。
+- 実装は `src/lib/notify`: `rules.ts`（イベントの種類ごとに受信者と文言を決める純粋な関数）→ `index.ts` の `dispatch(eventId)`（`rpc create_notifications` → 受信者の全端末へ Push → 成功は `record_push_success`、404/410 は `delete_push_subscription`、届いた通知は `mark_notifications_pushed`）。呼び出し側はイベントを記録した RPC のあと `after()` の中で `dispatch` を呼ぶので、画面の応答は待たせない。配信の失敗はログに残すだけで、操作そのものは失敗させない。
+- 未読数は下部メニューの「通知」タブのバッジに出す（ヘッダーは置かない）。`notifications` の変更を Realtime（`postgres_changes`。RLS で自分の行だけが届く）で受けて数え直す。通知一覧（`/notifications`）を開くと既読にする。
+- F0 のテスト通知だけは `activity_events` を通さず、`lib/notify` の `sendTestPush` がその端末にだけ送る（タイムラインに出す出来事ではないため。ADR-028）。
 - Push の本文は短くし、タップで該当ページ（`/logs/{id}` など）を開く。
 - 本人の対応が必要な通知は `requireInteraction: true`（タップするまで消えない。Android・PC で有効）。同じ件のリマインドは `tag` をそろえて `renotify: true` で鳴らし直す。音は OS の通知音（Web からは変えられない）。
 
 ### 2.7 通知の強制 (F0)
 `src/app/(app)/layout.tsx` で、ログイン済みの全画面の手前に「通知ゲート」を置く。
-1. サーバー側: `profiles.notifications_verified_at` と、有効な `push_subscriptions`（`verified_at` あり）があるかを見る。なければ `/onboarding/notifications` へリダイレクト。
-2. クライアント側: 開くたびに `Notification.permission === 'granted'` と `pushManager.getSubscription()` を確かめ、だめなら同じ画面へ。iOS は `display-mode: standalone`（ホーム画面から開いたか）も確かめる。
-3. オンボーディング画面: 許可 → 購読登録 → テスト通知の送信 → OS ごとのバナー・サウンド設定の手順 → 本人が「表示され、音も鳴った」を押す → `verified_at` を記録。
+1. サーバー側（`lib/auth.ts` の `hasConfirmedNotifications`）: `profiles.notifications_verified_at` と、確認済み（`verified_at` あり）の `push_subscriptions` があるかを見る。なければ `/onboarding/notifications` へリダイレクト。
+2. クライアント側（`NotificationGuard`）: 開くたびに、iOS ならホーム画面から開いたか（`display-mode: standalone`）、`Notification.permission === 'granted'`、`pushManager.getSubscription()` があるか、その endpoint が確認済みか（RLS で自分の端末を読む）を確かめ、だめなら同じ画面へ。
+3. 設定画面（`(auth)/onboarding/notifications`。`(app)` の外に置いてゲートの対象にしない）: iOS はホーム画面への追加の手順 → 許可（iOS はタップからしか確認を出せないのでボタン）→ 購読を `rpc save_push_subscription` で登録 → テスト通知 → OS ごとのバナー・サウンド設定の手順 → 本人が「表示され、音も鳴った」を押す → `rpc confirm_push_subscription` が端末と profile に確認時刻を記録。
+4. PWA: `app/manifest.ts`（`display: standalone`）、`public/icons/`（`scripts/generate-icons.mjs` で生成）、`public/sw.js`（push の表示と、タップで該当ページを開く。キャッシュはしない。`next.config.ts` でキャッシュ禁止のヘッダーを付ける）。
 
 ## 3. 認証とアクセス制御
 
@@ -280,7 +283,8 @@ flowchart LR
     │   ├── validation/            # フォーム入力の zod スキーマ
     │   ├── gemini/                # judge(): プロンプト・スキーマ
     │   ├── passphrase.ts          # 合言葉の単語リストと生成
-    │   ├── notify/                # dispatch(): 受信者ルール・web-push
+    │   ├── notify/                # rules.ts（受信者と文言）・push.ts（web-push）・index.ts（dispatch / sendTestPush）
+    │   ├── push-client.ts         # ブラウザ側: Service Worker の登録・購読・端末の判定
     │   ├── time.ts                # JST の日付計算
     │   ├── env.ts                 # 公開してよい環境変数の検証 (zod)
     │   └── env.server.ts          # 秘密の環境変数の検証（機能ごとに遅延して検証）

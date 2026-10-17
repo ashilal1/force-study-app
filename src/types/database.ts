@@ -1011,6 +1011,26 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      confirm_push_subscription: {
+        Args: { p_endpoint: string; p_user_id: string }
+        Returns: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+          verified_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "push_subscriptions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_invite: {
         Args: { p_code_hash: string; p_user_id: string }
         Returns: {
@@ -1028,6 +1048,31 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      create_notifications: {
+        Args: { p_event_id: string; p_items: Json }
+        Returns: {
+          body: string
+          created_at: string
+          event_id: string
+          id: string
+          pushed_at: string | null
+          read_at: string | null
+          recipient_id: string
+          requires_action: boolean
+          title: string
+          url: string | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "notifications"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      delete_push_subscription: {
+        Args: { p_endpoint: string; p_user_id?: string }
+        Returns: undefined
       }
       join_group: {
         Args: {
@@ -1052,6 +1097,37 @@ export type Database = {
         SetofOptions: {
           from: "*"
           to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      mark_notifications_pushed: {
+        Args: { p_ids: string[] }
+        Returns: undefined
+      }
+      record_push_success: { Args: { p_endpoint: string }; Returns: undefined }
+      save_push_subscription: {
+        Args: {
+          p_auth: string
+          p_endpoint: string
+          p_p256dh: string
+          p_user_agent: string
+          p_user_id: string
+        }
+        Returns: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+          verified_at: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "push_subscriptions"
           isOneToOne: true
           isSetofReturn: false
         }

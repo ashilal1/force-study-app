@@ -22,11 +22,12 @@
 - [x] お試し期間（`trial_ends_at`）の表示
 
 ## M3. 通知基盤（後の機能はすべてこれを使うので先に作る）
-- [ ] `activity_events` → `notifications` の配信 (`lib/notify`)
-- [ ] ベル・未読バッジ・通知一覧（Realtime）
-- [ ] PWA: `app/manifest.ts`、アイコン、`public/sw.js`
-- [ ] Web Push の購読登録・解除
-- [ ] **通知ゲート (F0)**: ホーム画面追加（iOS）→ 許可 → 購読 → テスト通知 → バナー・サウンドの確認。開くたびに再確認
+- [x] `activity_events` → `notifications` の配信 (`lib/notify`)。最初のルールは `member_joined`
+- [x] 未読バッジ（下部メニューの「通知」）・通知一覧（Realtime）
+- [x] PWA: `app/manifest.ts`、アイコン、`public/sw.js`
+- [x] Web Push の購読登録・解除（404/410 で自動削除。手動の解除画面はまだ）
+- [x] **通知ゲート (F0)**: ホーム画面追加（iOS）→ 許可 → 購読 → テスト通知 → バナー・サウンドの確認。開くたびに再確認
+- [ ] iPhone の実機で F0 を確認（ホーム画面から開く → 許可 → テスト通知）
 
 ## M4. 宣言・休息日
 - [ ] RPC `declare_goal`（合言葉の発行、`day_at` などの共通関数を含む） / `register_rest_day` / `cancel_rest_day`

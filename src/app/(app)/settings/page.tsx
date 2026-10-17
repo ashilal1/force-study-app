@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Suspense } from "react";
 import { signOut } from "@/actions/auth";
 import { PageLoading } from "@/components/app/page-loading";
@@ -18,6 +19,12 @@ export default function SettingsPage() {
       <Suspense fallback={<PageLoading />}>
         <Profile />
       </Suspense>
+      <Link
+        href="/onboarding/notifications"
+        className="text-center text-sm font-bold underline underline-offset-2"
+      >
+        この端末の通知を設定し直す
+      </Link>
       <form action={signOut}>
         <ActionButton type="submit" tone="white">
           ログアウト

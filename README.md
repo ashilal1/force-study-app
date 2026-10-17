@@ -40,7 +40,7 @@ npm run dev                         # http://localhost:3000
 |---|---|
 | `NEXT_PUBLIC_SUPABASE_URL` / `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` / `SUPABASE_SECRET_KEY` | Supabase ダッシュボード → Project Settings → API Keys |
 | `GEMINI_API_KEY` / `GEMINI_MODEL` | [Google AI Studio](https://aistudio.google.com/)。モデル ID は無料枠のある Flash 系を選ぶ |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` | `npx web-push generate-vapid-keys`。`VAPID_SUBJECT` は `mailto:` か公開用の `https://` URL。鍵を変えると全端末の購読が無効になるので、作ったら変えない |
 | `CRON_SECRET` | `openssl rand -hex 32` |
 | `INVITE_CODE` | **最初の 1 人（管理者）が参加するためだけ**のコード（自分で決める。4 文字以上）。グループが空のときしか使えない。2 人目からは、アプリでメンバーが発行する招待コードで参加する |
 
@@ -71,6 +71,7 @@ Web Push はローカルでも `localhost` なら試せる。iPhone で試すに
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
    - `SUPABASE_SECRET_KEY`
+   - `NEXT_PUBLIC_VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT`（通知。M3 から）
 3. Deploy。関数は `vercel.json` で東京（`hnd1`）に置く（Supabase と同じリージョン）
 4. Settings → Deployment Protection → Vercel Authentication を **オフ**にする。Hobby の既定では `main` 以外の URL に Vercel のログインが要り、iPhone のホーム画面アプリ（Safari とログイン状態を共有しない）からテスト用 URL を開けない。アプリ自体は Google ログインと招待コードで守られている
 5. Settings → Domains で `force-study-app-staging.vercel.app` を追加し、Git Branch に `develop` を指定する（自動で付くブランチ URL は長く、途中が省略されるため）
