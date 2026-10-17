@@ -184,3 +184,41 @@ describe("draftNotifications (M5b)", () => {
     expect(invalidated.body).toBe("べん さん: 合言葉が無い ／ 200 円");
   });
 });
+
+describe("draftNotifications (M6)", () => {
+  it("reminds only the member who hasn't declared, with the cutoff and penalty", () => {
+    const [draft, ...rest] = draftNotifications(
+      { id: "e", type: "reminder_declare_last_call", actor_id: "ben", payload: { cutoff: "2026-10-20T03:00:00Z", points: 500 } },
+      members,
+    );
+    expect(rest).toEqual([]);
+    expect(draft).toMatchObject({
+      recipientId: "ben",
+      title: "宣言の締切まであと 1 時間（12:00）",
+      body: "過ぎると宣言なしになり、500 円",
+      url: "/declare",
+      requiresAction: true,
+    });
+  });
+
+  it("asks for a report after a miss and tells the others", () => {
+    const drafts = draftNotifications(
+      { id: "e", type: "missed", actor_id: "aki", study_log_id: "log-1", payload: { report_due_at: "2026-10-20T14:00:00Z" } },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.requiresAction])).toEqual([
+      ["aki", true],
+      ["ben", false],
+      ["cho", false],
+    ]);
+    expect(drafts[0].body).toContain("23:00 までに理由を申告");
+  });
+
+  it("sends review reminders to the reviewer, linking the right page", () => {
+    const [leave] = draftNotifications(
+      { id: "e", type: "reminder_review_due", actor_id: "ben", payload: { subject_type: "leave", owner_id: "aki", review_due_at: "2026-10-20T14:59:00Z" } },
+      members,
+    );
+    expect(leave).toMatchObject({ recipientId: "ben", url: "/leave", body: "今日 23:59 まで" });
+  });
+});
