@@ -1011,6 +1011,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      advance_disputes: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cancel_leave: {
         Args: { p_leave_request_id: string; p_user_id: string }
         Returns: {
@@ -1265,6 +1286,31 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      flag_submission: {
+        Args: {
+          p_comment: string
+          p_flagger_id: string
+          p_study_log_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       join_group: {
         Args: {
           p_avatar_url: string
@@ -1375,6 +1421,45 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      resend_evidence: {
+        Args: {
+          p_explanation: string
+          p_image_paths: string[]
+          p_study_log_id: string
+          p_thumb_path: string
+          p_user_id: string
+        }
+        Returns: {
+          ai_feedback: string | null
+          ai_model: string | null
+          ai_passphrase_found: boolean | null
+          ai_score: number | null
+          attempt_no: number | null
+          elapsed_minutes: number | null
+          explanation: string | null
+          id: string
+          image_paths: string[]
+          images_purged_at: string | null
+          judge_error: string | null
+          judged_at: string | null
+          kind: string
+          learned_text: string | null
+          reject_reason: string | null
+          self_rating: number | null
+          status: string
+          struggled_text: string | null
+          study_log_id: string
+          submitted_at: string
+          thumb_path: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "submissions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       revise_declaration: {
         Args: {
           p_declaration: string
@@ -1424,6 +1509,27 @@ export type Database = {
           to: "push_subscriptions"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      withdraw_flag: {
+        Args: { p_flagger_id: string; p_study_log_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
     }

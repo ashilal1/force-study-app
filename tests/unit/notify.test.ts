@@ -139,3 +139,48 @@ describe("draftNotifications (M5a)", () => {
     expect(drafts[1].body).toBe("怪しければ 16:00 までに指摘できます");
   });
 });
+
+describe("draftNotifications (M5b)", () => {
+  it("asks the owner to resend and links to the day", () => {
+    const drafts = draftNotifications(
+      {
+        id: "e",
+        type: "submission_flagged",
+        actor_id: "ben",
+        study_log_id: "log-1",
+        payload: { owner_id: "aki", comment: "昨日の写真に見える", resend_due_at: "2026-10-20T06:00:00Z" },
+      },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.requiresAction, d.url])).toEqual([
+      ["aki", true, "/logs/log-1"],
+      ["cho", false, "/logs/log-1"],
+    ]);
+    expect(drafts[0].body).toBe("昨日の写真に見える ／ 15:00 までなら何度でも証拠を送り直せます");
+  });
+
+  it("tells only the active flaggers about resent evidence", () => {
+    const drafts = draftNotifications(
+      { id: "e", type: "evidence_resent", actor_id: "aki", payload: { score: 90, passphrase_found: true, flagger_ids: ["cho"] } },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.body])).toEqual([["cho", "AI: 90 点・合言葉あり。納得したら取り下げてください"]]);
+  });
+
+  it("sends the final review to the fixed reviewers and P8 to everyone", () => {
+    expect(
+      draftNotifications(
+        { id: "e", type: "dispute_final_review_started", actor_id: "aki", payload: { review_due_at: "2026-10-20T14:59:00Z", reviewer_ids: ["ben"] } },
+        members,
+      ).map((d) => [d.recipientId, d.requiresAction]),
+    ).toEqual([
+      ["ben", true],
+      ["aki", false],
+    ]);
+    const [invalidated] = draftNotifications(
+      { id: "e", type: "dispute_invalidated", actor_id: "aki", payload: { rejected_by: "ben", comment: "合言葉が無い", points: 200 } },
+      members,
+    );
+    expect(invalidated.body).toBe("べん さん: 合言葉が無い ／ 200 円");
+  });
+});
