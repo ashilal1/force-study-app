@@ -48,8 +48,8 @@
 - [x] pg_cron + pg_net + Vault の設定（マイグレーションと README の手順。開発用プロジェクトはテスト用 URL を呼ぶ）
 
 ## M7. 理由申告・審査・精算
-- [ ] RPC `file_failure_report` / `cast_review`（理由・休会・疑義で共通） / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
-- [ ] 理由申告フォーム、審査画面（納得 / 納得できない）
+- [x] RPC `file_failure_report` / `cast_review`（理由・休会・疑義で共通） / `expire_reports` / `expire_reviews`（P3 の連続回数のテストを厚めに）
+- [x] 理由申告フォーム、審査画面（納得 / 納得できない）: `/reports/[logId]`
 - [ ] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement`
 - [ ] 支払先の割り当て（管理者が入力）、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
 

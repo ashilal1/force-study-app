@@ -1,46 +1,90 @@
 "use client";
 
-import { useState } from "react";
+import { useActionState, useState } from "react";
+import { fileReport } from "@/actions/reports";
+import type { FormState } from "@/actions/declarations";
 import { ActionButton } from "@/components/brand/action-button";
 import { Countdown } from "@/components/brand/countdown";
 import { Stamp } from "@/components/brand/stamp";
 import { Sticker } from "@/components/brand/sticker";
 import { CharCount, FieldLabel, TextArea } from "@/components/form/fields";
+import { FieldError } from "@/components/form/submit-button";
 import { formatJstTime } from "@/lib/time";
 import { cn } from "@/lib/utils";
 
 type Category = "unrealistic" | "sudden_plan" | "other" | "slacked";
 
-const OPTIONS: { value: Category; title: string; amount: string; note: string; prompt?: string }[] = [
-  { value: "unrealistic", title: "宣言が妥当じゃなかった", amount: "0円", note: "次の計画を書く ・ 4 回連続から 500 円", prompt: "次どうする？" },
-  { value: "sudden_plan", title: "急遽予定ができた", amount: "0円?", note: "全員が納得したら 0 円、だめなら 500 円", prompt: "何があった？" },
-  { value: "other", title: "その他", amount: "0円?", note: "全員が納得したら 0 円、だめなら 500 円", prompt: "理由" },
-  { value: "slacked", title: "サボった", amount: "700円", note: "正直に言っても 700 円" },
-];
+export type ReasonAmounts = {
+  slacked: number;
+  unrealisticStreak: number;
+  excuseRejected: number;
+  /** P3 starts on this many unrealistic misses in a row. */
+  streakThreshold: number;
+};
+
+const DEFAULT_AMOUNTS: ReasonAmounts = { slacked: 700, unrealisticStreak: 500, excuseRejected: 500, streakThreshold: 4 };
 
 type Props = {
   deadline: string;
   missedAt: string;
   goal: string;
   minChars: number;
+  /** Unrealistic misses in a row before this day (this one would be +1). */
   unrealisticStreak: number;
+  amounts?: ReasonAmounts;
+  /** Today's missed log; omitted in the /preview gallery, where the form doesn't submit. */
+  logId?: string;
 };
 
-export function ReasonForm({ deadline, missedAt, goal, minChars, unrealisticStreak }: Props) {
-  const [category, setCategory] = useState<Category | null>(null);
-  const [text, setText] = useState("");
-  const selected = OPTIONS.find((o) => o.value === category);
+const yen = (value: number) => `${value.toLocaleString()}円`;
+
+export function ReasonForm({ deadline, missedAt, goal, minChars, unrealisticStreak, amounts = DEFAULT_AMOUNTS, logId }: Props) {
+  const [state, formAction, pending] = useActionState<FormState, FormData>(fileReport, {});
+  const [category, setCategory] = useState<Category | null>((state.values?.category as Category) ?? null);
+  const [text, setText] = useState(state.values?.text ?? "");
+
+  const nextStreak = unrealisticStreak + 1;
+  const options: { value: Category; title: string; amount: string; note: string; prompt?: string }[] = [
+    {
+      value: "unrealistic",
+      title: "宣言が妥当じゃなかった",
+      amount: nextStreak >= amounts.streakThreshold ? yen(amounts.unrealisticStreak) : "0円",
+      note:
+        unrealisticStreak > 0
+          ? `今回で ${nextStreak} 回連続 ・ ${amounts.streakThreshold} 回目から ${yen(amounts.unrealisticStreak)}`
+          : `次の計画を書く ・ ${amounts.streakThreshold} 回連続から ${yen(amounts.unrealisticStreak)}`,
+      prompt: "次どうする？",
+    },
+    {
+      value: "sudden_plan",
+      title: "急遽予定ができた",
+      amount: "0円?",
+      note: `全員が納得したら 0 円、だめなら ${yen(amounts.excuseRejected)}`,
+      prompt: "何があった？",
+    },
+    {
+      value: "other",
+      title: "その他",
+      amount: "0円?",
+      note: `全員が納得したら 0 円、だめなら ${yen(amounts.excuseRejected)}`,
+      prompt: "理由",
+    },
+    { value: "slacked", title: "サボった", amount: yen(amounts.slacked), note: `正直に言っても ${yen(amounts.slacked)}` },
+  ];
+
+  const selected = options.find((option) => option.value === category);
   const needsText = Boolean(selected?.prompt);
-  const ready = category !== null && (!needsText || [...text.trim()].length >= minChars);
+  const ready = category !== null && (!needsText || [...text.trim()].length >= minChars) && !pending;
 
   return (
-    <form className="grid gap-5" onSubmit={(event) => event.preventDefault()}>
+    <form action={logId ? formAction : undefined} onSubmit={logId ? undefined : (event) => event.preventDefault()} className="grid gap-5">
+      {logId ? <input type="hidden" name="logId" value={logId} /> : null}
       <div className="grid justify-items-center gap-3 pt-2 text-center">
         <Stamp tone="red" label="未達成" className="px-5 py-1.5 text-[2.2rem]" />
         <p className="m-0 text-sm leading-relaxed font-medium">
           {formatJstTime(missedAt)} の締切までに合格できませんでした（{goal}）。
           <br />
-          今日のうちに理由を書いて、振り返りましょう。
+          今日のうちに理由を書いて、振り返りましょう。申告したら変えられません。
         </p>
       </div>
 
@@ -59,7 +103,7 @@ export function ReasonForm({ deadline, missedAt, goal, minChars, unrealisticStre
 
       <fieldset className="m-0 grid gap-3 border-0 p-0">
         <legend className="sr-only">理由</legend>
-        {OPTIONS.map((option) => (
+        {options.map((option) => (
           <label
             key={option.value}
             className={cn(
@@ -79,34 +123,35 @@ export function ReasonForm({ deadline, missedAt, goal, minChars, unrealisticStre
             <em className={cn("text-right font-en text-lg not-italic", option.value === "slacked" && "text-red")}>
               {option.amount}
             </em>
-            <span className="col-span-2 text-xs font-medium text-sub">
-              {option.value === "unrealistic" && unrealisticStreak > 0
-                ? `いま ${unrealisticStreak} 回連続 ・ 4 回目から 500 円`
-                : option.note}
-            </span>
+            <span className="col-span-2 text-xs font-medium text-sub">{option.note}</span>
           </label>
         ))}
       </fieldset>
 
-      {selected?.prompt ? (
+      {category ? (
         <div className="grid gap-1.5">
-          <FieldLabel htmlFor="reason-text">{selected.prompt}</FieldLabel>
+          <FieldLabel htmlFor="reason-text">{selected?.prompt ?? "ひとこと（任意）"}</FieldLabel>
           <TextArea
             id="reason-text"
+            name="text"
             value={text}
+            maxLength={2000}
             onChange={(e) => setText(e.target.value)}
             placeholder={
               category === "unrealistic"
                 ? "例: 3 章を 2 日に分ける。明日は重解のケースだけに絞って、例題を先に解く"
-                : "具体的に。ほかのメンバーが読んで納得できるように"
+                : category === "slacked"
+                  ? "例: 動画を見始めて止まらなかった"
+                  : "具体的に。ほかのメンバーが読んで納得できるように"
             }
           />
-          <CharCount value={text} min={minChars} />
+          {needsText ? <CharCount value={text} min={minChars} /> : null}
         </div>
       ) : null}
 
+      <FieldError id="report-error" message={state.errors?.form} />
       <ActionButton type="submit" disabled={!ready} tone={category === "slacked" ? "red" : "mint"}>
-        申告する
+        {pending ? "申告中…" : "申告する"}
       </ActionButton>
     </form>
   );

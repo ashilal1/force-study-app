@@ -46,6 +46,8 @@ const period = (payload: Record<string, unknown>) =>
 /** The member the event is about (actor), e.g. for their own reminders. */
 const self = (members: MemberName[], event: ActivityEvent) => members.filter((member) => member.id === event.actor_id);
 
+const reportUrl = (event: ActivityEvent) => (event.study_log_id ? `/reports/${event.study_log_id}` : "/");
+
 const logUrl = (event: ActivityEvent) => (event.study_log_id ? `/logs/${event.study_log_id}` : "/");
 
 /** "4 時間 12 分" / "35 分". */
@@ -291,11 +293,57 @@ const RULES: Record<string, Rule> = {
       self(members, event),
       "未達成でした",
       `今日 ${formatJstTime(text(event.payload.report_due_at))} までに理由を申告してください。申告しないとサボり扱いです`,
-      logUrl(event),
+      reportUrl(event),
       true,
     ),
     ...draft(everyoneExcept(members, event.actor_id), `${nameOf(members, event.actor_id)} さんが未達成でした`, "", logUrl(event)),
   ],
+
+  // --- Reason reports and excuse reviews (F6, F7) -----------------------------------------
+  reported: (event, members) => {
+    const name = nameOf(members, event.actor_id);
+    const category = event.payload.category;
+    if (category === "sudden_plan" || category === "other") return []; // review_requested covers it
+    const title =
+      category === "slacked"
+        ? `${name} さん: サボった（${yen(event.payload)}）`
+        : `${name} さん: 宣言が妥当じゃなかった（${event.payload.streak} 回連続${Number(event.payload.points) > 0 ? `・${yen(event.payload)}` : ""}）`;
+    return draft(everyoneExcept(members, event.actor_id), title, text(event.payload.text), reportUrl(event));
+  },
+
+  review_requested: (event, members) => {
+    const reviewers = Array.isArray(event.payload.reviewer_ids) ? event.payload.reviewer_ids : [];
+    return draft(
+      members.filter((member) => reviewers.includes(member.id)),
+      `${nameOf(members, event.actor_id)} さんの理由を審査してください（今日 ${formatJstTime(text(event.payload.review_due_at))} まで）`,
+      text(event.payload.text),
+      reportUrl(event),
+      true,
+    );
+  },
+
+  review_approved: (event, members) =>
+    draft(members, `${nameOf(members, event.actor_id)} さんの理由は承認されました`, "ペナルティなし", reportUrl(event)),
+
+  review_rejected: (event, members) =>
+    draft(
+      members,
+      `${nameOf(members, event.actor_id)} さんの理由は却下されました`,
+      `${event.payload.expired ? "期限までに全員の納得がそろいませんでした。" : ""}${yen(event.payload)}`,
+      reportUrl(event),
+    ),
+
+  report_expired: (event, members) =>
+    draft(members, `${nameOf(members, event.actor_id)} さんが理由を申告しませんでした`, `サボり扱い・${yen(event.payload)}`, reportUrl(event)),
+
+  reminder_report_due: (event, members) =>
+    draft(
+      self(members, event),
+      `理由申告の期限は今日 ${formatJstTime(text(event.payload.report_due_at))} です`,
+      `申告しないとサボり扱いで ${yen(event.payload)}`,
+      reportUrl(event),
+      true,
+    ),
 
   completion_confirmed: (event, members) =>
     draft(self(members, event), "達成が確定しました", "おつかれさまでした", logUrl(event)),
@@ -303,6 +351,9 @@ const RULES: Record<string, Rule> = {
   reminder_review_due: (event, members) => {
     const owner = nameOf(members, event.payload.owner_id);
     const due = formatJstTime(text(event.payload.review_due_at));
+    if (event.payload.subject_type === "excuse") {
+      return draft(self(members, event), `${owner} さんの理由の審査の期限が近づいています`, `今日 ${due} まで`, reportUrl(event), true);
+    }
     return event.payload.subject_type === "dispute"
       ? draft(self(members, event), `${owner} さんの最終審査の期限が近づいています`, `今日 ${due} まで`, logUrl(event), true)
       : draft(self(members, event), `${owner} さんの休会の審査の期限が近づいています`, `今日 ${due} まで`, "/leave", true);
@@ -333,6 +384,15 @@ const RULES: Record<string, Rule> = {
   },
 
   review_vote_cast: (event, members) => {
+    if (event.payload.subject_type === "excuse") {
+      const verdict = event.payload.verdict === "accept" ? "納得しました" : "納得できないを押しました";
+      return draft(
+        members.filter((member) => member.id === event.payload.owner_id),
+        `${nameOf(members, event.actor_id)} さんが${verdict}（${event.payload.accepted}/${event.payload.total}）`,
+        text(event.payload.comment),
+        reportUrl(event),
+      );
+    }
     if (event.payload.subject_type === "dispute") {
       const verdict = event.payload.verdict === "accept" ? "認めました" : "却下しました";
       return draft(

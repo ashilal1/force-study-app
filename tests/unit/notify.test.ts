@@ -212,6 +212,7 @@ describe("draftNotifications (M6)", () => {
       ["cho", false],
     ]);
     expect(drafts[0].body).toContain("23:00 までに理由を申告");
+    expect(drafts[0].url).toBe("/reports/log-1");
   });
 
   it("sends review reminders to the reviewer, linking the right page", () => {
@@ -220,5 +221,40 @@ describe("draftNotifications (M6)", () => {
       members,
     );
     expect(leave).toMatchObject({ recipientId: "ben", url: "/leave", body: "今日 23:59 まで" });
+  });
+});
+
+describe("draftNotifications (M7a)", () => {
+  it("sends excuses to the fixed reviewers, other reports to everyone else", () => {
+    const review = draftNotifications(
+      {
+        id: "e",
+        type: "review_requested",
+        actor_id: "aki",
+        study_log_id: "log-1",
+        payload: { text: "急に入院", review_due_at: "2026-10-20T14:59:00Z", reviewer_ids: ["ben"] },
+      },
+      members,
+    );
+    expect(review.map((d) => [d.recipientId, d.requiresAction, d.url])).toEqual([["ben", true, "/reports/log-1"]]);
+    expect(
+      draftNotifications({ id: "e", type: "reported", actor_id: "aki", payload: { category: "other" } }, members),
+    ).toEqual([]);
+    const slacked = draftNotifications(
+      { id: "e", type: "reported", actor_id: "aki", payload: { category: "slacked", points: 700, text: "" } },
+      members,
+    );
+    expect(slacked.map((d) => [d.recipientId, d.title])).toEqual([
+      ["ben", "あき さん: サボった（700 円）"],
+      ["cho", "あき さん: サボった（700 円）"],
+    ]);
+  });
+
+  it("explains an expired excuse review", () => {
+    const [draft] = draftNotifications(
+      { id: "e", type: "review_rejected", actor_id: "aki", payload: { expired: true, points: 500 } },
+      members,
+    );
+    expect(draft.body).toBe("期限までに全員の納得がそろいませんでした。500 円");
   });
 });

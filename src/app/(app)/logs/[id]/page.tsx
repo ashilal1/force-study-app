@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { PageLoading } from "@/components/app/page-loading";
 import { Countdown } from "@/components/brand/countdown";
@@ -74,6 +75,12 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
           ))}
           {log.passphrase ? <PassphraseCard value={log.passphrase} compact /> : null}
         </Sticker>
+      ) : null}
+
+      {log.status === "missed" ? (
+        <Link href={`/reports/${log.id}`} className="text-sm font-bold underline underline-offset-2">
+          理由申告を見る →
+        </Link>
       ) : null}
 
       <DisputeSection detail={detail} />

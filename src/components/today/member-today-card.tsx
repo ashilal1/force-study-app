@@ -44,6 +44,22 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
           ) : null}
           <FlagList flags={state.log.flags} />
           {member.canFlag ? <FlagForm logId={state.log.id} ownerName={member.name} /> : null}
+          {state.log.status === "missed" ? (
+            <Link
+              href={`/reports/${state.log.id}`}
+              className={
+                member.isMe && state.log.report === "awaiting_report"
+                  ? actionButtonVariants({ tone: "red" })
+                  : "text-sm font-bold underline underline-offset-2"
+              }
+            >
+              {member.isMe && state.log.report === "awaiting_report"
+                ? "理由を申告する"
+                : state.log.report === "under_review"
+                  ? "理由を見る（審査中）→"
+                  : "理由を見る →"}
+            </Link>
+          ) : null}
           {state.log.latest ? (
             <Link href={`/logs/${state.log.id}`} className="text-sm font-bold underline underline-offset-2">
               {state.log.status === "passed" && !member.isMe ? "証拠を見る（怪しければ指摘）→" : "証拠と判定を見る →"}
@@ -98,6 +114,11 @@ function Badge({ member }: { member: TodayMember }) {
     case "undeclared":
       return <Pill variant="outline">未宣言</Pill>;
     case "declared":
+      if (member.state.log.status === "missed") {
+        const sub =
+          member.state.log.report === "awaiting_report" ? "申告待ち" : member.state.log.report === "under_review" ? "審査中" : undefined;
+        return <Stamp tone="red" label="未達成" sub={sub} className="text-base" />;
+      }
       if (member.state.log.status === "invalidated") {
         return <Stamp tone="red" label="不認定" className="text-base" />;
       }
