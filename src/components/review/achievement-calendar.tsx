@@ -10,9 +10,9 @@ const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 /**
  * G2: a wall calendar — 日〜土 across the top, one row per week, oldest first. Color plus a
  * symbol, so it reads without color too; each square shows its date and opens that day's
- * detail when there is a record. `compact` (the group comparison) is one strip of days per member.
+ * detail when there is a record.
  */
-export function AchievementCalendar({ days, compact = false }: { days: CalendarDay[]; compact?: boolean }) {
+export function AchievementCalendar({ days }: { days: CalendarDay[] }) {
   if (days.length === 0) return <p className="m-0 text-sm text-sub">まだ記録がありません</p>;
   const byDate = new Map(days.map((day) => [day.date, day]));
   const first = weekStartOf(days[0].date);
@@ -20,20 +20,6 @@ export function AchievementCalendar({ days, compact = false }: { days: CalendarD
   const weeks: string[][] = [];
   for (let start = first; start <= last; start = addDays(start, 7)) {
     weeks.push(Array.from({ length: 7 }, (_, i) => addDays(start, i)));
-  }
-
-  if (compact) {
-    return (
-      <div className="flex gap-1.5 overflow-x-auto">
-        {weeks.map((week) => (
-          <div key={week[0]} className="flex shrink-0 gap-0.5">
-            {week.map((date) => (
-              <Cell key={date} date={date} day={byDate.get(date)} compact />
-            ))}
-          </div>
-        ))}
-      </div>
-    );
   }
 
   return (
@@ -64,6 +50,11 @@ export function AchievementCalendar({ days, compact = false }: { days: CalendarD
       </ul>
     </div>
   );
+}
+
+/** A small mark for one member's day (the group calendar, G12). */
+export function DayMark({ date, day }: { date: string; day: CalendarDay | undefined }) {
+  return <Cell date={date} day={day} compact />;
 }
 
 function Cell({
