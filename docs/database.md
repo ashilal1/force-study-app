@@ -88,7 +88,8 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 ### profiles
 | 列 | 型 | 説明 |
 |---|---|---|
-| id | uuid PK → auth.users | |
+| id | uuid PK | **メンバーとしての id（1 回の所属ごとに 1 つ）**。記録はすべてこの id を指す。ADR-035 より前に入った人は、アカウントの id と同じ値 |
+| auth_user_id | uuid → auth.users | ログインしているアカウント。**有効な所属はアカウントごとに 1 つ**（`deactivated_at is null` の部分一意インデックス） |
 | display_name | text not null | |
 | avatar_url | text | |
 | paypay_link | text | `https://` で始まるもの |
@@ -97,7 +98,9 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 | is_admin | boolean default false | グループを作った人を true にする（`create_group`）。管理者が `set_admin` で増やしたり外したりできる（0 人にはできない） |
 | trial_ends_at | timestamptz | お試し期間の終わり = 登録後の最初の日曜 0:00 JST（日曜に登録したら翌週の日曜） |
 | notifications_verified_at | timestamptz null | テスト通知を本人が確認した時刻（F0）。null のあいだはアプリを使えない |
-| deactivated_at | timestamptz null | 抜けたメンバー。**profiles も `auth.users` も消さず**、ログインを止める（Auth の ban）だけにする。記録を残すため |
+| deactivated_at | timestamptz null | 退会した・外された時刻。行は消さず、記録はこの所属に残る。同じアカウントはあとで別のグループに（同じグループにも）新しい行で入れる |
+| left_reason | text null | `left`（自分で退会）/ `removed`（管理者が外した）。`deactivated_at` とそろう |
+| removed_by | uuid → profiles null | 外した管理者 |
 | created_at | timestamptz | |
 
 Google でログインしただけでは作らない。招待コードを確かめた Server Action が `join_group()` で（招待した人のグループに）、またはグループを作るときに `create_group()` で作る（`display_name`・`avatar_url` は Google の情報を初期値にする）。**profile があり `deactivated_at` が null の人だけがメンバー**で、RLS はこれを `private.is_member()` で判定する。
@@ -428,6 +431,15 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 
 ほかの RPC は、その人の**グループの設定**（`private.settings_of(user_id)`）で動き、相手が**同じグループ**か（`private.same_group`）を確かめる（「軽すぎる」「怪しい」・支払先・管理者）。審査者はそのグループのほかのメンバー（`reviewers_for`）。時刻で動く定期実行（宣言のリマインドと締切、理由申告・休会のリマインド、精算、週の振り返り、未払いのリマインド）は**グループごとに**その設定の時刻で回す。`activity_events.group_id` は actor のグループを自動で入れ（トリガー）、通知はそのグループのメンバーにだけ届く（`create_notifications` も確かめる）。
 
+### 退会と再参加（ADR-035）
+| 関数 | 処理 |
+|---|---|
+| `leave_group(member_id)` | 自分で退会。精算が全部終わっていて（未完了の精算も、精算に入っていないペナルティもない）、終わっていない日（`pending`・`passed`・理由申告や審査の途中）がなく、ほかにメンバーがいるなら自分以外の管理者がいるときだけ（`leave_unsettled` / `leave_day_open` / `last_admin`） |
+| `remove_member(admin_id, member_id)` | 管理者が同じグループのほかの人を外す。お金や終わっていない日があっても外せる（未払いの精算は記録に残るが、P7 はもう付かない） |
+| `private.end_membership` | 共通の処理: `deactivated_at`・`left_reason` を入れて管理者を外す。`pending` の日はペナルティなしで `missed`、申告待ちは `no_penalty` で閉じる。その人を支払先にしていた人の支払先を空にして `payee_cleared`（本人と管理者へ）。まだ票を入れていなかった審査は、残りの人の票で決まれば決める（`private.review_tally` は退会した人の未投票を数えない） |
+
+退会した人にはペナルティを付けない（`add_penalty`）。`join_group`・`create_group` の `p_user_id` はアカウントの id で、有効な所属がなければ**新しい profile を作る**。2 回目以降の所属にはお試し期間を付けない（`private.trial_for`）。
+
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |
 |---|---|
@@ -479,8 +491,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | group_settings | 自分のグループの行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
 | profiles | 同じグループの人 | update: 本人の行の `display_name, avatar_url, paypay_link` **だけ**（列単位 GRANT）。`payee_id` は管理者が Server Action 経由で |
 | rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
-| notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
-| push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
+| notifications | `recipient_id = private.my_member()` | update: 本人の行の `read_at` だけ |
+| push_subscriptions | `user_id = private.my_member()` | なし（登録・確認・削除は Server Action） |
 | penalty_summary・daily_history・weekly_stats・received_objections（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
 
 関数の EXECUTE は `private.is_member()` に加えて、ビューが「今日」を求めるための `private.now()`・`private.jst_today()` だけを `authenticated` に許可する（時刻を返すだけ）。

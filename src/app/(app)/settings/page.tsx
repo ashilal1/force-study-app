@@ -9,6 +9,7 @@ import { NotificationHelp } from "@/components/notifications/notification-help";
 import { ProfileForm } from "@/components/profile/profile-form";
 import { GroupAdmin } from "@/components/settings/group-admin";
 import { GroupSettingsForm } from "@/components/settings/group-settings-form";
+import { LeaveGroup } from "@/components/settings/leave-group";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { getSessionUser, requireMember } from "@/lib/auth";
 import { isInTrial, listMembers } from "@/lib/members";
@@ -59,6 +60,9 @@ export default function SettingsPage() {
           ログアウト
         </ActionButton>
       </form>
+      <Suspense fallback={null}>
+        <Leave />
+      </Suspense>
     </div>
   );
 }
@@ -125,3 +129,10 @@ async function AdminSettings() {
   );
 }
 
+
+async function Leave() {
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("groups").select("name").single();
+  if (error) throw error;
+  return <LeaveGroup groupName={data.name} />;
+}

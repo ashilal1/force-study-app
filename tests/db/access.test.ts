@@ -48,6 +48,7 @@ describe("writes go through the server (ADR-004)", () => {
   );
 
   it("shows a member only their own notifications and lets them mark them read", async () => {
+    const account = (await db.query<{ a: string }>("select auth_user_id as a from public.profiles where id = $1", [me])).rows[0].a;
     await asService(db, async (tx) => {
       const event = await tx.query<{ id: string }>(
         "insert into public.activity_events (type, actor_id) values ('declared', $1) returning id",
@@ -59,7 +60,7 @@ describe("writes go through the server (ADR-004)", () => {
       );
       await tx.exec("reset role");
       await tx.exec("set local role authenticated");
-      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [me]);
+      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [account]);
 
       const visible = await tx.query<{ title: string }>("select title from public.notifications");
       expect(visible.rows.map((r) => r.title)).toEqual(["for me"]);

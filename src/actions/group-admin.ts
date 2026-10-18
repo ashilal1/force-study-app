@@ -1,6 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
+import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireMember } from "@/lib/auth";
 import { dispatchAfterResponse } from "@/lib/notify";
@@ -39,6 +40,30 @@ export async function setAdmin(_prev: FormState, formData: FormData): Promise<Fo
   });
   if (error) return failed(error, {});
   dispatchAfterResponse(event);
+  refresh();
+  return { done: true };
+}
+
+/** Leaves the group (ADR-035). Records stay; the account can join or create a group again. */
+export async function leaveGroup(): Promise<FormState> {
+  const member = await requireMember();
+  const { data: events, error } = await createAdminClient().rpc("leave_group", { p_member_id: member.id });
+  if (error) return failed(error, {});
+  dispatchAfterResponse(events);
+  redirect("/join");
+}
+
+/** Admin: removes another member (e.g. someone nobody can reach). */
+export async function removeMember(_prev: FormState, formData: FormData): Promise<FormState> {
+  const member = await requireMember();
+  const memberId = z.uuid().safeParse(formData.get("memberId"));
+  if (!memberId.success) return { errors: { form: GENERIC_ERROR } };
+  const { data: events, error } = await createAdminClient().rpc("remove_member", {
+    p_admin_id: member.id,
+    p_member_id: memberId.data,
+  });
+  if (error) return failed(error, {});
+  dispatchAfterResponse(events);
   refresh();
   return { done: true };
 }

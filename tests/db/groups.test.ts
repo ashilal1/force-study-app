@@ -11,16 +11,19 @@ async function setup() {
   await setNow(db, "2026-10-19 09:00");
   const aki = await createMember(db, "aki");
   const ben = await createMember(db, "ben");
-  const dai = await createAuthUser(db, "dai@example.com");
-  await db.query("select public.create_group($1, 'dai', null, '夜型の会')", [dai]);
-  const eri = await createAuthUser(db, "eri@example.com");
+  const daiAccount = await createAuthUser(db, "dai@example.com");
+  const dai = (await db.query<{ id: string }>("select id from public.create_group($1, 'dai', null, '夜型の会')", [daiAccount])).rows[0].id;
+  const eriAccount = await createAuthUser(db, "eri@example.com");
   const hash = await createInvite(db, dai);
-  await db.query("select public.join_group($1, 'eri', null, $2)", [eri, hash]);
+  const eri = (await db.query<{ id: string }>("select id from public.join_group($1, 'eri', null, $2)", [eriAccount, hash])).rows[0].id;
   await db.query("update public.profiles set trial_ends_at = '2026-01-01'");
   const groupOf = async (id: string) =>
     (await db.query<{ group_id: string }>("select group_id from public.profiles where id = $1", [id])).rows[0].group_id;
-  return { db, aki, ben, dai, eri, groupA: await groupOf(aki), groupB: await groupOf(dai) };
+  return { db, aki, ben, dai, eri, akiAccount: await accountOf(db, aki), groupA: await groupOf(aki), groupB: await groupOf(dai) };
 }
+
+const accountOf = async (db: Db, member: string) =>
+  (await db.query<{ auth_user_id: string }>("select auth_user_id from public.profiles where id = $1", [member])).rows[0].auth_user_id;
 
 const declare = async (db: Db, userId: string) =>
   (await db.query<{ study_log_id: string }>("select study_log_id from public.declare_goal($1, '演習', null, 'さくら 47')", [userId]))
@@ -39,8 +42,8 @@ describe("create_group", () => {
   });
 
   it("is for people not in a group yet, within the app's limits", async () => {
-    const { db, aki } = await setup();
-    await expect(db.query("select public.create_group($1, 'aki', null, '二つ目')", [aki])).rejects.toThrow(/already_in_group/);
+    const { db, akiAccount } = await setup();
+    await expect(db.query("select public.create_group($1, 'aki', null, '二つ目')", [akiAccount])).rejects.toThrow(/already_in_group/);
     const fay = await createAuthUser(db, "fay@example.com");
     await expect(db.query("select public.create_group($1, 'fay', null, '  ')", [fay])).rejects.toThrow(/invalid_group_name/);
     await db.query("update public.app_limits set max_groups = 2");
