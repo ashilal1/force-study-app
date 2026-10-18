@@ -64,7 +64,7 @@ export function LogTable({ rows }: { rows: LogRow[] }) {
   const table = useTable({ features, columns, data });
 
   return (
-    <div className="grid gap-2">
+    <div className="grid min-w-0 grid-cols-1 gap-2">
       <div className="flex flex-wrap gap-1.5">
         {FILTERS.map((option) => (
           <button
