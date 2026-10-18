@@ -116,7 +116,7 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
 
       <section className="grid gap-3">
         <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">この日のタイムライン</h2>
-        <Timeline items={await getTimeline(50, log.id)} />
+        <Timeline items={(await getTimeline({ limit: 50, studyLogId: log.id })).items} />
       </section>
 
       {dispute && can.resend ? (
