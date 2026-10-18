@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { PageLoading } from "@/components/app/page-loading";
 import { Avatar } from "@/components/brand/avatar";
-import { AchievementCalendar } from "@/components/review/achievement-calendar";
+import { GroupCalendar } from "@/components/review/group-calendar";
 import { MemberRateChart } from "@/components/review/charts";
 import { RangeTabs } from "@/components/review/range-tabs";
 import { RankingSwitch } from "@/components/review/ranking-switch";
@@ -96,18 +96,10 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
-        <section className="grid gap-2.5">
+        <section className="grid min-w-0 gap-2.5">
           <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">グループのカレンダー</h2>
-          <div className="grid gap-2">
-            {members.map((member) => (
-              <div key={member.id} className="grid grid-cols-[5.5rem_1fr] items-center gap-2">
-                <Link href={`/members/${member.id}`} className="truncate text-xs font-bold underline">
-                  {member.name}
-                </Link>
-                <AchievementCalendar days={member.days} compact />
-              </div>
-            ))}
-          </div>
+          <p className="m-0 text-xs text-sub">直近 4 週の毎日の結果です。マスを押すとその日の詳細へ。</p>
+          <GroupCalendar today={today} members={members.map((member) => ({ id: member.id, name: member.name, days: member.allDays }))} />
         </section>
 
         <section className="grid gap-2.5">
