@@ -69,8 +69,8 @@ describe("invites", () => {
     const owner = await createMember(db, "owner");
     const hash = randomHash();
     await db.query(
-      `insert into public.invites (code_hash, created_by, created_at, expires_at)
-       values ($1, $2, now() - interval '20 minutes', now() - interval '5 minutes')`,
+      `insert into public.invites (code_hash, created_by, created_at, expires_at, group_id)
+       values ($1, $2, now() - interval '20 minutes', now() - interval '5 minutes', (select group_id from public.profiles where id = $2))`,
       [hash, owner],
     );
     const friend = await createAuthUser(db, "friend@example.com");
@@ -92,11 +92,12 @@ describe("invites", () => {
     const owner = await createMember(db, "owner");
     const friend = await createMember(db, "friend");
     const { rows } = await db.query<{ actor_id: string; invited_by: string | null }>(
-      "select actor_id, payload->>'invited_by' as invited_by from public.activity_events where type = 'member_joined' order by created_at",
+      "select type, actor_id, payload->>'invited_by' as invited_by from public.activity_events where type in ('group_created', 'member_joined') order by created_at",
     );
+    // The first member created the group (M10); the next one joined with their invite.
     expect(rows).toEqual([
-      { actor_id: owner, invited_by: null },
-      { actor_id: friend, invited_by: owner },
+      { type: "group_created", actor_id: owner, invited_by: null },
+      { type: "member_joined", actor_id: friend, invited_by: owner },
     ]);
   });
 

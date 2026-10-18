@@ -10,6 +10,11 @@ const MESSAGES: Record<string, string> = {
   already_declared: "今日はもう宣言しています",
   invalid_declaration: "宣言の内容を 1〜500 文字で書いてください",
   invalid_deadline: "提出締切は、今から 30 分以降・21:00 までにしてください",
+  // Groups (M10)
+  already_in_group: "もうグループに入っています",
+  invalid_group_name: "グループ名を 1〜40 文字で入れてください",
+  app_full: "アプリ全体の人数が上限に達しています",
+  last_admin: "管理者が 0 人になるので外せません。先にほかの人を管理者にしてください",
   previous_day_open: "昨日の分がまだ終わっていません。提出して合格するか、「できなかった」を押してください",
   previous_report_due: "昨日の分の理由を申告すると、今日の宣言ができます",
   own_declaration: "自分の宣言には指摘できません",
