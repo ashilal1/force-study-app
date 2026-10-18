@@ -98,6 +98,8 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 | is_admin | boolean default false | グループを作った人を true にする（`create_group`）。管理者が `set_admin` で増やしたり外したりできる（0 人にはできない） |
 | trial_ends_at | timestamptz | お試し期間の終わり = 登録後の最初の日曜 0:00 JST（日曜に登録したら翌週の日曜） |
 | notifications_verified_at | timestamptz null | テスト通知を本人が確認した時刻（F0）。null のあいだはアプリを使えない |
+| rules_accepted_at | timestamptz null | レクチャー「はじめに」で「このルールで始める」を押した時刻（F15）。null のあいだはアプリを使えない（F0 より手前のゲート）。M12 のマイグレーションで、その時点のメンバーには `created_at` を入れる |
+| seen_tips | text[] not null default '{}' | 見たコーチマークのキー（F15）。`'*'` が入っていたら全部見たことにする（M12 の時点のメンバーと、2 回目以降の所属） |
 | deactivated_at | timestamptz null | 退会した・外された時刻。行は消さず、記録はこの所属に残る。同じアカウントはあとで別のグループに（同じグループにも）新しい行で入れる |
 | left_reason | text null | `left`（自分で退会）/ `removed`（管理者が外した）。`deactivated_at` とそろう |
 | removed_by | uuid → profiles null | 外した管理者 |
@@ -439,6 +441,15 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `private.end_membership` | 共通の処理: `deactivated_at`・`left_reason` を入れて管理者を外す。`pending` の日はペナルティなしで `missed`、申告待ちは `no_penalty` で閉じる。その人を支払先にしていた人の支払先を空にして `payee_cleared`（本人と管理者へ）。まだ票を入れていなかった審査は、残りの人の票で決まれば決める（`private.review_tally` は退会した人の未投票を数えない） |
 
 退会した人にはペナルティを付けない（`add_penalty`）。`join_group`・`create_group` の `p_user_id` はアカウントの id で、有効な所属がなければ**新しい profile を作る**。2 回目以降の所属にはお試し期間を付けない（`private.trial_for`）。
+
+### はじめての体験（M12・F15）
+| 関数 | 処理 |
+|---|---|
+| `accept_rules(user_id)` | 本人の `rules_accepted_at` が null なら今の時刻を入れる（入っていれば何もしない。「使い方をもう一度見る」からは呼ばない）。メンバーでなければ `not_a_member` |
+| `mark_tip_seen(user_id, tip)` | `seen_tips` にキーを足す（重複させない）。キーは `^[a-z_]{1,40}$`、配列は 100 個まで（`invalid_tip`）。キーの中身（どの画面か）は DB では知らない |
+| `reset_tips(user_id)` | 「使い方をもう一度見る」: `seen_tips` を空にする |
+
+`join_group`・`create_group` は、2 回目以降の所属（`private.trial_for` がお試しを付けない人）の `seen_tips` を `'{*}'` で作る。`rules_accepted_at` はどの所属でも null で作る（グループごとにルールが違うので、入るたびにレクチャーを見る）。
 
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |
