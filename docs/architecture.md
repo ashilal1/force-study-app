@@ -226,7 +226,7 @@ flowchart LR
 | セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ（`/login`・`/auth/callback`・使い方の `/guide` だけは未ログインでも開ける）。proxy はログインの有無だけを見る楽観的なチェック |
 | ログイン | Google OAuth（Supabase Auth の Google プロバイダー、PKCE）。`signInWithOAuth` → Google → `/auth/callback` で `exchangeCodeForSession` |
 | 招待 | メンバーがホームの「招待コードを発行する」を押すと、Server Action が暗号用の乱数でコードを作り、そのハッシュを `rpc create_invite` で保存して、コードとリンクを画面に返す（ADR-026） |
-| 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action がハッシュにして `rpc join_group` に渡し、招待の照合・使用済みへの更新・profile の作成を 1 つのトランザクションで行う。最初の 1 人だけは `INVITE_CODE` と定数時間で比べて通す（グループが空のときだけ）。profile のない人は、RLS の `private.is_member()` によって何も読めない |
+| 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action がハッシュにして `rpc join_group` に渡し、招待の照合・使用済みへの更新・profile の作成（発行した人のグループに入れる）を 1 つのトランザクションで行う。同じ画面の「新しいグループを作る」は `rpc create_group` で、作った人が管理者になる（1 人 1 グループ。ADR-034）。`INVITE_CODE` はグループが 1 つもないときだけ使える。profile のない人は何も読めず、メンバーは RLS（`private.my_group()`）で自分のグループの行だけを読む |
 | ログイン後の戻り先 | 未ログインで開いたページ（招待リンクなど）は proxy が `/login?next=…` に付け、ログインの開始時に 10 分の httpOnly Cookie に入れ、`/auth/callback` で戻す。同じサイト内のパスだけを受け付ける（`lib/redirect.ts`） |
 | メンバーの確認 | `src/lib/auth.ts`（Data Access Layer）の `requireMember()`。自分の profile を RLS 越しに読み、見えなければ `/join` へ。`(app)/layout.tsx` が `<Suspense>` の中で呼ぶので、メンバーでない人にはどのページも描画されない。Server Action も毎回これで確かめ直す |
 | DB 読み取り | RLS: **メンバー**（profile があり、抜けていない人）は全行を読める。`notifications` と `push_subscriptions` は本人の行だけ |

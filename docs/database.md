@@ -30,10 +30,26 @@ erDiagram
 
 型の表記は Postgres。`timestamptz` はすべて `default now()`。**ポイントは円と同じ単位の整数**（1pt = 1 円）。
 
-### group_settings（1 行だけ）
+### groups（M10・ADR-034）
+| 列 | 型 | 説明 |
+|---|---|---|
+| id | uuid PK | |
+| name | text | 1〜40 文字。管理者が変えられる（更新できるのはこの列だけ。削除は禁止） |
+| created_by | uuid | 作った人（auth のユーザー id） |
+| created_at | timestamptz | |
+
+### app_limits（1 行だけ。アプリ全体の上限）
 | 列 | 型 | 既定 | 説明 |
 |---|---|---|---|
-| id | boolean PK | `true`, `check (id)` | 1 行に固定するためのダミー |
+| max_groups | int | 10 | グループの数の上限 |
+| max_total_members | int | 50 | 全グループの合計人数の上限（無料枠を共有するため） |
+
+RLS は有効、GRANT なし。運営者が SQL で変える。
+
+### group_settings（グループごとに 1 行）
+| 列 | 型 | 既定 | 説明 |
+|---|---|---|---|
+| group_id | uuid PK → groups | | どのグループの設定か（M10 で 1 行固定の `id` から変更） |
 | declaration_cutoff | time | `12:00` | 宣言締切 (JST) |
 | last_declaration_reminder | time | `11:00` | 2 回目の宣言リマインド |
 | submit_deadline_max | time | `21:00` | （使わない。ADR-032 で提出締切は翌日の `declaration_cutoff` になった） |
@@ -77,13 +93,14 @@ erDiagram
 | avatar_url | text | |
 | paypay_link | text | `https://` で始まるもの |
 | payee_id | uuid → profiles null | 支払先。**管理者が入力する**（グループで話し合って決める）。`check (payee_id <> id)` |
-| is_admin | boolean default false | 最初のユーザーを true にする（`join_group`） |
+| group_id | uuid → groups not null | 入っているグループ。**1 人 1 グループ**で、あとから変えない（ADR-034） |
+| is_admin | boolean default false | グループを作った人を true にする（`create_group`）。管理者が `set_admin` で増やしたり外したりできる（0 人にはできない） |
 | trial_ends_at | timestamptz | お試し期間の終わり = 登録後の最初の日曜 0:00 JST（日曜に登録したら翌週の日曜） |
 | notifications_verified_at | timestamptz null | テスト通知を本人が確認した時刻（F0）。null のあいだはアプリを使えない |
 | deactivated_at | timestamptz null | 抜けたメンバー。**profiles も `auth.users` も消さず**、ログインを止める（Auth の ban）だけにする。記録を残すため |
 | created_at | timestamptz | |
 
-Google でログインしただけでは作らない。招待コードを確かめた Server Action が `join_group()` で作る（`display_name`・`avatar_url` は Google の情報を初期値にする。`is_admin` は最初の 1 人だけ true）。**profile があり `deactivated_at` が null の人だけがメンバー**で、RLS はこれを `private.is_member()` で判定する。
+Google でログインしただけでは作らない。招待コードを確かめた Server Action が `join_group()` で（招待した人のグループに）、またはグループを作るときに `create_group()` で作る（`display_name`・`avatar_url` は Google の情報を初期値にする）。**profile があり `deactivated_at` が null の人だけがメンバー**で、RLS はこれを `private.is_member()` で判定する。
 
 ### invites（招待コード。1 回だけ使える・短命。ADR-026）
 | 列 | 型 | 説明 |
@@ -95,6 +112,7 @@ Google でログインしただけでは作らない。招待コードを確か�
 | expires_at | timestamptz | `created_at + invite_minutes`。判定は DB の `now()` |
 | used_by | uuid → profiles **unique** null | 使って参加した人 |
 | used_at | timestamptz null | `(used_by is null) = (used_at is null)` |
+| group_id | uuid → groups | 発行した人のグループ。このコードで入った人はこのグループのメンバーになる |
 
 コードは 10 文字（紛らわしい 0/O・1/I/L を除いた 31 文字、約 49.5 ビット）を Node の `crypto.randomInt` で作る。表示は `K7QM-3XRP-WD`。削除は禁止、更新は `used_by`・`used_at` だけ。
 
@@ -400,6 +418,16 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `run_weekly_settlement()`（定期実行。tick の最後） | `current_period_end()`（設定の曜日・時刻を過ぎた直近の締め日）について 1 回だけ。① 前の週までの `open` の精算に P7（`late:{settlement}:{締め日}`）② 人ごとに、締め日までの学習日（P7 は作成時刻）の未精算・`waived` でないペナルティを束ねて支払先への精算を作る（支払先が未設定なら作らずに持ち越して `payee_missing` を管理者へ）③ その週に記録があれば `weekly_summary` |
 | `late_payment_reminders()`（定期実行） | 次の締めの 24 時間前に、`open` の精算の本人へ |
 
+### グループ（M10）
+| 関数 | 処理 |
+|---|---|
+| `create_group(user_id, display_name, avatar_url, group_name)` | まだどのグループにも入っていない人だけ。`app_limits` を確かめて、グループ・その設定の行・管理者の profile を作る。`group_created` を記録 |
+| `join_group(user_id, display_name, avatar_url, invite_hash, bootstrap)` | 招待コードを確かめて、発行した人のグループに入れる（グループの上限・アプリ全体の上限を確認）。`bootstrap` はグループが 1 つもないときだけ（最初のグループを作る） |
+| `rename_group(admin_id, name)` | 管理者だけ。`group_renamed` を記録 |
+| `set_admin(admin_id, user_id, is_admin)` | 管理者だけ。同じグループの人を管理者にする・外す。最後の 1 人は外せない（`last_admin`）。`admin_changed` を記録 |
+
+ほかの RPC は、その人の**グループの設定**（`private.settings_of(user_id)`）で動き、相手が**同じグループ**か（`private.same_group`）を確かめる（「軽すぎる」「怪しい」・支払先・管理者）。審査者はそのグループのほかのメンバー（`reviewers_for`）。時刻で動く定期実行（宣言のリマインドと締切、理由申告・休会のリマインド、精算、週の振り返り、未払いのリマインド）は**グループごとに**その設定の時刻で回す。`activity_events.group_id` は actor のグループを自動で入れ（トリガー）、通知はそのグループのメンバーにだけ届く（`create_notifications` も確かめる）。
+
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |
 |---|---|
@@ -447,9 +475,10 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 
 | テーブル | authenticated の select | authenticated の書き込み |
 |---|---|---|
-| group_settings | 全行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
-| profiles | 全行 | update: 本人の行の `display_name, avatar_url, paypay_link` **だけ**（列単位 GRANT）。`payee_id` は管理者が Server Action 経由で |
-| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 全行 | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
+| groups | 自分のグループ | なし（名前の変更は `rename_group`） |
+| group_settings | 自分のグループの行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
+| profiles | 同じグループの人 | update: 本人の行の `display_name, avatar_url, paypay_link` **だけ**（列単位 GRANT）。`payee_id` は管理者が Server Action 経由で |
+| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = auth.uid()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = auth.uid()` | なし（登録・確認・削除は Server Action） |
 | penalty_summary・daily_history・weekly_stats・received_objections（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
@@ -457,11 +486,11 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 関数の EXECUTE は `private.is_member()` に加えて、ビューが「今日」を求めるための `private.now()`・`private.jst_today()` だけを `authenticated` に許可する（時刻を返すだけ）。
 | invites | なし（RLS は有効、GRANT なし。サーバーだけが読む） | なし（`create_invite` / `join_group`） |
 
-`anon` ロールにはどのテーブルも許可しない。上の「全行」はすべて「メンバーなら全行」（`private.is_member()`）。Google でログインしただけの人は何も読めない。
+`anon` ロールにはどのテーブルも許可しない。M10 から、メンバーが読めるのは**自分のグループ**の行だけ（`private.my_group()`）。Google でログインしただけの人は何も読めない。RLS が呼ぶ `private.my_group()`・`in_my_group()`・`log_in_my_group()`・`folder_in_my_group()` は `authenticated` に EXECUTE を許可する（`security definer` で、自分のグループかどうかを返すだけ）。
 
 ### Storage: `study-evidence`（private）
 - insert: `bucket_id = 'study-evidence' and (storage.foldername(name))[1] = auth.uid()::text and private.is_member()`
-- select: メンバー全員（表示は署名付き URL）
+- select: 同じグループのメンバー（フォルダ名 = 持ち主のユーザー id で判定。表示は署名付き URL）
 - update / delete: なし（削除は cron が service role で行う）
 - バケットの制限: `file_size_limit = 1MB`、`allowed_mime_types = {image/webp, image/jpeg, image/png}`
 

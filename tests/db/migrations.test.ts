@@ -7,8 +7,10 @@ describe("migrations", () => {
     db = await createTestDb();
   });
 
-  it("apply cleanly and seed one group_settings row", async () => {
-    const { rows } = await db.query<{ count: number }>("select count(*)::int as count from public.group_settings");
-    expect(rows[0].count).toBe(1);
+  it("apply cleanly; settings rows come with groups (M10)", async () => {
+    const { rows } = await db.query<{ groups: number; settings: number; limits: number }>(
+      "select (select count(*)::int from public.groups) as groups, (select count(*)::int from public.group_settings) as settings, (select count(*)::int from public.app_limits) as limits",
+    );
+    expect(rows[0]).toEqual({ groups: 0, settings: 0, limits: 1 });
   });
 });

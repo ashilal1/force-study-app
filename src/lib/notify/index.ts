@@ -21,11 +21,18 @@ export function dispatchAfterResponse(events: { id: string }[] | { id: string } 
 export async function dispatch(eventId: string): Promise<void> {
   try {
     const admin = createAdminClient();
-    const [{ data: event, error: eventError }, { data: members, error: membersError }] = await Promise.all([
-      admin.from("activity_events").select("id, type, actor_id, study_log_id, payload").eq("id", eventId).single(),
-      admin.from("profiles").select("id, display_name").is("deactivated_at", null),
-    ]);
+    const { data: event, error: eventError } = await admin
+      .from("activity_events")
+      .select("id, type, actor_id, study_log_id, payload, group_id")
+      .eq("id", eventId)
+      .single();
     if (eventError) throw eventError;
+    // Only the event's group hears about it (M10).
+    const { data: members, error: membersError } = await admin
+      .from("profiles")
+      .select("id, display_name")
+      .eq("group_id", event.group_id)
+      .is("deactivated_at", null);
     if (membersError) throw membersError;
 
     const drafts = draftNotifications(event as ActivityEvent, members);

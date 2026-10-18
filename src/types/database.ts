@@ -44,6 +44,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -56,6 +57,7 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          group_id: string
           id?: string
           leave_request_id?: string | null
           payload?: Json
@@ -68,6 +70,7 @@ export type Database = {
           actor_id?: string | null
           created_at?: string
           dedupe_key?: string | null
+          group_id?: string
           id?: string
           leave_request_id?: string | null
           payload?: Json
@@ -106,6 +109,13 @@ export type Database = {
             referencedColumns: ["user_id"]
           },
           {
+            foreignKeyName: "activity_events_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "activity_events_leave_request_id_fkey"
             columns: ["leave_request_id"]
             isOneToOne: false
@@ -141,6 +151,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      app_limits: {
+        Row: {
+          id: boolean
+          max_groups: number
+          max_total_members: number
+        }
+        Insert: {
+          id?: boolean
+          max_groups?: number
+          max_total_members?: number
+        }
+        Update: {
+          id?: boolean
+          max_groups?: number
+          max_total_members?: number
+        }
+        Relationships: []
       }
       declaration_flags: {
         Row: {
@@ -266,7 +294,7 @@ export type Database = {
           dispute_cutoff: string
           dispute_window_hours: number
           flag_window_hours: number
-          id: boolean
+          group_id: string
           image_retention_days: number
           invite_minutes: number
           judge_grace_minutes: number
@@ -304,7 +332,7 @@ export type Database = {
           dispute_cutoff?: string
           dispute_window_hours?: number
           flag_window_hours?: number
-          id?: boolean
+          group_id: string
           image_retention_days?: number
           invite_minutes?: number
           judge_grace_minutes?: number
@@ -342,7 +370,7 @@ export type Database = {
           dispute_cutoff?: string
           dispute_window_hours?: number
           flag_window_hours?: number
-          id?: boolean
+          group_id?: string
           image_retention_days?: number
           invite_minutes?: number
           judge_grace_minutes?: number
@@ -374,6 +402,35 @@ export type Database = {
           unrealistic_streak_threshold?: number
           updated_at?: string
         }
+        Relationships: [
+          {
+            foreignKeyName: "group_settings_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: true
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          name?: string
+        }
         Relationships: []
       }
       invites: {
@@ -382,6 +439,7 @@ export type Database = {
           created_at: string
           created_by: string
           expires_at: string
+          group_id: string
           id: string
           used_at: string | null
           used_by: string | null
@@ -391,6 +449,7 @@ export type Database = {
           created_at?: string
           created_by: string
           expires_at: string
+          group_id: string
           id?: string
           used_at?: string | null
           used_by?: string | null
@@ -400,6 +459,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           expires_at?: string
+          group_id?: string
           id?: string
           used_at?: string | null
           used_by?: string | null
@@ -432,6 +492,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "weekly_stats"
             referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
           },
           {
             foreignKeyName: "invites_used_by_fkey"
@@ -773,6 +840,7 @@ export type Database = {
           created_at: string
           deactivated_at: string | null
           display_name: string
+          group_id: string
           id: string
           is_admin: boolean
           notifications_verified_at: string | null
@@ -785,6 +853,7 @@ export type Database = {
           created_at?: string
           deactivated_at?: string | null
           display_name: string
+          group_id: string
           id: string
           is_admin?: boolean
           notifications_verified_at?: string | null
@@ -797,6 +866,7 @@ export type Database = {
           created_at?: string
           deactivated_at?: string | null
           display_name?: string
+          group_id?: string
           id?: string
           is_admin?: boolean
           notifications_verified_at?: string | null
@@ -805,6 +875,13 @@ export type Database = {
           trial_ends_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "profiles_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "groups"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "profiles_payee_id_fkey"
             columns: ["payee_id"]
@@ -1453,6 +1530,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1474,6 +1552,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1495,6 +1574,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1516,6 +1596,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1543,6 +1624,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1564,6 +1646,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1585,6 +1668,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1606,6 +1690,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1647,6 +1732,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1662,6 +1748,33 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      create_group: {
+        Args: {
+          p_avatar_url: string
+          p_display_name: string
+          p_group_name: string
+          p_user_id: string
+        }
+        Returns: {
+          avatar_url: string | null
+          created_at: string
+          deactivated_at: string | null
+          display_name: string
+          group_id: string
+          id: string
+          is_admin: boolean
+          notifications_verified_at: string | null
+          payee_id: string | null
+          paypay_link: string | null
+          trial_ends_at: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "profiles"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       create_invite: {
         Args: { p_code_hash: string; p_user_id: string }
         Returns: {
@@ -1669,6 +1782,7 @@ export type Database = {
           created_at: string
           created_by: string
           expires_at: string
+          group_id: string
           id: string
           used_at: string | null
           used_by: string | null
@@ -1715,6 +1829,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1736,6 +1851,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1762,6 +1878,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1787,6 +1904,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1815,6 +1933,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1836,6 +1955,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1857,6 +1977,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1878,6 +1999,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1904,6 +2026,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1929,6 +2052,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1954,6 +2078,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -1975,6 +2100,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2003,6 +2129,7 @@ export type Database = {
           created_at: string
           deactivated_at: string | null
           display_name: string
+          group_id: string
           id: string
           is_admin: boolean
           notifications_verified_at: string | null
@@ -2023,6 +2150,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2052,6 +2180,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2073,6 +2202,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2104,6 +2234,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2135,6 +2266,29 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      rename_group: {
+        Args: { p_admin_id: string; p_name: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2156,6 +2310,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2182,6 +2337,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2247,6 +2403,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2268,6 +2425,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2289,6 +2447,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2334,12 +2493,35 @@ export type Database = {
         Args: { p_note: string; p_user_id: string; p_week_end: string }
         Returns: undefined
       }
+      set_admin: {
+        Args: { p_admin_id: string; p_is_admin: boolean; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       tick: {
         Args: never
         Returns: {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2361,6 +2543,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2382,6 +2565,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json
@@ -2403,6 +2587,7 @@ export type Database = {
           actor_id: string | null
           created_at: string
           dedupe_key: string | null
+          group_id: string
           id: string
           leave_request_id: string | null
           payload: Json

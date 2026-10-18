@@ -8,7 +8,7 @@ import { dispatch } from "@/lib/notify";
 import { hashInviteCode } from "@/lib/invite";
 import { secureEqual } from "@/lib/secure-compare";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { fieldErrors, joinSchema } from "@/lib/validation/profile";
+import { createGroupSchema, fieldErrors, joinSchema } from "@/lib/validation/profile";
 
 export type JoinState = {
   errors?: Record<string, string>;
@@ -24,6 +24,7 @@ const JOIN_ERRORS: Record<string, { field: string; message: string }> = {
   },
   bootstrap_closed: { field: "code", message: "このコードは使えません。メンバーに招待を発行してもらってください" },
   group_full: { field: "form", message: "グループが満員のため参加できません" },
+  app_full: { field: "form", message: "アプリ全体の人数が上限に達しているため、今は参加できません" },
 };
 
 /**
@@ -79,5 +80,43 @@ export async function joinGroup(_prev: JoinState, formData: FormData): Promise<J
     if (event) await dispatch(event.id);
   });
 
+  redirect("/");
+}
+
+export type CreateGroupState = {
+  errors?: Record<string, string>;
+  values?: { groupName: string; displayName: string; avatar: string };
+};
+
+const CREATE_ERRORS: Record<string, { field: string; message: string }> = {
+  invalid_group_name: { field: "groupName", message: "グループ名を 1〜40 文字で入れてください" },
+  app_full: { field: "form", message: "アプリ全体のグループ数か人数が上限に達しているため、今は作れません" },
+};
+
+/** M10: someone not in any group starts one and becomes its admin (create_group). */
+export async function createGroup(_prev: CreateGroupState, formData: FormData): Promise<CreateGroupState> {
+  const user = await requireUser();
+  const values = {
+    groupName: String(formData.get("groupName") ?? ""),
+    displayName: String(formData.get("displayName") ?? ""),
+    avatar: String(formData.get("avatar") ?? "initial"),
+  };
+  const parsed = createGroupSchema.safeParse(values);
+  if (!parsed.success) return { errors: fieldErrors(parsed.error), values };
+
+  const { groupName, displayName, avatar } = parsed.data;
+  const { error } = await createAdminClient().rpc("create_group", {
+    p_user_id: user.id,
+    p_display_name: displayName,
+    // Generated types mark every argument non-null; the function accepts null.
+    p_avatar_url: (avatar === "google" ? user.googleAvatarUrl : null) as string,
+    p_group_name: groupName,
+  });
+  if (error && error.message !== "already_in_group") {
+    const known = CREATE_ERRORS[error.message];
+    if (known) return { errors: { [known.field]: known.message }, values };
+    console.error("create_group failed", error);
+    return { errors: { form: "グループを作れませんでした。時間をおいてもう一度試してください" }, values };
+  }
   redirect("/");
 }
