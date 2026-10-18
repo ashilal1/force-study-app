@@ -107,7 +107,7 @@ describe("create_notifications", () => {
     const aki = await createMember(db, "aki");
     const ben = await createMember(db, "ben");
     const gone = await createMember(db, "gone");
-    await db.query("update public.profiles set deactivated_at = now() where id = $1", [gone]);
+    await db.query("update public.profiles set deactivated_at = now(), left_reason = 'removed' where id = $1", [gone]);
     const event = await anEvent(db, aki);
     const items = JSON.stringify(
       [ben, gone].map((id) => ({ recipient_id: id, title: "aki が参加しました", url: "/", requires_action: false })),

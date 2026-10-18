@@ -25,7 +25,8 @@ describe("membership (ADR-025)", () => {
   });
 
   it("join_group is idempotent", async () => {
-    await db.query("select public.join_group($1, 'aki again', null, null, true)", [first]);
+    const account = (await db.query<{ a: string }>("select auth_user_id as a from public.profiles where id = $1", [first])).rows[0].a;
+    await db.query("select public.join_group($1, 'aki again', null, null, true)", [account]);
     const { rows } = await db.query<{ display_name: string }>(
       "select display_name from public.profiles where id = $1",
       [first],
@@ -54,11 +55,12 @@ describe("membership (ADR-025)", () => {
   });
 
   it("does not let a deactivated member read anything", async () => {
+    const account = (await db.query<{ a: string }>("select auth_user_id as a from public.profiles where id = $1", [second])).rows[0].a;
     const count = await asService(db, async (tx) => {
-      await tx.query("update public.profiles set deactivated_at = now() where id = $1", [second]);
+      await tx.query("update public.profiles set deactivated_at = now(), left_reason = 'removed' where id = $1", [second]);
       await tx.exec("reset role");
       await tx.exec("set local role authenticated");
-      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [second]);
+      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [account]);
       return (await tx.query("select * from public.profiles")).rows.length;
     });
     expect(count).toBe(0);

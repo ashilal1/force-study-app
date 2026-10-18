@@ -1,7 +1,7 @@
 "use client";
 
-import { useActionState } from "react";
-import { renameGroup, setAdmin } from "@/actions/group-admin";
+import { useActionState, useState } from "react";
+import { removeMember, renameGroup, setAdmin } from "@/actions/group-admin";
 import type { FormState } from "@/actions/declarations";
 import { Avatar } from "@/components/brand/avatar";
 import { FieldLabel, TextInput } from "@/components/form/fields";
@@ -26,12 +26,15 @@ export function GroupAdmin({ groupName, members }: { groupName: string; members:
       </form>
 
       <div className="grid gap-2">
-        <b className="text-sm">管理者</b>
-        <p className="m-0 text-xs text-sub">管理者はルールの設定と支払先の入力ができます。何人でもなれますが、0 人にはできません。</p>
+        <b className="text-sm">メンバーと管理者</b>
+        <p className="m-0 text-xs text-sub">
+          管理者はルールの設定と支払先の入力ができます。何人でもなれますが、0 人にはできません。連絡が取れなくなった人などは「外す」でグループから外せます（記録は残ります）。
+        </p>
         <ul className="m-0 grid list-none gap-2 p-0">
           {members.map((member) => (
-            <li key={member.id}>
+            <li key={member.id} className="grid gap-1.5">
               <AdminRow member={member} />
+              {member.isMe ? null : <RemoveRow member={member} />}
             </li>
           ))}
         </ul>
@@ -56,6 +59,36 @@ function AdminRow({ member }: { member: Member }) {
         {member.isAdmin ? (member.isMe ? "管理者をやめる" : "管理者から外す") : "管理者にする"}
       </SubmitButton>
       {state.errors?.form ? <p className="col-span-3 m-0 text-xs font-bold text-red">{state.errors.form}</p> : null}
+    </form>
+  );
+}
+
+/** Two steps instead of a browser confirm dialog. */
+function RemoveRow({ member }: { member: Member }) {
+  const [state, action] = useActionState<FormState, FormData>(removeMember, {});
+  const [asking, setAsking] = useState(false);
+  if (!asking) {
+    return (
+      <button type="button" onClick={() => setAsking(true)} className="justify-self-end text-xs font-bold text-red underline underline-offset-2">
+        {member.name} さんを外す
+      </button>
+    );
+  }
+  return (
+    <form action={action} className="grid gap-2 rounded-[10px] border-2 border-red bg-card px-3 py-2.5">
+      <input type="hidden" name="memberId" value={member.id} />
+      <p className="m-0 text-xs leading-relaxed font-bold">
+        {member.name} さんをグループから外します。記録は残り、終わっていない日はペナルティなしで閉じます。本人はあとで招待コードで入り直せます。
+      </p>
+      {state.errors?.form ? <p className="m-0 text-xs font-bold text-red">{state.errors.form}</p> : null}
+      <div className="grid grid-cols-2 gap-2">
+        <button type="button" onClick={() => setAsking(false)} className="rounded-lg border-2 border-ink bg-card py-1.5 text-xs font-bold">
+          やめる
+        </button>
+        <SubmitButton tone="red" pendingLabel="…" className="py-1.5 text-xs">
+          外す
+        </SubmitButton>
+      </div>
     </form>
   );
 }

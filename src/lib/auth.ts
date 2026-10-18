@@ -56,7 +56,9 @@ export const getMember = cache(async (): Promise<Member | null> => {
   const { data, error } = await supabase
     .from("profiles")
     .select("id, display_name, avatar_url, paypay_link, is_admin, trial_ends_at, notifications_verified_at")
-    .eq("id", user.id)
+    // A profile is one membership (ADR-035): the account's active one, if any.
+    .eq("auth_user_id", user.id)
+    .is("deactivated_at", null)
     .maybeSingle();
   if (error) throw error;
   return data;
@@ -80,8 +82,9 @@ export const hasConfirmedNotifications = cache(async (member: Member): Promise<b
 });
 
 export async function requireMember(): Promise<Member> {
-  const user = await requireUser();
+  await requireUser();
+  // getMember matches the account's active membership; its id is not the account id (ADR-035).
   const member = await getMember();
-  if (!member || member.id !== user.id) redirect("/join");
+  if (!member) redirect("/join");
   return member;
 }

@@ -63,17 +63,13 @@ export async function joinGroup(_prev: JoinState, formData: FormData): Promise<J
     console.error("join_group failed", error);
     return { errors: { form: "参加できませんでした。時間をおいてもう一度試してください" }, values };
   }
-  if (profile.deactivated_at) {
-    return { errors: { form: "このアカウントは利用停止中です。グループの管理者に連絡してください" }, values };
-  }
-
   // Tell the others (member_joined, recorded by join_group) once the response is on its way.
   after(async () => {
     const { data: event } = await createAdminClient()
       .from("activity_events")
       .select("id")
       .eq("type", "member_joined")
-      .eq("actor_id", user.id)
+      .eq("actor_id", profile.id)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();

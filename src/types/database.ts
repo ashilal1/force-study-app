@@ -836,6 +836,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auth_user_id: string
           avatar_url: string | null
           created_at: string
           deactivated_at: string | null
@@ -843,25 +844,31 @@ export type Database = {
           group_id: string
           id: string
           is_admin: boolean
+          left_reason: string | null
           notifications_verified_at: string | null
           payee_id: string | null
           paypay_link: string | null
+          removed_by: string | null
           trial_ends_at: string
         }
         Insert: {
+          auth_user_id: string
           avatar_url?: string | null
           created_at?: string
           deactivated_at?: string | null
           display_name: string
           group_id: string
-          id: string
+          id?: string
           is_admin?: boolean
+          left_reason?: string | null
           notifications_verified_at?: string | null
           payee_id?: string | null
           paypay_link?: string | null
+          removed_by?: string | null
           trial_ends_at: string
         }
         Update: {
+          auth_user_id?: string
           avatar_url?: string | null
           created_at?: string
           deactivated_at?: string | null
@@ -869,9 +876,11 @@ export type Database = {
           group_id?: string
           id?: string
           is_admin?: boolean
+          left_reason?: string | null
           notifications_verified_at?: string | null
           payee_id?: string | null
           paypay_link?: string | null
+          removed_by?: string | null
           trial_ends_at?: string
         }
         Relationships: [
@@ -906,6 +915,34 @@ export type Database = {
           {
             foreignKeyName: "profiles_payee_id_fkey"
             columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "profiles_removed_by_fkey"
+            columns: ["removed_by"]
             isOneToOne: false
             referencedRelation: "weekly_stats"
             referencedColumns: ["user_id"]
@@ -1756,6 +1793,7 @@ export type Database = {
           p_user_id: string
         }
         Returns: {
+          auth_user_id: string
           avatar_url: string | null
           created_at: string
           deactivated_at: string | null
@@ -1763,9 +1801,11 @@ export type Database = {
           group_id: string
           id: string
           is_admin: boolean
+          left_reason: string | null
           notifications_verified_at: string | null
           payee_id: string | null
           paypay_link: string | null
+          removed_by: string | null
           trial_ends_at: string
         }
         SetofOptions: {
@@ -2125,6 +2165,7 @@ export type Database = {
           p_user_id: string
         }
         Returns: {
+          auth_user_id: string
           avatar_url: string | null
           created_at: string
           deactivated_at: string | null
@@ -2132,9 +2173,11 @@ export type Database = {
           group_id: string
           id: string
           is_admin: boolean
+          left_reason: string | null
           notifications_verified_at: string | null
           payee_id: string | null
           paypay_link: string | null
+          removed_by: string | null
           trial_ends_at: string
         }
         SetofOptions: {
@@ -2146,6 +2189,28 @@ export type Database = {
       }
       late_payment_reminders: {
         Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      leave_group: {
+        Args: { p_member_id: string }
         Returns: {
           actor_id: string | null
           created_at: string
@@ -2280,6 +2345,28 @@ export type Database = {
           to: "activity_events"
           isOneToOne: true
           isSetofReturn: false
+        }
+      }
+      remove_member: {
+        Args: { p_admin_id: string; p_member_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
         }
       }
       rename_group: {

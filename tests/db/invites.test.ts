@@ -25,7 +25,7 @@ describe("bootstrap (first member)", () => {
     const db = await createTestDb();
     const id = await createAuthUser(db, "owner@example.com");
     await join(db, id, null, true);
-    const { rows } = await db.query<{ is_admin: boolean }>("select is_admin from public.profiles where id = $1", [id]);
+    const { rows } = await db.query<{ is_admin: boolean }>("select is_admin from public.profiles where auth_user_id = $1", [id]);
     expect(rows).toEqual([{ is_admin: true }]);
   });
 
@@ -50,7 +50,7 @@ describe("invites", () => {
     await expect(join(db, second, hash)).rejects.toThrow(/invalid_invite/);
 
     const { rows } = await db.query<{ used_by: string; is_admin: boolean }>(
-      "select i.used_by, p.is_admin from public.invites i join public.profiles p on p.id = i.used_by",
+      "select p.auth_user_id as used_by, p.is_admin from public.invites i join public.profiles p on p.id = i.used_by",
     );
     expect(rows).toEqual([{ used_by: friend, is_admin: false }]);
   });
@@ -108,7 +108,7 @@ describe("invites", () => {
     const outsider = await createAuthUser(db, "outsider@example.com");
     await expect(createInvite(db, outsider)).rejects.toThrow(/not_a_member/);
 
-    await db.query("update public.profiles set deactivated_at = now() where id = $1", [friend]);
+    await db.query("update public.profiles set deactivated_at = now(), left_reason = 'removed' where id = $1", [friend]);
     await expect(createInvite(db, friend)).rejects.toThrow(/not_a_member/);
     await expect(createInvite(db, owner)).resolves.toMatch(/^[0-9a-f]{64}$/);
   });
@@ -138,7 +138,7 @@ describe("group size limit", () => {
     const owner = await createMember(db, "owner");
     const ben = await createMember(db, "ben");
     await db.query("update public.group_settings set max_members = 2");
-    await db.query("update public.profiles set deactivated_at = now() where id = $1", [ben]);
+    await db.query("update public.profiles set deactivated_at = now(), left_reason = 'removed' where id = $1", [ben]);
     await expect(createInvite(db, owner)).resolves.toMatch(/^[0-9a-f]{64}$/);
   });
 });

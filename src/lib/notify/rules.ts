@@ -93,6 +93,32 @@ const RULES: Record<string, Rule> = {
       "/settings",
     ),
 
+  member_left: (event, members) =>
+    draft(everyoneExcept(members, event.actor_id), `${nameOf(members, event.actor_id)} さんがグループを退会しました`, "", "/"),
+
+  member_removed: (event, members) =>
+    draft(
+      everyoneExcept(members, event.actor_id),
+      `${nameOf(members, event.actor_id)} さんがグループから外れました`,
+      `${nameOf(members, event.payload.removed_by)} さんが外しました`,
+      "/",
+    ),
+
+  payee_cleared: (event, members) => {
+    const admins = Array.isArray(event.payload.admin_ids) ? event.payload.admin_ids : [];
+    const former = nameOf(members, event.payload.former_payee_id);
+    return [
+      ...draft(self(members, event), "支払先がいなくなりました", `${former} さんが抜けたので、管理者に新しい支払先を決めてもらってください`, "/settlements"),
+      ...draft(
+        members.filter((member) => admins.includes(member.id) && member.id !== event.actor_id),
+        `${nameOf(members, event.actor_id)} さんの支払先を決めてください`,
+        `${former} さんが抜けたので、支払先が空になりました`,
+        "/settlements",
+        true,
+      ),
+    ];
+  },
+
   // --- Declarations (F3, F3b) -------------------------------------------------------------
   declared: (event, members) =>
     draft(
