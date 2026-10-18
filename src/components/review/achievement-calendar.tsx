@@ -54,27 +54,42 @@ export function AchievementCalendar({ days }: { days: CalendarDay[] }) {
 
 /** A small mark for one member's day (the group calendar, G12). */
 export function DayMark({ date, day }: { date: string; day: CalendarDay | undefined }) {
-  return <Cell date={date} day={day} compact />;
+  if (!day) {
+    return (
+      <span aria-hidden className="grid size-7 place-items-center rounded-lg border-2 border-dashed border-ink/25 text-sub/50 md:size-10">
+        ・
+      </span>
+    );
+  }
+  const style = day.kind === "completed" ? completedShade(day.finalScore) : DAY_KIND[day.kind].className;
+  const title = `${formatJstDay(date)} ${DAY_KIND[day.kind].label}${day.finalScore !== null ? ` ${day.finalScore}点` : ""}`;
+  const mark = (
+    <span
+      title={title}
+      aria-label={title}
+      className={cn(
+        "grid size-7 place-items-center rounded-lg border-2 border-ink text-sm leading-none font-bold shadow-[2px_2px_0_var(--ink)] md:size-10 md:text-lg",
+        style,
+      )}
+    >
+      {DAY_KIND[day.kind].symbol}
+    </span>
+  );
+  return day.studyLogId ? (
+    <Link href={`/logs/${day.studyLogId}`} className="inline-grid">
+      {mark}
+    </Link>
+  ) : (
+    mark
+  );
 }
 
-function Cell({
-  date,
-  day,
-  compact = false,
-  showMonth = false,
-}: {
-  date: string;
-  day: CalendarDay | undefined;
-  compact?: boolean;
-  showMonth?: boolean;
-}) {
+function Cell({ date, day, showMonth = false }: { date: string; day: CalendarDay | undefined; showMonth?: boolean }) {
   const month = Number(date.slice(5, 7));
   const dayOfMonth = Number(date.slice(8, 10));
   // Days before joining or still to come: a faint outline keeps the week's shape.
   if (!day) {
-    return compact ? (
-      <span aria-hidden className="size-4 rounded-[3px] border border-dashed border-ink/25" />
-    ) : (
+    return (
       <span aria-hidden className="relative aspect-square rounded-[6px] border border-dashed border-ink/25">
         <span className="absolute top-0.5 left-1 text-[0.6rem] text-sub/70">{showMonth ? `${month}/${dayOfMonth}` : dayOfMonth}</span>
       </span>
@@ -83,15 +98,7 @@ function Cell({
 
   const style = day.kind === "completed" ? completedShade(day.finalScore) : DAY_KIND[day.kind].className;
   const title = `${formatJstDay(date)} ${DAY_KIND[day.kind].label}${day.finalScore !== null ? ` ${day.finalScore}点` : ""}`;
-  const cell = compact ? (
-    <span
-      title={title}
-      aria-label={title}
-      className={cn("grid size-4 place-items-center rounded-[3px] border-[1.5px] border-ink text-[0.55rem] leading-none font-bold", style)}
-    >
-      {DAY_KIND[day.kind].symbol}
-    </span>
-  ) : (
+  const cell = (
     <span
       title={title}
       aria-label={title}
@@ -102,7 +109,7 @@ function Cell({
     </span>
   );
   return day.studyLogId ? (
-    <Link href={`/logs/${day.studyLogId}`} className={compact ? undefined : "grid"}>
+    <Link href={`/logs/${day.studyLogId}`} className="grid">
       {cell}
     </Link>
   ) : (
