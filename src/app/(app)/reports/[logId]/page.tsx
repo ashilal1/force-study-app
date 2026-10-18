@@ -5,10 +5,12 @@ import { notFound } from "next/navigation";
 import { PageLoading } from "@/components/app/page-loading";
 import { Pill } from "@/components/brand/pill";
 import { Sticker } from "@/components/brand/sticker";
+import { PageTip } from "@/components/onboarding/page-tip";
 import { ExcuseReview } from "@/components/report/excuse-review";
 import { ReasonForm } from "@/components/report/reason-form";
 import { getReportDetail, type ReportDetail } from "@/lib/report-detail";
 import { formatJstDateTime, formatJstDay } from "@/lib/time";
+import { TIPS } from "@/lib/tips";
 
 export const metadata: Metadata = { title: "理由申告 | Commit or Treat" };
 
@@ -42,14 +44,17 @@ async function Report({ params }: Pick<PageProps<"/reports/[logId]">, "params">)
 
   if (can.report) {
     return (
-      <ReasonForm
-        logId={log.id}
-        deadline={report.dueAt}
-        goal={log.declaration ?? ""}
-        minChars={detail.minChars}
-        unrealisticStreak={detail.streakBefore}
-        amounts={detail.amounts}
-      />
+      <>
+        <ReasonForm
+          logId={log.id}
+          deadline={report.dueAt}
+          goal={log.declaration ?? ""}
+          minChars={detail.minChars}
+          unrealisticStreak={detail.streakBefore}
+          amounts={detail.amounts}
+        />
+        <PageTip candidates={[["report", TIPS.report({ excuseRejected: detail.amounts.excuseRejected })]]} />
+      </>
     );
   }
 
@@ -77,6 +82,7 @@ async function Report({ params }: Pick<PageProps<"/reports/[logId]">, "params">)
             {report.reviewDueAt ? formatJstDateTime(report.reviewDueAt) : ""} までに全員が「納得」を押したら 0 円。
           </span>
           <ExcuseReview logId={log.id} />
+          <PageTip candidates={[["review", TIPS.review({ target: "excuse", yen: detail.amounts.excuseRejected })]]} />
         </Sticker>
       ) : null}
 

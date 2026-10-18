@@ -40,7 +40,7 @@ export function FlagForm({
 
   return (
     <details className="group">
-      <summary className="cursor-pointer list-none text-sm font-bold text-red underline underline-offset-2 [&::-webkit-details-marker]:hidden">
+      <summary data-tip="peer_buttons" className="cursor-pointer list-none text-sm font-bold text-red underline underline-offset-2 [&::-webkit-details-marker]:hidden">
         {text.toggle}
       </summary>
       <form action={formAction} className="mt-2 grid gap-2">

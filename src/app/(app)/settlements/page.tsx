@@ -5,10 +5,12 @@ import { actionButtonVariants } from "@/components/brand/action-button";
 import { Pill } from "@/components/brand/pill";
 import { Barcode, Receipt, ReceiptRule } from "@/components/brand/receipt";
 import { Sticker } from "@/components/brand/sticker";
+import { PageTip } from "@/components/onboarding/page-tip";
 import { PayeeSelect, SettlementButtons } from "@/components/settlement/settlement-actions";
 import { requireMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatJstDay } from "@/lib/time";
+import { TIPS } from "@/lib/tips";
 
 export const metadata: Metadata = { title: "精算 | Commit or Treat" };
 
@@ -41,7 +43,7 @@ type Settlement = {
 async function Settlements() {
   const me = await requireMember();
   const supabase = await createClient();
-  const [profiles, summary, settlements] = await Promise.all([
+  const [profiles, summary, settlements, settings] = await Promise.all([
     supabase.from("profiles").select("id, display_name, paypay_link, payee_id").is("deactivated_at", null).order("created_at"),
     supabase.from("penalty_summary").select("user_id, display_name, this_week_points, unsettled_points, trial_points, open_settlement_id"),
     supabase
@@ -49,10 +51,12 @@ async function Settlements() {
       .select("id, debtor_id, payee_id, period_end, amount_yen, status")
       .order("period_end", { ascending: false })
       .limit(40),
+    supabase.from("group_settings").select("penalty_late_payment").single(),
   ]);
   if (profiles.error) throw profiles.error;
   if (summary.error) throw summary.error;
   if (settlements.error) throw settlements.error;
+  if (settings.error) throw settings.error;
 
   const people = profiles.data;
   const name = (id: string) => people.find((person) => person.id === id)?.display_name ?? "メンバー";
@@ -71,6 +75,14 @@ async function Settlements() {
           {toPay.map((s) => (
             <PayCard key={s.id} settlement={s} payeeName={name(s.payee_id)} payLink={payLink(s.payee_id)} />
           ))}
+          <PageTip
+            candidates={[
+              toPay.some((s) => s.status === "open") && [
+                "settlement",
+                TIPS.settlement({ lateYen: settings.data.penalty_late_payment }),
+              ],
+            ]}
+          />
         </section>
       ) : null}
 
@@ -156,7 +168,7 @@ function PayCard({ settlement, payeeName, payLink }: { settlement: Settlement; p
       </div>
       <span className="text-xs">{formatJstDay(settlement.period_end)} 締め</span>
       {settlement.status === "open" ? (
-        <>
+        <div data-tip="settlement" className="grid gap-2.5">
           {payLink ? (
             <a href={payLink} target="_blank" rel="noreferrer" className={actionButtonVariants({ tone: "orange" })}>
               PayPay で送る
@@ -165,7 +177,7 @@ function PayCard({ settlement, payeeName, payLink }: { settlement: Settlement; p
             <p className="m-0 text-sm font-bold text-red">{payeeName} さんが PayPay の受け取りリンクを設定していません。直接やり取りしてください。</p>
           )}
           <SettlementButtons settlementId={settlement.id} steps={["sent"]} />
-        </>
+        </div>
       ) : (
         <p className="m-0 text-sm font-medium">{payeeName} さんが「受け取った」を押したら完了です。</p>
       )}

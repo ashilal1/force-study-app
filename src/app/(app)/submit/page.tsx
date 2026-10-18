@@ -5,12 +5,14 @@ import { PageLoading } from "@/components/app/page-loading";
 import { actionButtonVariants } from "@/components/brand/action-button";
 import { Countdown } from "@/components/brand/countdown";
 import { Sticker } from "@/components/brand/sticker";
+import { PageTip } from "@/components/onboarding/page-tip";
 import { JudgeKarte } from "@/components/submit/judge-karte";
 import { RejudgeButton } from "@/components/submit/rejudge-button";
 import { SubmitForm } from "@/components/submit/submit-form";
 import { getMakeupBoard } from "@/lib/makeup";
 import { createClient } from "@/lib/supabase/server";
 import { formatJstDateTime, formatJstDay } from "@/lib/time";
+import { TIPS } from "@/lib/tips";
 import { getTodayBoard } from "@/lib/today";
 
 export const metadata: Metadata = { title: "提出 | Commit or Treat" };
@@ -124,7 +126,7 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
 
   const supabase = await createClient();
   const [{ data: settings, error: settingsError }, { data: submissions, error }] = await Promise.all([
-    supabase.from("group_settings").select("max_attempts").single(),
+    supabase.from("group_settings").select("max_attempts, dispute_window_hours").single(),
     supabase
       .from("submissions")
       .select(
@@ -143,6 +145,9 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
   const open = submissions.find((submission) => submission.status === "judging" || submission.status === "error");
   const beforeDeadline = now < new Date(log.target_end_time).getTime();
   const declareHref = log.makeup ? "/makeup" : "/declare";
+  const showForm = log.status === "pending" && beforeDeadline && attemptsLeft > 0 && !open;
+  const latest = submissions[0];
+  const judged = latest && (latest.status === "passed" || (latest.status === "rejected" && beforeDeadline));
 
   return (
     <>
@@ -208,7 +213,21 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
         </Sticker>
       ) : null}
 
-      {log.status === "pending" && beforeDeadline && attemptsLeft > 0 && !open ? (
+      <PageTip
+        candidates={[
+          judged && [
+            "judge_result",
+            TIPS.judge_result({
+              passed: latest.status === "passed",
+              attemptsLeft,
+              disputeHours: settings.dispute_window_hours,
+            }),
+          ],
+          showForm && ["submit_photos", TIPS.submit_photos],
+        ]}
+      />
+
+      {showForm ? (
         <SubmitForm
           goal={log.declaration}
           passphrase={log.passphrase}
@@ -221,9 +240,10 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
       {submissions.length > 0 ? (
         <section className="grid gap-4">
           <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">これまでの提出</h2>
-          {submissions.map((submission) => (
+          {submissions.map((submission, index) => (
             <SubmissionResult
               key={submission.id}
+              latest={index === 0}
               submission={submission}
               photos={submission.image_paths.map((path) => photos.get(path)).filter((url) => url !== undefined)}
               attemptsLeft={attemptsLeft}
@@ -236,10 +256,13 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
 }
 
 function SubmissionResult({
+  latest,
   submission,
   photos,
   attemptsLeft,
 }: {
+  /** The newest one carries the 「judge_result」 coach mark. */
+  latest: boolean;
   submission: Submission;
   photos: string[];
   attemptsLeft: number;
@@ -262,19 +285,21 @@ function SubmissionResult({
         </div>
       ) : null}
       {submission.status === "passed" || submission.status === "rejected" ? (
-        <JudgeKarte
-          result={{
-            score: submission.ai_score ?? 0,
-            passed: submission.status === "passed",
-            passphraseFound: Boolean(submission.ai_passphrase_found),
-            elapsedMinutes: submission.elapsed_minutes ?? 0,
-            feedback: submission.ai_feedback ?? "",
-            disputeWindowEndsAt: null,
-            attemptsLeft,
-            unverified: submission.unverified_at !== null,
-            hideFooter: submission.status === "passed" || attemptsLeft === 0,
-          }}
-        />
+        <div data-tip={latest ? "judge_result" : undefined}>
+          <JudgeKarte
+            result={{
+              score: submission.ai_score ?? 0,
+              passed: submission.status === "passed",
+              passphraseFound: Boolean(submission.ai_passphrase_found),
+              elapsedMinutes: submission.elapsed_minutes ?? 0,
+              feedback: submission.ai_feedback ?? "",
+              disputeWindowEndsAt: null,
+              attemptsLeft,
+              unverified: submission.unverified_at !== null,
+              hideFooter: submission.status === "passed" || attemptsLeft === 0,
+            }}
+          />
+        </div>
       ) : null}
       <details className="text-sm">
         <summary className="cursor-pointer font-bold">振り返りを見る</summary>

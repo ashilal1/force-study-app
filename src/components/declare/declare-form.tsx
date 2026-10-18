@@ -37,7 +37,7 @@ export function DeclareForm({ cutoff, submitBy, nextPlan }: Props) {
         </Sticker>
       ) : null}
 
-      <div className="grid gap-1.5">
+      <div data-tip="declare_input" className="grid gap-1.5">
         <FieldLabel htmlFor="declaration">今日やること</FieldLabel>
         <TextArea
           id="declaration"
