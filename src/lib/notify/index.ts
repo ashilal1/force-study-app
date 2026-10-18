@@ -27,12 +27,12 @@ export async function dispatch(eventId: string): Promise<void> {
       .eq("id", eventId)
       .single();
     if (eventError) throw eventError;
-    // Only the event's group hears about it (M10).
+    // Only the event's group hears about it (M10). Former members are loaded for their names;
+    // create_notifications skips them as recipients.
     const { data: members, error: membersError } = await admin
       .from("profiles")
       .select("id, display_name")
-      .eq("group_id", event.group_id)
-      .is("deactivated_at", null);
+      .eq("group_id", event.group_id);
     if (membersError) throw membersError;
 
     const drafts = draftNotifications(event as ActivityEvent, members);

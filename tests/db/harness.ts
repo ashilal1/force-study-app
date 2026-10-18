@@ -49,15 +49,17 @@ export async function createInvite(db: Queryable, inviterId: string, hash = rand
  * code, everyone after that with an invite issued by the first member.
  */
 export async function createMember(db: Queryable, name: string): Promise<string> {
-  const id = await createAuthUser(db, `${name}@example.com`);
+  const account = await createAuthUser(db, `${name}@example.com`);
   const { rows } = await db.query<{ id: string }>("select id from public.profiles order by created_at limit 1");
-  if (rows.length === 0) {
-    await db.query("select public.join_group($1, $2, null, null, true)", [id, name]);
-  } else {
-    const hash = await createInvite(db, rows[0].id);
-    await db.query("select public.join_group($1, $2, null, $3)", [id, name, hash]);
-  }
-  return id;
+  const hash = rows.length === 0 ? null : await createInvite(db, rows[0].id);
+  const joined = await db.query<{ id: string }>("select id from public.join_group($1, $2, null, $3, $4)", [
+    account,
+    name,
+    hash,
+    hash === null,
+  ]);
+  // The membership (profile) id, which every record points at (ADR-035).
+  return joined.rows[0].id;
 }
 
 /**
@@ -79,7 +81,11 @@ async function runAs<T>(db: Db, role: string, userId: string, fn: (tx: Transacti
   let result: T | undefined;
   try {
     await db.transaction(async (tx) => {
-      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [userId]);
+      // Tests pass membership ids; the session carries the account id behind it.
+      const account = userId
+        ? ((await tx.query<{ id: string }>("select coalesce((select auth_user_id from public.profiles where id = $1), $1) as id", [userId])).rows[0].id)
+        : "";
+      await tx.query("select set_config('request.jwt.claim.sub', $1, true)", [account]);
       await tx.exec(`set local role ${role}`);
       result = await fn(tx);
       throw ROLLBACK;
