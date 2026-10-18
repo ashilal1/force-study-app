@@ -43,7 +43,7 @@ async function Week({ params }: Pick<PageProps<"/members/[id]/weeks/[weekEnd]">,
   const isMe = me.id === id;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid grid-cols-1 gap-6">
       <header className="grid gap-1">
         <Link href={`/members/${id}`} className="text-xs font-bold underline underline-offset-2">
           ← {history.member.name} さんの振り返り

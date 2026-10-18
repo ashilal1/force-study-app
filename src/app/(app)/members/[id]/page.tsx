@@ -48,11 +48,11 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
   const groupRate = new Map(history.groupWeeks.map((week) => [week.weekEnd, week.rate]));
 
   return (
-    <div data-wide className="grid gap-6">
+    <div data-wide className="grid grid-cols-1 gap-6">
       <header className="flex items-center gap-3">
         <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
         <div className="min-w-0">
-          <h1 className="m-0 truncate font-heading text-[1.4rem] leading-tight font-normal">{member.name} さんの振り返り</h1>
+          <h1 className="m-0 font-heading text-[1.4rem] leading-tight font-normal break-words">{member.name} さんの振り返り</h1>
           <Link href="/review" className="text-xs font-bold underline underline-offset-2">
             みんなと比べる →
           </Link>
@@ -68,7 +68,7 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
       </Section>
 
       {/* PC: the charts sit two to a row. */}
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-x-10">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
         <Section title="週ごとの達成率">
           <WeeklyRateChart weeks={history.weeks.map((week) => ({ weekEnd: week.weekEnd, rate: week.rate, group: groupRate.get(week.weekEnd) ?? null }))} />
         </Section>
@@ -158,7 +158,7 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
 
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <section className="grid gap-2.5">
+    <section className="grid min-w-0 grid-cols-1 gap-2.5">
       <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">{title}</h2>
       {children}
     </section>
