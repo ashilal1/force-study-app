@@ -299,6 +299,10 @@ export type Database = {
           invite_minutes: number
           judge_grace_minutes: number
           last_declaration_reminder: string
+          makeup_hours: number
+          makeup_per_overdue: number
+          makeup_per_streak: number
+          makeup_since: string | null
           max_attempts: number
           max_members: number
           min_explanation_chars: number
@@ -321,6 +325,7 @@ export type Database = {
           revision_minutes: number
           settlement_time: string
           settlement_weekday: number
+          slack_streak_threshold: number
           storage_soft_limit_mb: number
           submit_deadline_max: string
           unrealistic_streak_threshold: number
@@ -337,6 +342,10 @@ export type Database = {
           invite_minutes?: number
           judge_grace_minutes?: number
           last_declaration_reminder?: string
+          makeup_hours?: number
+          makeup_per_overdue?: number
+          makeup_per_streak?: number
+          makeup_since?: string | null
           max_attempts?: number
           max_members?: number
           min_explanation_chars?: number
@@ -359,6 +368,7 @@ export type Database = {
           revision_minutes?: number
           settlement_time?: string
           settlement_weekday?: number
+          slack_streak_threshold?: number
           storage_soft_limit_mb?: number
           submit_deadline_max?: string
           unrealistic_streak_threshold?: number
@@ -375,6 +385,10 @@ export type Database = {
           invite_minutes?: number
           judge_grace_minutes?: number
           last_declaration_reminder?: string
+          makeup_hours?: number
+          makeup_per_overdue?: number
+          makeup_per_streak?: number
+          makeup_since?: string | null
           max_attempts?: number
           max_members?: number
           min_explanation_chars?: number
@@ -397,6 +411,7 @@ export type Database = {
           revision_minutes?: number
           settlement_time?: string
           settlement_weekday?: number
+          slack_streak_threshold?: number
           storage_soft_limit_mb?: number
           submit_deadline_max?: string
           unrealistic_streak_threshold?: number
@@ -598,6 +613,60 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "weekly_stats"
             referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      makeup_debts: {
+        Row: {
+          count: number
+          created_at: string
+          dedupe_key: string
+          due_at: string
+          id: string
+          period_end: string | null
+          reason: string
+          study_log_id: string | null
+          user_id: string
+          waived: string | null
+        }
+        Insert: {
+          count: number
+          created_at?: string
+          dedupe_key: string
+          due_at: string
+          id?: string
+          period_end?: string | null
+          reason: string
+          study_log_id?: string | null
+          user_id: string
+          waived?: string | null
+        }
+        Update: {
+          count?: number
+          created_at?: string
+          dedupe_key?: string
+          due_at?: string
+          id?: string
+          period_end?: string | null
+          reason?: string
+          study_log_id?: string | null
+          user_id?: string
+          waived?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "makeup_debts_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: false
+            referencedRelation: "study_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "makeup_debts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -1164,6 +1233,7 @@ export type Database = {
           dispute_window_ends_at: string | null
           id: string
           invalidated_at: string | null
+          is_makeup: boolean
           missed_at: string | null
           original_declaration: string | null
           passed_at: string | null
@@ -1183,6 +1253,7 @@ export type Database = {
           dispute_window_ends_at?: string | null
           id?: string
           invalidated_at?: string | null
+          is_makeup?: boolean
           missed_at?: string | null
           original_declaration?: string | null
           passed_at?: string | null
@@ -1202,6 +1273,7 @@ export type Database = {
           dispute_window_ends_at?: string | null
           id?: string
           invalidated_at?: string | null
+          is_makeup?: boolean
           missed_at?: string | null
           original_declaration?: string | null
           passed_at?: string | null
@@ -1517,6 +1589,20 @@ export type Database = {
           study_log_id: string | null
           submitted_hour: number | null
           trial_points: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      makeup_summary: {
+        Row: {
+          completed: number | null
+          next_due_at: string | null
+          open: number | null
+          overdue: number | null
+          owed: number | null
+          remaining: number | null
+          reviewing: number | null
+          trial_owed: number | null
           user_id: string | null
         }
         Relationships: []
@@ -1911,6 +1997,32 @@ export type Database = {
         Args: {
           p_declaration: string
           p_end_time: string
+          p_passphrase: string
+          p_user_id: string
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      declare_makeup: {
+        Args: {
+          p_declaration: string
           p_passphrase: string
           p_user_id: string
         }

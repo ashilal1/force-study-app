@@ -88,6 +88,7 @@ async function fillWeeklySummaries(): Promise<number> {
         .from("study_logs")
         .select("date, status, declaration, submissions(kind, status, learned_text, struggled_text, submitted_at)")
         .eq("user_id", review.user_id)
+        .eq("is_makeup", false)
         .gte("date", from.toISOString().slice(0, 10))
         .lte("date", review.week_end)
         .order("date");

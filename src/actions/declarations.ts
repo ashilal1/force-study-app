@@ -44,14 +44,17 @@ export async function giveUpDay(_prev: FormState, formData: FormData): Promise<F
   const logId = z.uuid().safeParse(String(formData.get("logId") ?? ""));
   if (!logId.success) return { errors: { form: GENERIC_ERROR } };
 
-  const { data: event, error } = await createAdminClient().rpc("give_up_day", {
+  const admin = createAdminClient();
+  const { data: event, error } = await admin.rpc("give_up_day", {
     p_user_id: member.id,
     p_study_log_id: logId.data,
   });
   if (error) return failed(error, {});
 
   dispatchAfterResponse(event);
-  redirect(`/reports/${logId.data}`);
+  // A makeup session (補習) just ends; a study day goes on to the reason report.
+  const { data: log } = await admin.from("study_logs").select("is_makeup").eq("id", logId.data).single();
+  redirect(log?.is_makeup ? "/makeup" : `/reports/${logId.data}`);
 }
 
 const flagSchema = z.object({

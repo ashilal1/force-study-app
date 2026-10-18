@@ -28,6 +28,12 @@ const STATUS: Record<string, string> = {
   invalidated: "証拠不認定",
 };
 
+/** A makeup session (補習) pays one back when completed; a failed one just doesn't count. */
+const MAKEUP_STATUS: Record<string, string> = {
+  completed: "返した",
+  missed: "数えない",
+};
+
 const DISPUTE: Record<string, string> = {
   resending: "送り直し受付中",
   final_review: "最終審査中",
@@ -52,10 +58,17 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
   return (
     <div className="grid gap-5">
       <header className="grid gap-1">
-        <p className="m-0 text-sm font-bold text-sub">{formatJstDay(log.date)}</p>
+        <p className="m-0 text-sm font-bold text-sub">
+          {formatJstDay(log.date)}
+          {log.isMakeup ? " ・ 補習" : ""}
+        </p>
         <div className="flex items-center justify-between gap-2">
-          <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">{owner.name} さんの記録</h1>
-          <Pill variant={log.status === "completed" ? "ink" : "outline"}>{STATUS[log.status] ?? log.status}</Pill>
+          <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">
+            {owner.name} さんの{log.isMakeup ? "補習" : "記録"}
+          </h1>
+          <Pill variant={log.status === "completed" ? "ink" : "outline"}>
+            {(log.isMakeup ? MAKEUP_STATUS[log.status] : undefined) ?? STATUS[log.status] ?? log.status}
+          </Pill>
         </div>
       </header>
 
@@ -79,7 +92,7 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
         </Sticker>
       ) : null}
 
-      {log.status === "missed" ? (
+      {log.status === "missed" && !log.isMakeup ? (
         <Link href={`/reports/${log.id}`} className="text-sm font-bold underline underline-offset-2">
           理由申告を見る →
         </Link>

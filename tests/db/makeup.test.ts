@@ -117,7 +117,8 @@ describe("award_makeups (P9)", () => {
     expect(await award(db, "2026-10-21 12:10")).toEqual([]);
 
     await db.query("update public.group_settings set makeup_since = '2026-10-20'");
-    expect(await award(db, "2026-10-21 12:15")).toEqual([]); // only two days since then
+    const since = await award(db, "2026-10-21 12:15"); // only two days since then: a warning, no debt
+    expect(since.filter((e) => e.actor_id === aki).map((e) => e.type)).toEqual(["makeup_warning"]);
     await noDeclaration(db, "2026-10-22");
     await award(db, "2026-10-22 12:10");
     expect((await debts(db, aki)).map((d) => d.date)).toEqual(["2026-10-22"]);
@@ -127,12 +128,13 @@ describe("award_makeups (P9)", () => {
     const { db, aki } = await setup();
     await noDeclaration(db, "2026-10-19"); // P1
     await missDay(db, aki, "2026-10-20", "slacked"); // P2
-    expect((await award(db, "2026-10-20 15:10")).filter((e) => e.actor_id === aki)).toEqual([]);
+    const warned = (await award(db, "2026-10-20 15:10")).filter((e) => e.actor_id === aki);
+    expect(warned.map((e) => [e.type, e.payload.streak])).toEqual([["makeup_warning", 2]]);
 
     await noDeclaration(db, "2026-10-21"); // P1: third in a row
     const events = await award(db, "2026-10-21 12:10");
     expect(events.filter((e) => e.actor_id === aki)).toHaveLength(1);
-    expect(events.find((e) => e.actor_id === aki)).toMatchObject({ type: "makeup_assigned", actor_id: aki, payload: { count: 1, streak: 3, waived: null } });
+    expect(events.find((e) => e.actor_id === aki && e.type === "makeup_assigned")).toMatchObject({ type: "makeup_assigned", actor_id: aki, payload: { count: 1, streak: 3, waived: null } });
     // Due at the close of the week after this one (this week closes 10-24).
     expect(new Date(events.find((e) => e.actor_id === aki)!.payload.due_at as string).toISOString()).toBe("2026-10-31T14:59:00.000Z");
 
@@ -150,7 +152,7 @@ describe("award_makeups (P9)", () => {
     await noDeclaration(db, "2026-10-22");
     await missDay(db, aki, "2026-10-23", "unrealistic"); // P3: neutral
     await noDeclaration(db, "2026-10-24");
-    expect((await award(db, "2026-10-24 12:10")).filter((e) => e.actor_id === aki)).toEqual([]);
+    expect((await award(db, "2026-10-24 12:10")).filter((e) => e.actor_id === aki && e.type === "makeup_assigned")).toEqual([]);
     await noDeclaration(db, "2026-10-25");
     await award(db, "2026-10-25 12:10");
     expect((await debts(db, aki)).map((d) => d.date)).toEqual(["2026-10-25"]);
@@ -164,7 +166,7 @@ describe("award_makeups (P9)", () => {
     await db.query("select * from public.give_up_day($1, $2)", [aki, logId]); // awaiting a report
     await noDeclaration(db, "2026-10-21");
     await noDeclaration(db, "2026-10-22");
-    expect((await award(db, "2026-10-22 12:10")).filter((e) => e.actor_id === aki)).toEqual([]); // 10-20 isn't settled yet
+    expect((await award(db, "2026-10-22 12:10")).filter((e) => e.actor_id === aki && e.type === "makeup_assigned")).toEqual([]); // 10-20 isn't settled yet
 
     await setNow(db, "2026-10-21 23:05"); // the report deadline passed: P5
     await db.query("select * from public.expire_reports()");
@@ -298,7 +300,7 @@ describe("close_makeup_week (P10)", () => {
     await owesOne(db);
     const { study_log_id: logId } = await declareMakeup(db, aki, "2026-10-31 10:00");
     await setNow(db, "2026-10-31 20:00");
-    await submitAndPass(db, aki, logId, "2026-10-31"); // still in the 「怪しい」 window at the close
+    await submitAndPass(db, aki, logId!, "2026-10-31"); // still in the 「怪しい」 window at the close
     await setNow(db, "2026-11-01 00:02");
     const closed = (await db.query<Event>("select * from public.close_makeup_week()")).rows;
     expect(closed.filter((e) => e.actor_id === aki)).toEqual([]);
@@ -316,6 +318,28 @@ describe("close_makeup_week (P10)", () => {
     const events = (await db2.query<Event>("select * from public.close_makeup_week()")).rows;
     expect(events.filter((e) => e.actor_id === ben2).map((e) => e.type)).toEqual(["makeup_due"]);
     expect(events.filter((e) => e.actor_id === aki2).map((e) => e.type)).toEqual(["makeup_overdue", "makeup_due"]);
+  });
+});
+
+describe("update_group_settings (makeup_enabled)", () => {
+  it("turns makeup study on from today and off again", async () => {
+    const { db, aki } = await setup();
+    await db.query("update public.group_settings set makeup_since = null");
+    await setNow(db, "2026-10-20 09:00");
+    const since = async () =>
+      (await db.query<{ makeup_since: string | null }>("select makeup_since::text from public.group_settings")).rows[0].makeup_since;
+    await db.query(`select public.update_group_settings($1, '{"makeup_enabled": true}')`, [aki]);
+    expect(await since()).toBe("2026-10-20");
+    await setNow(db, "2026-10-22 09:00");
+    await db.query(`select public.update_group_settings($1, '{"makeup_hours": 12}')`, [aki]);
+    expect(await since()).toBe("2026-10-20"); // untouched by other changes
+    await db.query(`select public.update_group_settings($1, '{"makeup_enabled": true}')`, [aki]);
+    expect(await since()).toBe("2026-10-20"); // already on: keeps its start
+    await db.query(`select public.update_group_settings($1, '{"makeup_enabled": false}')`, [aki]);
+    expect(await since()).toBeNull();
+    await expect(db.query(`select public.update_group_settings($1, '{"makeup_enabled": "maybe"}')`, [aki])).rejects.toThrow(
+      /invalid_setting/,
+    );
   });
 });
 

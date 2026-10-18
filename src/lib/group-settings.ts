@@ -6,7 +6,7 @@ export type SettingField = {
   label: string;
   type: "time" | "number";
   unit?: string;
-  section: "時刻" | "ペナルティ（円）" | "判定と指摘" | "精算・その他";
+  section: "時刻" | "ペナルティ（円）" | "補習" | "判定と指摘" | "精算・その他";
 };
 
 export const SETTING_FIELDS: SettingField[] = [
@@ -22,6 +22,10 @@ export const SETTING_FIELDS: SettingField[] = [
   { key: "penalty_unrevised", label: "書き直しなし（P6）", type: "number", section: "ペナルティ（円）" },
   { key: "penalty_late_payment", label: "未払い（P7、毎週）", type: "number", section: "ペナルティ（円）" },
   { key: "penalty_fake_evidence", label: "証拠不認定（P8）", type: "number", section: "ペナルティ（円）" },
+  { key: "slack_streak_threshold", label: "補習が付くサボりの連続回数（P9）", type: "number", unit: "回", section: "補習" },
+  { key: "makeup_per_streak", label: "そのとき付く補習（0 なら付けない）", type: "number", unit: "回", section: "補習" },
+  { key: "makeup_per_overdue", label: "期限切れで毎週足す補習（P10）", type: "number", unit: "回", section: "補習" },
+  { key: "makeup_hours", label: "補習の提出期限（宣言から）", type: "number", unit: "時間", section: "補習" },
   { key: "passing_score", label: "合格点", type: "number", unit: "点", section: "判定と指摘" },
   { key: "max_attempts", label: "1 日の提出回数", type: "number", unit: "回", section: "判定と指摘" },
   { key: "judge_grace_minutes", label: "判定待ちの猶予", type: "number", unit: "分", section: "判定と指摘" },

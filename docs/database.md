@@ -92,7 +92,7 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 | makeup_per_streak | int | 1 | P9 で付く補習の回数（0 なら付けない） |
 | makeup_per_overdue | int | 1 | P10: 期限切れの週の締めごとに足す回数（0 なら足さない） |
 | makeup_hours | int | 24 | 補習を宣言してから提出できる時間 |
-| makeup_since | date null | null | **この日以降の学習日だけ** P9 に数える。null のあいだは補習を付けない（機能を出すときに入れる。それより前のサボりにさかのぼって付けないため） |
+| makeup_since | date null | null | **この日以降の学習日だけ** P9 に数える。null のあいだは補習を付けない。管理者が設定の「補習を使う」をオンにすると今日、オフにすると null（`update_group_settings` の `makeup_enabled`。それより前のサボりにさかのぼって付けないため。ADR-040） |
 
 ### profiles
 | 列 | 型 | 説明 |
@@ -334,7 +334,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - 休会: `leave_requested` / `leave_approved` / `leave_rejected` / `leave_ending`
 - 振り返り: `weekly_review_created`
 - 精算: `payee_assigned` / `settlement_created` / `weekly_summary` / `settlement_sent` / `settlement_completed` / `settlement_not_received` / `late_payment`
-- 補習（M11）: `makeup_assigned`（P9。payload に `count`・`streak`・`waived`・`due_at`）/ `makeup_declared` / `makeup_failed`（payload の `cause` は `gave_up` / `deadline` / `unrevised`）/ `makeup_completed` / `makeup_overdue`（P10）/ `makeup_due`（週の締めで、残りがある人へ）/ `reminder_makeup_due`（期限の 24 時間前）。補習の提出・判定・「軽すぎる」・「怪しい」は学習日と同じ type（`study_log_id` の行の `is_makeup` で見分ける）
+- 補習（M11）: `makeup_warning`（サボりが P9 の 1 回手前。直近の日だけ）/ `makeup_assigned`（P9。payload に `count`・`streak`・`waived`・`due_at`）/ `makeup_declared` / `makeup_failed`（payload の `cause` は `gave_up` / `deadline` / `unrevised`）/ `makeup_completed` / `makeup_overdue`（P10）/ `makeup_due`（週の締めで、残りがある人へ）/ `reminder_makeup_due`（期限の 24 時間前）。補習の提出・判定・「軽すぎる」・「怪しい」は学習日と同じ type（`study_log_id` の行の `is_makeup` で見分ける）
 - その他: `penalized` / `trial_ending` / `member_joined`（payload に `invited_by`）
 - リマインド: `reminder_declare_midnight` / `reminder_declare_last_call` / `reminder_submit` / `reminder_revision_due` / `reminder_resend_due` / `reminder_report_due` / `reminder_review_due` / `reminder_late_payment`
 
@@ -450,7 +450,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 精算
 | 関数 | 処理 |
 |---|---|
-| `update_group_settings(admin_id, changes jsonb)` | 管理者だけ。決まったキーだけを受け付け（`invalid_setting`）、表の制約と 1 日の時刻の順番（リマインド < 宣言締切 < 提出締切の上限 ≤ 「怪しい」 ≤ 送り直し ≤ 審査の期限、理由申告 ≤ 審査の期限）を検査（`invalid_schedule`）。変わった項目だけを `settings_changed` に記録 |
+| `update_group_settings(admin_id, changes jsonb)` | 管理者だけ。決まったキーだけを受け付け（`makeup_enabled` は true で `makeup_since` を今日に〔すでに入っていればそのまま〕、false で null にする）（`invalid_setting`）、表の制約と 1 日の時刻の順番（リマインド < 宣言締切 < 提出締切の上限 ≤ 「怪しい」 ≤ 送り直し ≤ 審査の期限、理由申告 ≤ 審査の期限）を検査（`invalid_schedule`）。変わった項目だけを `settings_changed` に記録 |
 | `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ（`not_admin`）。自分自身・抜けた人は不可（`invalid_payee`）、同じなら `unchanged`。`payee_assigned` で全員に通知 |
 | `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで `open` → `sent` → `completed`、「届いていない」は `sent` → `open` |
 | `run_weekly_settlement()`（定期実行。tick の最後） | `current_period_end()`（設定の曜日・時刻を過ぎた直近の締め日）について 1 回だけ。① 前の週までの `open` の精算に P7（`late:{settlement}:{締め日}`）② 人ごとに、締め日までの学習日（P7 は作成時刻）の未精算・`waived` でないペナルティを束ねて支払先への精算を作る（支払先が未設定なら作らずに持ち越して `payee_missing` を管理者へ）③ その週に記録があれば `weekly_summary` |

@@ -27,7 +27,7 @@ export async function getTimeline({ limit = 30, before, studyLogId }: Options = 
   const supabase = await createClient();
   let query = supabase
     .from("activity_events")
-    .select("id, type, actor_id, study_log_id, payload, created_at")
+    .select("id, type, actor_id, study_log_id, payload, created_at, study_logs(is_makeup)")
     .not("type", "like", "reminder_%");
   query = studyLogId
     ? query.eq("study_log_id", studyLogId).order("created_at", { ascending: true })
@@ -53,7 +53,10 @@ export async function getTimeline({ limit = 30, before, studyLogId }: Options = 
     if (event.type === "rest_day_registered" && !standing.has(`${event.actor_id}:${new Date(event.created_at).toISOString()}`)) {
       continue;
     }
-    const draft = draftNotifications(event as ActivityEvent & { payload: Record<string, unknown> }, members).find(
+    const draft = draftNotifications(
+      { ...(event as ActivityEvent), makeup: event.study_logs?.is_makeup ?? false },
+      members,
+    ).find(
       (candidate) => candidate.recipientId === OBSERVER,
     );
     if (!draft) continue;

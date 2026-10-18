@@ -41,6 +41,8 @@ export type LogDetail = {
     declaredAt: string | null;
     targetEndTime: string | null;
     disputeWindowEndsAt: string | null;
+    /** A makeup session (補習, F8b), not a study day. */
+    isMakeup: boolean;
   };
   submissions: DetailSubmission[];
   declarationFlags: { name: string; comment: string }[];
@@ -56,7 +58,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
   const { data: log, error } = await supabase
     .from("study_logs")
     .select(
-      "id, user_id, date, status, declaration, original_declaration, passphrase, declared_at, target_end_time, dispute_window_ends_at",
+      "id, user_id, date, status, declaration, original_declaration, passphrase, declared_at, target_end_time, dispute_window_ends_at, is_makeup",
     )
     .eq("id", logId)
     .maybeSingle();
@@ -123,6 +125,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
       passphrase: log.passphrase,
       declaredAt: log.declared_at,
       targetEndTime: log.target_end_time,
+      isMakeup: log.is_makeup,
       disputeWindowEndsAt: log.dispute_window_ends_at,
     },
     submissions: submissions.data!.map((submission) => ({

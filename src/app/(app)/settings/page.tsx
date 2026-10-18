@@ -122,7 +122,10 @@ async function AdminSettings() {
           ペナルティの額や締切などのルールです。変えると全員に通知されます。その日の途中で時刻を変えると、すでに決まった期限には影響しません。
         </p>
         <Sticker className="mt-3 px-4 py-5">
-          <GroupSettingsForm current={data as unknown as Record<string, string | number>} />
+          <GroupSettingsForm
+            current={data as unknown as Record<string, string | number>}
+            makeupEnabled={data.makeup_since !== null}
+          />
         </Sticker>
       </details>
     </>

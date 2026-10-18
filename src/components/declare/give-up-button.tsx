@@ -9,7 +9,7 @@ import { FieldError, SubmitButton } from "@/components/form/submit-button";
  * 「できなかった」 (ADR-032): asks once more, then closes the day as missed and opens the reason
  * report. Two steps instead of a browser confirm dialog.
  */
-export function GiveUpButton({ logId }: { logId: string }) {
+export function GiveUpButton({ logId, makeup = false }: { logId: string; makeup?: boolean }) {
   const [state, formAction] = useActionState<FormState, FormData>(giveUpDay, {});
   const [asking, setAsking] = useState(false);
 
@@ -24,7 +24,9 @@ export function GiveUpButton({ logId }: { logId: string }) {
     <form action={formAction} className="grid gap-2 rounded-[12px] border-[2.5px] border-red bg-card px-3.5 py-3">
       <input type="hidden" name="logId" value={logId} />
       <p className="m-0 text-sm leading-relaxed font-bold">
-        この日は未達成になり、もう提出できません。次の画面で理由を申告すると、今日の宣言ができます。
+        {makeup
+          ? "この補習はやめて、もう提出できません。借りは減らないので、別の日にもう一度宣言してください。"
+          : "この日は未達成になり、もう提出できません。次の画面で理由を申告すると、今日の宣言ができます。"}
       </p>
       <FieldError id="give-up-error" message={state.errors?.form} />
       <div className="grid grid-cols-2 gap-2">
@@ -32,7 +34,7 @@ export function GiveUpButton({ logId }: { logId: string }) {
           やめる
         </ActionButton>
         <SubmitButton tone="red" pendingLabel="記録中…">
-          未達成にする
+          {makeup ? "補習をやめる" : "未達成にする"}
         </SubmitButton>
       </div>
     </form>

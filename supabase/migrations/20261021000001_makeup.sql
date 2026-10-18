@@ -588,7 +588,8 @@ $$;
 -- (P1, P6: no declaration; P2, P5: missed and reported, or not reported, as slacking). A
 -- completed day resets the run, and so does a day not settled yet (it is counted again once it
 -- is, which may give a later day its P9). Other days (P3, P4, P8, excused) neither count nor
--- reset. Trial days run on their own and owe nothing (waived, shown as 「本番なら」).
+-- reset. Trial days run on their own and owe nothing (waived, shown as 「本番なら」). One day
+-- short of a P9 the member is warned (makeup_warning).
 create function public.award_makeups()
 returns setof public.activity_events
 language plpgsql
@@ -625,6 +626,16 @@ begin
       if log.status = 'no_declaration'
          or (log.status = 'missed' and log.report_status = 'resolved' and log.category in ('slacked', 'not_reported')) then
         streak := streak + 1;
+        -- One short of P9: a heads-up, for recent days only (a day settled late warns no one).
+        if streak = settings.slack_streak_threshold - 1 and log.date >= private.jst_today() - 1 then
+          return query
+          insert into public.activity_events (type, actor_id, study_log_id, payload, dedupe_key)
+          values ('makeup_warning', member.id, log.id,
+                  jsonb_build_object('streak', streak, 'count', settings.makeup_per_streak, 'trial', in_trial),
+                  'makeup_warning:' || log.id)
+          on conflict (dedupe_key) do nothing
+          returning *;
+        end if;
         continue when streak < settings.slack_streak_threshold;
         insert into public.makeup_debts (user_id, reason, study_log_id, count, waived, due_at, dedupe_key, created_at)
         values (member.id, 'slack_streak', log.id, settings.makeup_per_streak, case when in_trial then 'trial' end,
@@ -840,7 +851,7 @@ left join lateral (
 left join public.failure_reports r on r.study_log_id = l.id;
 
 -- ---------------------------------------------------------------------------
--- Settings
+-- Settings (an admin turns makeup study on with makeup_enabled)
 -- ---------------------------------------------------------------------------
 
 create or replace function public.update_group_settings(p_admin_id uuid, p_changes jsonb)
@@ -859,7 +870,7 @@ declare
     'penalty_excuse_rejected', 'penalty_unrevised', 'penalty_late_payment', 'penalty_fake_evidence',
     'min_explanation_chars', 'settlement_weekday', 'settlement_time', 'image_retention_days', 'max_members',
     'invite_minutes',
-    'slack_streak_threshold', 'makeup_per_streak', 'makeup_per_overdue', 'makeup_hours'
+    'slack_streak_threshold', 'makeup_per_streak', 'makeup_per_overdue', 'makeup_hours', 'makeup_enabled'
   ];
   grp uuid;
   unknown text;
@@ -914,6 +925,11 @@ begin
       makeup_per_streak = coalesce((p_changes->>'makeup_per_streak')::int, g.makeup_per_streak),
       makeup_per_overdue = coalesce((p_changes->>'makeup_per_overdue')::int, g.makeup_per_overdue),
       makeup_hours = coalesce((p_changes->>'makeup_hours')::int, g.makeup_hours),
+      -- Turning makeup study on counts study days from today (nothing retroactive); off clears it.
+      makeup_since = case
+        when not p_changes ? 'makeup_enabled' then g.makeup_since
+        when (p_changes->>'makeup_enabled')::boolean then coalesce(g.makeup_since, private.jst_today())
+      end,
       updated_at = private.now()
     where g.group_id = grp
     returning * into after;

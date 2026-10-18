@@ -59,6 +59,7 @@ export async function getReportDetail(logId: string): Promise<ReportDetail | nul
       .select("status, failure_reports(category, status)")
       .eq("user_id", log.user_id)
       .lt("date", log.date)
+      .eq("is_makeup", false)
       .neq("status", "no_declaration")
       .order("date", { ascending: false })
       .limit(30),

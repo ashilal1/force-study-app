@@ -8,21 +8,76 @@ import { Sticker } from "@/components/brand/sticker";
 import { JudgeKarte } from "@/components/submit/judge-karte";
 import { RejudgeButton } from "@/components/submit/rejudge-button";
 import { SubmitForm } from "@/components/submit/submit-form";
+import { getMakeupBoard } from "@/lib/makeup";
 import { createClient } from "@/lib/supabase/server";
 import { formatJstDateTime, formatJstDay } from "@/lib/time";
 import { getTodayBoard } from "@/lib/today";
 
 export const metadata: Metadata = { title: "提出 | Commit or Treat" };
 
-export default function SubmitPage() {
+/** `?makeup=1` submits for the running makeup session (補習, F8b) instead of a study day. */
+export default function SubmitPage({ searchParams }: PageProps<"/submit">) {
   return (
     <div className="grid gap-5">
       <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">振り返り提出</h1>
       <Suspense fallback={<PageLoading />}>
-        <Submit />
+        <Submit searchParams={searchParams} />
       </Suspense>
     </div>
   );
+}
+
+/** What this page needs of a study day or a makeup session. */
+type Target = {
+  id: string;
+  date: string;
+  status: string;
+  declaration: string;
+  passphrase: string;
+  target_end_time: string;
+  revision_due_at: string | null;
+  revised_at: string | null;
+  makeup: boolean;
+};
+
+async function findTarget(makeup: boolean): Promise<{ target: Target | null; userId: string; now: number }> {
+  if (makeup) {
+    const [{ me, now }, board] = await Promise.all([getTodayBoard(), getMakeupBoard()]);
+    const session = board.active;
+    return {
+      userId: me.id,
+      now,
+      target: session && {
+        id: session.id,
+        date: session.date,
+        status: session.status,
+        declaration: session.declaration,
+        passphrase: session.passphrase,
+        target_end_time: session.targetEndTime,
+        revision_due_at: session.revisionDueAt,
+        revised_at: session.revisedAt,
+        makeup: true,
+      },
+    };
+  }
+  const { me, now } = await getTodayBoard();
+  // Yesterday's day while it is still open (ADR-032), otherwise today's.
+  const log = me.previous?.status === "pending" ? me.previous : me.state.kind === "declared" ? me.state.log : null;
+  return {
+    userId: me.id,
+    now,
+    target: log && {
+      id: log.id,
+      date: log.date,
+      status: log.status,
+      declaration: log.declaration!,
+      passphrase: log.passphrase!,
+      target_end_time: log.target_end_time!,
+      revision_due_at: log.revision_due_at,
+      revised_at: log.revised_at,
+      makeup: false,
+    },
+  };
 }
 
 type Submission = {
@@ -41,10 +96,20 @@ type Submission = {
   unverified_at: string | null;
 };
 
-async function Submit() {
-  const { me, now } = await getTodayBoard();
-  // Yesterday's day while it is still open (ADR-032), otherwise today's.
-  const log = me.previous?.status === "pending" ? me.previous : me.state.kind === "declared" ? me.state.log : null;
+async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams">) {
+  const makeup = (await searchParams).makeup === "1";
+  const { target: log, userId, now } = await findTarget(makeup);
+  if (!log && makeup) {
+    return (
+      <Sticker className="grid gap-3 px-4 py-4">
+        <b>提出できる補習はありません</b>
+        <span className="text-sm font-medium">補習の画面で、先に補習を宣言してください。</span>
+        <Link href="/makeup" className={actionButtonVariants({ tone: "tape" })}>
+          補習の画面へ
+        </Link>
+      </Sticker>
+    );
+  }
   if (!log) {
     return (
       <Sticker className="grid gap-3 px-4 py-4">
@@ -76,16 +141,17 @@ async function Submit() {
   const used = submissions.filter((submission) => submission.status !== "error").length;
   const attemptsLeft = Math.max(0, settings.max_attempts - used);
   const open = submissions.find((submission) => submission.status === "judging" || submission.status === "error");
-  const beforeDeadline = now < new Date(log.target_end_time!).getTime();
+  const beforeDeadline = now < new Date(log.target_end_time).getTime();
+  const declareHref = log.makeup ? "/makeup" : "/declare";
 
   return (
     <>
       <Sticker tone="tape" shadow="sm" className="flex items-center justify-between gap-2 px-3.5 py-2.5">
         <span className="text-sm font-bold">
-          {formatJstDay(log.date)} の分 ・ 締切 {formatJstDateTime(log.target_end_time!)}
+          {log.makeup ? "補習" : `${formatJstDay(log.date)} の分`} ・ 締切 {formatJstDateTime(log.target_end_time)}
         </span>
         <span className="font-en text-xl">
-          あと <Countdown until={log.target_end_time!} />
+          あと <Countdown until={log.target_end_time} />
         </span>
       </Sticker>
 
@@ -93,7 +159,13 @@ async function Submit() {
         <Sticker tone="mint" className="grid gap-1 px-4 py-3">
           <b>合格しました</b>
           <span className="text-sm font-medium">
-            {log.status === "completed" ? "達成が確定しました。おつかれさま。" : "ほかのメンバーが「怪しい」を押さなければ、そのまま達成で確定します。"}
+            {log.status === "completed"
+              ? log.makeup
+                ? "補習を 1 回返しました。おつかれさま。"
+                : "達成が確定しました。おつかれさま。"
+              : log.makeup
+                ? "ほかのメンバーが「怪しい」を押さなければ、補習を 1 回返したことになります。"
+                : "ほかのメンバーが「怪しい」を押さなければ、そのまま達成で確定します。"}
           </span>
         </Sticker>
       ) : open ? (
@@ -109,16 +181,18 @@ async function Submit() {
       ) : log.status !== "pending" ? null : !beforeDeadline ? (
         <Sticker className="grid gap-1 border-red px-4 py-3">
           <b className="text-red">提出締切を過ぎました</b>
-          <span className="text-sm font-medium">合格できなかった日は、あとで理由を申告します。</span>
+          <span className="text-sm font-medium">
+            {log.makeup ? "この補習は数えられません。別の日にもう一度宣言してください。" : "合格できなかった日は、あとで理由を申告します。"}
+          </span>
         </Sticker>
       ) : attemptsLeft === 0 ? (
         <Sticker className="grid gap-1 border-red px-4 py-3">
-          <b className="text-red">この日の提出回数を使い切りました</b>
+          <b className="text-red">{log.makeup ? "この補習の提出回数を使い切りました" : "この日の提出回数を使い切りました"}</b>
           <span className="text-sm font-medium">
-            <Link href="/declare" className="font-bold underline">
-              宣言の画面
+            <Link href={declareHref} className="font-bold underline">
+              {log.makeup ? "補習の画面" : "宣言の画面"}
             </Link>
-            で「できなかった」を押して、理由を申告してください。
+            {log.makeup ? "で「できなかった」を押して、別の日にもう一度宣言してください。" : "で「できなかった」を押して、理由を申告してください。"}
           </span>
         </Sticker>
       ) : log.revision_due_at && !log.revised_at ? (
@@ -126,7 +200,7 @@ async function Submit() {
           <b className="text-red">宣言の書き直しが先です</b>
           <span className="text-sm font-medium">
             提出はできますが、判定は書き直したあとの宣言で行います。先に
-            <Link href="/declare" className="font-bold underline">
+            <Link href={declareHref} className="font-bold underline">
               書き直し
             </Link>
             を済ませましょう。
@@ -136,10 +210,11 @@ async function Submit() {
 
       {log.status === "pending" && beforeDeadline && attemptsLeft > 0 && !open ? (
         <SubmitForm
-          goal={log.declaration!}
-          passphrase={log.passphrase!}
+          goal={log.declaration}
+          passphrase={log.passphrase}
           attemptsLeft={attemptsLeft}
-          live={{ logId: log.id, userId: me.id, date: log.date }}
+          live={{ logId: log.id, userId, date: log.date }}
+          goalLabel={log.makeup ? "補習の宣言" : undefined}
         />
       ) : null}
 

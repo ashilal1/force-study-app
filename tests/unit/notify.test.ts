@@ -33,6 +33,48 @@ describe("draftNotifications", () => {
   });
 });
 
+describe("makeup notifications (補習)", () => {
+  it("tells the member what they owe and everyone else about the streak", () => {
+    const drafts = draftNotifications(
+      {
+        id: "e1",
+        type: "makeup_assigned",
+        actor_id: "aki",
+        payload: { count: 1, streak: 3, waived: null, due_at: "2026-10-31T14:59:00Z" },
+      },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.title, d.url, d.requiresAction])).toEqual([
+      ["aki", "補習が 1 回付きました（サボり 3 連続）", "/makeup", true],
+      ["ben", "あき さんがサボり 3 連続。補習 1 回", "/", false],
+      ["cho", "あき さんがサボり 3 連続。補習 1 回", "/", false],
+    ]);
+  });
+
+  it("only shows what it would be during the trial", () => {
+    const drafts = draftNotifications(
+      { id: "e1", type: "makeup_assigned", actor_id: "aki", payload: { count: 1, streak: 3, waived: "trial" } },
+      members,
+    );
+    expect(drafts.map((d) => d.body)).toEqual(Array(3).fill("お試し期間なので本番なら補習 1 回"));
+  });
+
+  it("words shared submission events for a session and links to /makeup", () => {
+    const event = {
+      id: "e1",
+      type: "judged_rejected",
+      actor_id: "aki",
+      payload: { score: 40, attempts_left: 0, feedback: "薄い", deadline: "2026-10-22T13:00:00Z" },
+      makeup: true,
+    };
+    const [own, other] = draftNotifications(event, members);
+    expect(own).toMatchObject({ title: "補習は不合格でした（40 点）", url: "/makeup" });
+    expect(own.body).toContain("別の日にもう一度宣言してください");
+    expect(other.title).toBe("あき さんの補習の提出は不合格（40 点）");
+    expect(draftNotifications({ ...event, makeup: false }, members)[0].url).toBe("/submit");
+  });
+});
+
 describe("classifyPushStatus", () => {
   it("treats 404/410 as a dead subscription", () => {
     expect(classifyPushStatus(201)).toBe("ok");
