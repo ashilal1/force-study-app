@@ -495,7 +495,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `mark_tip_seen(user_id, tip)` | `seen_tips` にキーを足す（重複させない）。キーは `^[a-z_]{1,40}$`、配列は 100 個まで（`invalid_tip`）。キーの中身（どの画面か）は DB では知らない |
 | `reset_tips(user_id)` | 「使い方をもう一度見る」: `seen_tips` を空にする |
 
-`join_group`・`create_group` は、2 回目以降の所属（`private.trial_for` がお試しを付けない人）の `seen_tips` を `'{*}'` で作る。`rules_accepted_at` はどの所属でも null で作る（グループごとにルールが違うので、入るたびにレクチャーを見る）。
+2 回目以降の所属（同じアカウントの profile がすでにある人）の `seen_tips` は、profiles の insert のトリガー（`private.returning_member_tips`）が `'{*}'` にする。`rules_accepted_at` はどの所属でも null で作る（グループごとにルールが違うので、入るたびにレクチャーを見る）。
 
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |

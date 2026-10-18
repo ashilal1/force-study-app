@@ -1009,6 +1009,8 @@ export type Database = {
           payee_id: string | null
           paypay_link: string | null
           removed_by: string | null
+          rules_accepted_at: string | null
+          seen_tips: string[]
           trial_ends_at: string
         }
         Insert: {
@@ -1025,6 +1027,8 @@ export type Database = {
           payee_id?: string | null
           paypay_link?: string | null
           removed_by?: string | null
+          rules_accepted_at?: string | null
+          seen_tips?: string[]
           trial_ends_at: string
         }
         Update: {
@@ -1041,6 +1045,8 @@ export type Database = {
           payee_id?: string | null
           paypay_link?: string | null
           removed_by?: string | null
+          rules_accepted_at?: string | null
+          seen_tips?: string[]
           trial_ends_at?: string
         }
         Relationships: [
@@ -1801,6 +1807,7 @@ export type Database = {
       }
     }
     Functions: {
+      accept_rules: { Args: { p_user_id: string }; Returns: string }
       advance_disputes: {
         Args: never
         Returns: {
@@ -2090,6 +2097,8 @@ export type Database = {
           payee_id: string | null
           paypay_link: string | null
           removed_by: string | null
+          rules_accepted_at: string | null
+          seen_tips: string[]
           trial_ends_at: string
         }
         SetofOptions: {
@@ -2506,6 +2515,8 @@ export type Database = {
           payee_id: string | null
           paypay_link: string | null
           removed_by: string | null
+          rules_accepted_at: string | null
+          seen_tips: string[]
           trial_ends_at: string
         }
         SetofOptions: {
@@ -2588,6 +2599,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      mark_tip_seen: {
+        Args: { p_tip: string; p_user_id: string }
+        Returns: undefined
       }
       pass_unjudged: {
         Args: never
@@ -2835,6 +2850,7 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      reset_tips: { Args: { p_user_id: string }; Returns: undefined }
       revise_declaration: {
         Args: {
           p_declaration: string
