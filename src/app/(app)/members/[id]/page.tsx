@@ -49,13 +49,16 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
 
   return (
     <div data-wide className="grid grid-cols-1 gap-6">
-      <header className="flex items-center gap-3">
-        <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
-        <div className="min-w-0">
-          <h1 className="m-0 font-heading text-[1.4rem] leading-tight font-normal break-words">{member.name} さんの振り返り</h1>
-          <Link href="/review" className="text-xs font-bold underline underline-offset-2">
+      <header className="grid gap-2">
+        <div className="flex items-center justify-between gap-2">
+          <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">振り返り</h1>
+          <Link href="/review" className="shrink-0 text-sm font-bold underline underline-offset-2">
             みんなと比べる →
           </Link>
+        </div>
+        <div className="flex min-w-0 items-center gap-2.5">
+          <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
+          <span className="truncate text-base font-bold">{member.name}</span>
         </div>
       </header>
 
