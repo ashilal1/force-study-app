@@ -9,6 +9,7 @@ import { InvitePanel } from "@/components/invite/invite-panel";
 import { MemberTodayCard } from "@/components/today/member-today-card";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { requireMember } from "@/lib/auth";
+import { getMakeupBoard } from "@/lib/makeup";
 import { getMaxMembers, isInTrial, listMembers } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
 import { getTimeline } from "@/lib/timeline";
@@ -96,7 +97,7 @@ async function Todos() {
 }
 
 async function Missions() {
-  const [board, maxMembers] = await Promise.all([getTodayBoard(), getMaxMembers()]);
+  const [board, maxMembers, makeup] = await Promise.all([getTodayBoard(), getMaxMembers(), getMakeupBoard()]);
   return (
     <section className="grid gap-3">
       <div className="flex items-baseline justify-between">
@@ -106,7 +107,11 @@ async function Missions() {
         </span>
       </div>
       {board.members.map((member) => (
-        <MemberTodayCard key={member.id} member={member} />
+        <MemberTodayCard
+          key={member.id}
+          member={member}
+          makeup={makeup.enabled ? makeup.remainingByMember.get(member.id) : undefined}
+        />
       ))}
     </section>
   );

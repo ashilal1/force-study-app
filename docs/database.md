@@ -24,7 +24,11 @@ erDiagram
     profiles ||--o{ notifications : "receives"
     profiles ||--o{ push_subscriptions : "has"
     profiles ||--o{ invites : "発行 / 使用"
+    profiles ||--o{ makeup_debts : "補習の借り（P9・P10）"
+    study_logs ||--o| makeup_debts : "P9 が付いた日"
 ```
+
+補習（M11・F8b）の 1 回分は `study_logs` の `is_makeup = true` の行。宣言・合言葉・提出・AI 判定・「怪しい」の仕組みをそのまま使う。
 
 ## 2. テーブル
 
@@ -84,6 +88,11 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 | storage_soft_limit_mb | int | 800 | これを超えたら古い画像から消す |
 | max_members | int | 6 | メンバー（抜けた人を除く）の上限。達したら招待の発行も参加もできない |
 | invite_minutes | int | 15 | 招待コードの有効時間（分） |
+| slack_streak_threshold | int | 3 | P9: サボり（P1・P2・P5・P6）が何回続いたら補習が付くか（M11） |
+| makeup_per_streak | int | 1 | P9 で付く補習の回数（0 なら付けない） |
+| makeup_per_overdue | int | 1 | P10: 期限切れの週の締めごとに足す回数（0 なら足さない） |
+| makeup_hours | int | 24 | 補習を宣言してから提出できる時間 |
+| makeup_since | date null | null | **この日以降の学習日だけ** P9 に数える。null のあいだは補習を付けない。管理者が設定の「補習を使う」をオンにすると今日、オフにすると null（`update_group_settings` の `makeup_enabled`。それより前のサボりにさかのぼって付けないため。ADR-040） |
 
 ### profiles
 | 列 | 型 | 説明 |
@@ -159,8 +168,12 @@ Google でログインしただけでは作らない。招待コードを確か�
 | passed_at | timestamptz | AI が合格にした時刻 |
 | dispute_window_ends_at | timestamptz | `least(passed_at + dispute_window_hours, 当日の dispute_cutoff)`。過ぎて疑義がなければ `completed` |
 | completed_at, missed_at | timestamptz | |
+| is_makeup | boolean default false | **補習の 1 回分**（M11・F8b）。学習日ではない。変えない |
 
-制約: `unique (user_id, date)`、`check` で status と declaration の組み合わせを検査。
+制約: 学習日は `(user_id, date) where not is_makeup` で 1 日 1 件、補習は `(user_id, date) where is_makeup` で 1 日 1 件（どちらも部分一意インデックス。M11 で `unique (user_id, date)` から置き換え）。`check` で status と declaration の組み合わせを検査。
+
+**補習の行**: `date` は宣言した日 (JST)、`target_end_time` は宣言から `makeup_hours`。状態は学習日と同じ列を使い、`pending` → `passed`（「怪しい」の受付中）→ `completed`（1 回返した）。うまくいかなかったとき（提出期限切れ・「できなかった」・「軽すぎる」の書き直しなし）は `missed` にするだけで、理由申告もペナルティも付けない（`add_penalty` は補習の行には何もしない）。証拠不認定は `invalidated`（P8 は付けない）。学習日を見る処理（宣言・締め・前の日の片付け・P3 の連続・`daily_history`・週の振り返り）は補習の行を数えない。
+公開中の古いコード（ADR-031）は「1 人 1 日 1 行」と思って `study_logs` を日付で読むので、**補習を宣言できる画面は DB の変更と一緒に main へ出す**。借りの記録（`makeup_debts`）と新しい種類のイベントだけなら、古いコードは読まない・通知を作らないだけで壊れない。
 「理由申告待ち・審査中」は `failure_reports` が、「疑義あり・最終審査」は `submission_disputes` が持つ。
 
 ### declaration_flags（宣言への「軽すぎる」）
@@ -273,6 +286,22 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 
 ポイントは**カウンター列を持たず、台帳から集計する**（ずれない・あとから監査できる）。お試し期間中も行は作り（「本番なら 〇pt」の表示用）、`waived = 'trial'` の行は精算・ランキングから除く。
 
+### makeup_debts（補習の借り。M11・F8b）
+| 列 | 型 | 説明 |
+|---|---|---|
+| id | uuid PK | |
+| user_id | uuid → profiles | |
+| reason | text | `slack_streak`（P9: サボりが続いた） / `overdue`（P10: 期限を過ぎた） |
+| study_log_id | uuid → study_logs null | P9 が付いた学習日（`slack_streak` のときだけ） |
+| period_end | date null | P10 を付けた週の締め日（`overdue` のときだけ） |
+| count | int `check (count > 0)` | 借りた回数 |
+| waived | text null | `trial`（お試し期間の日の分。記録だけして返さなくていい） |
+| due_at | timestamptz | 期限。P9 は付いた週の次の週の締め（`private.makeup_due_after`）、P10 は付けた締めの 1 週後 |
+| dedupe_key | text **unique** | `streak:{study_log_id}` / `overdue:{user_id}:{締め日}` |
+| created_at | timestamptz | `private.now()`（P10 は締めの時刻） |
+
+**残りの回数は台帳から計算する**（カウンター列を持たない。ADR-005）。`private.makeup_balance(user_id, at)` が、`waived` でない借りの合計から、`at` までに合格した補習（`passed` と `completed`）を**期限の早い借りから順に**引いて、`owed`・`trial_owed`・`completed`・`reviewing`（「怪しい」の受付中）・`open`（宣言中）・`remaining`・`overdue`（期限が `at` 以前で返していない分）・`next_due_at`（返していない借りでいちばん早い期限）を返す。記録の保全のため、更新も削除もできない（トリガー）。
+
 ### settlements（毎週の精算。1 人 1 週 1 件）
 | 列 | 型 | 説明 |
 |---|---|---|
@@ -305,6 +334,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - 休会: `leave_requested` / `leave_approved` / `leave_rejected` / `leave_ending`
 - 振り返り: `weekly_review_created`
 - 精算: `payee_assigned` / `settlement_created` / `weekly_summary` / `settlement_sent` / `settlement_completed` / `settlement_not_received` / `late_payment`
+- 補習（M11）: `makeup_warning`（サボりが P9 の 1 回手前。直近の日だけ）/ `makeup_assigned`（P9。payload に `count`・`streak`・`waived`・`due_at`）/ `makeup_declared` / `makeup_failed`（payload の `cause` は `gave_up` / `deadline` / `unrevised`）/ `makeup_completed` / `makeup_overdue`（P10）/ `makeup_due`（週の締めで、残りがある人へ）/ `reminder_makeup_due`（期限の 24 時間前）。補習の提出・判定・「軽すぎる」・「怪しい」は学習日と同じ type（`study_log_id` の行の `is_makeup` で見分ける）
 - その他: `penalized` / `trial_ending` / `member_joined`（payload に `invited_by`）
 - リマインド: `reminder_declare_midnight` / `reminder_declare_last_call` / `reminder_submit` / `reminder_revision_due` / `reminder_resend_due` / `reminder_report_due` / `reminder_review_due` / `reminder_late_payment`
 
@@ -359,6 +389,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 
 ### ビュー: received_objections
 本人が受けた指摘・却下の一覧（`declaration_flags`、`submission_flags`、`peer_reviews` の `reject`、AI の不合格）を 1 つの形にそろえたもの: `user_id, occurred_at, kind (too_light / suspicious / excuse_rejected / dispute_rejected / leave_rejected / ai_rejected), by_user_id, reason, study_log_id`。
+
+### ビュー: makeup_summary（M11）
+`user_id` と `private.makeup_balance(user_id, now)` の列（`owed, trial_owed, completed, reviewing, open, remaining, overdue, next_due_at`）。有効なメンバーごとに 1 行。ダッシュボードの補習の残り・「逃走者」・補習の画面に使う。`security_invoker = true` で、`makeup_balance` も security definer ではないので、元のテーブルの RLS で読む。
 
 ### ビュー: penalty_summary
 `user_id, display_name, total_points, unsettled_points, this_week_points, trial_points, open_settlement_id, this_week_trial_points`
@@ -417,11 +450,17 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 精算
 | 関数 | 処理 |
 |---|---|
-| `update_group_settings(admin_id, changes jsonb)` | 管理者だけ。決まったキーだけを受け付け（`invalid_setting`）、表の制約と 1 日の時刻の順番（リマインド < 宣言締切 < 提出締切の上限 ≤ 「怪しい」 ≤ 送り直し ≤ 審査の期限、理由申告 ≤ 審査の期限）を検査（`invalid_schedule`）。変わった項目だけを `settings_changed` に記録 |
+| `update_group_settings(admin_id, changes jsonb)` | 管理者だけ。決まったキーだけを受け付け（`makeup_enabled` は true で `makeup_since` を今日に〔すでに入っていればそのまま〕、false で null にする）（`invalid_setting`）、表の制約と 1 日の時刻の順番（リマインド < 宣言締切 < 提出締切の上限 ≤ 「怪しい」 ≤ 送り直し ≤ 審査の期限、理由申告 ≤ 審査の期限）を検査（`invalid_schedule`）。変わった項目だけを `settings_changed` に記録 |
 | `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ（`not_admin`）。自分自身・抜けた人は不可（`invalid_payee`）、同じなら `unchanged`。`payee_assigned` で全員に通知 |
 | `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで `open` → `sent` → `completed`、「届いていない」は `sent` → `open` |
 | `run_weekly_settlement()`（定期実行。tick の最後） | `current_period_end()`（設定の曜日・時刻を過ぎた直近の締め日）について 1 回だけ。① 前の週までの `open` の精算に P7（`late:{settlement}:{締め日}`）② 人ごとに、締め日までの学習日（P7 は作成時刻）の未精算・`waived` でないペナルティを束ねて支払先への精算を作る（支払先が未設定なら作らずに持ち越して `payee_missing` を管理者へ）③ その週に記録があれば `weekly_summary` |
 | `late_payment_reminders()`（定期実行） | 次の締めの 24 時間前に、`open` の精算の本人へ |
+
+### 補習（M11・F8b）
+| 関数 | 処理 |
+|---|---|
+| `declare_makeup(user_id, declaration, passphrase)` | まだ始めていない借りがあるか（`remaining - open > 0`、なければ `no_makeup_due`）、今日 (JST) まだ補習を宣言していないか（`makeup_already_today`）を検査。時刻・休息日・休会・前の日の片付けは関係ない。`is_makeup` の `pending` の行を作り、`target_end_time = 今 + makeup_hours`。`makeup_declared` を記録 |
+| 提出・判定・「怪しい」 | 学習日と同じ `create_submission` / `record_judgement` / `flag_submission` / `resend_evidence` / `withdraw_flag` / `cast_review('dispute')` を使う。違いは: `flag_declaration` は日付を見ない（夜に宣言しても 3 時間押せる）、`give_up_day`・`close_overdue_logs`・`expire_revisions` は `missed` にして `makeup_failed` を記録するだけ（理由申告・P5・P6 なし）、`confirm_passed_logs` は `makeup_completed` を記録、証拠不認定は P8 なし |
 
 ### グループ（M10）
 | 関数 | 処理 |
@@ -471,6 +510,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `due_image_purges(limit)` | 原寸の写真を消す対象を古い順に返す: `submitted_at` が `image_retention_days` を過ぎたもの、またはバケットの合計（`storage.objects.metadata.size`）が 800MB を超えているあいだの古いもの。判定中の提出と、まだ決着していない日（`pending`・`passed`）は除く。**tick とは別に** Route Handler が呼ぶ（Storage の削除は Storage API でしかできないため） |
 | `mark_images_purged(submission_ids)` | Storage API でファイルを消したあとに、`image_paths` を空にして `images_purged_at` を記録する。`thumb_path` は残す |
 | `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
+| `award_makeups()` | P9（M11）。`makeup_since` が入っているグループの有効なメンバーごとに、その日以降の学習日を日付順に見て、サボり（`no_declaration`、または `missed` で理由が `slacked` / `not_reported` に決まった日）の連続を数え、`slack_streak_threshold` 回目から 1 日ごとに `makeup_per_streak` 回の借りを作る（`streak:{log}` で 1 日 1 回）。達成した日と、**まだ決着していない日**（`pending`・`passed`・理由申告や審査の途中）で 0 に戻す。決着したら次の tick で数え直すので、決着の順が日付と前後しても、あとの日に P9 が付く。P3・P4・P8・承認された理由の日は数えず、戻しもしない。お試し期間の日はお試しの日だけで数え（本番の日と続けない）、借りは `waived = 'trial'` |
+| `close_makeup_week()` | P10（M11）。`run_weekly_settlement` のあと、締めごとに 1 回。締めの時刻の時点で期限が来ていて返していない借り（`overdue > 0`）があれば、`makeup_per_overdue` 回の借りを足す（期限は 1 週後。`overdue:{user}:{締め日}`）。締めの日に休会中ならその週は足さない（期限を延ばす）。そのあと残りがある人に `makeup_due` |
+| `due_makeup_reminders()` | 返していない借りのいちばん早い期限の 24 時間前に、本人へ `reminder_makeup_due`（期限ごとに 1 回） |
 
 **P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed','invalidated')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed`（達成）かほかの理由の未達成で止まる。理由申告待ち・審査中・確定待ちの日があればそこでも止める（確定していないため）。
 
@@ -487,7 +529,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `mark_notifications_pushed(ids)` | Push が届いた通知に `pushed_at` を付ける（1 回だけ） |
 
 ### 記録の保全（追記だけ）
-- 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
+- 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`・`makeup_debts`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
 - UPDATE は**状態と時刻の列だけ**を許すトリガーにする（例: `submissions` は `status`・`ai_*`・`judged_at`・`image_paths`（消すときの空配列）・`images_purged_at` だけ）。宣言・理由・コメントなど人が書いた文字は変えられない。書き直しは `original_declaration` に元を残す。
 - 外部キーは `on delete cascade` にしない（profiles を消しても記録が連鎖で消えないように）。
 
@@ -501,12 +543,12 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | groups | 自分のグループ | なし（名前の変更は `rename_group`） |
 | group_settings | 自分のグループの行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
 | profiles | 同じグループの人 | update: 本人の行の `display_name, avatar_url, paypay_link` **だけ**（列単位 GRANT）。`payee_id` は管理者が Server Action 経由で |
-| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
+| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews, makeup_debts | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = private.my_member()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = private.my_member()` | なし（登録・確認・削除は Server Action） |
-| penalty_summary・daily_history・weekly_stats・received_objections（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
+| penalty_summary・daily_history・weekly_stats・received_objections・makeup_summary（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
 
-関数の EXECUTE は `private.is_member()` に加えて、ビューが「今日」を求めるための `private.now()`・`private.jst_today()` だけを `authenticated` に許可する（時刻を返すだけ）。
+関数の EXECUTE は `private.is_member()` に加えて、ビューが「今日」を求めるための `private.now()`・`private.jst_today()` と、`makeup_summary` が使う `private.makeup_balance(uuid, timestamptz)`（security definer ではないので、呼んだ人の RLS で自分のグループの行しか数えない）を `authenticated` に許可する。
 | invites | なし（RLS は有効、GRANT なし。サーバーだけが読む） | なし（`create_invite` / `join_group`） |
 
 `anon` ロールにはどのテーブルも許可しない。M10 から、メンバーが読めるのは**自分のグループ**の行だけ（`private.my_group()`）。Google でログインしただけの人は何も読めない。RLS が呼ぶ `private.my_group()`・`in_my_group()`・`log_in_my_group()`・`folder_in_my_group()` は `authenticated` に EXECUTE を許可する（`security definer` で、自分のグループかどうかを返すだけ）。

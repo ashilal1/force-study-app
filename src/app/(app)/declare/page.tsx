@@ -13,6 +13,7 @@ import { GiveUpButton } from "@/components/declare/give-up-button";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import { RestDayPlanner, type PlannerDay } from "@/components/declare/rest-day-planner";
 import { ReviseForm } from "@/components/declare/revise-form";
+import { getMakeupBoard } from "@/lib/makeup";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 import { getTodayBoard, isOnLeave, type TodayLog } from "@/lib/today";
@@ -25,6 +26,9 @@ export default function DeclarePage() {
       <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">今日の宣言</h1>
       <Suspense fallback={<PageLoading />}>
         <Today />
+      </Suspense>
+      <Suspense fallback={null}>
+        <MakeupLink />
       </Suspense>
 
       <section className="grid gap-3">
@@ -180,6 +184,18 @@ function PreviousDay({ log, cutoff }: { log: TodayLog; cutoff: string }) {
         </>
       )}
     </div>
+  );
+}
+
+/** Makeup sessions (補習) still owed: they are declared on /makeup, apart from the day. */
+async function MakeupLink() {
+  const { enabled, balance } = await getMakeupBoard();
+  if (!enabled || balance.remaining === 0) return null;
+  return (
+    <Link href="/makeup" className={actionButtonVariants({ tone: balance.overdue > 0 ? "red" : "tape" })}>
+      <span>補習が {balance.remaining} 回あります</span>
+      <span className="font-sans text-xs font-bold">補習の画面で宣言・提出する</span>
+    </Link>
   );
 }
 

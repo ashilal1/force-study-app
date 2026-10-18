@@ -1,6 +1,7 @@
 import "server-only";
 import { requireMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
+import { getMakeupBoard } from "@/lib/makeup";
 import { formatJstDay } from "@/lib/time";
 import { getTodayBoard } from "@/lib/today";
 
@@ -61,6 +62,28 @@ export async function getTodos(): Promise<Todo[]> {
     if (log.status === "pending" && future(log.target_end_time) && log.latest?.status !== "judging") {
       todos.push({ key: "submit", label: "成果物を提出する", dueAt: log.target_end_time, href: "/submit", urgent: false });
     }
+  }
+
+  // Makeup study (補習, F8b): rewrite, submit, or declare the next session.
+  const makeup = await getMakeupBoard();
+  const session = makeup.active;
+  if (makeup.enabled && session?.status === "pending") {
+    if (session.revisionDueAt && !session.revisedAt && future(session.revisionDueAt)) {
+      todos.push({ key: "makeup-revise", label: "補習の宣言を書き直す", detail: "「軽すぎる」と指摘されました", dueAt: session.revisionDueAt, href: "/makeup", urgent: true });
+    }
+    if (future(session.targetEndTime) && session.latest?.status !== "judging") {
+      todos.push({ key: "makeup-submit", label: "補習を提出する", dueAt: session.targetEndTime, href: "/submit?makeup=1", urgent: false });
+    }
+  } else if (makeup.enabled && makeup.canDeclare) {
+    const { remaining, overdue, nextDueAt } = makeup.balance;
+    todos.push({
+      key: "makeup-declare",
+      label: `補習を宣言する（残り ${remaining} 回）`,
+      detail: overdue > 0 ? `期限切れが ${overdue} 回あります。返し終わるまで毎週増えます` : undefined,
+      dueAt: nextDueAt,
+      href: "/makeup",
+      urgent: overdue > 0 || (nextDueAt !== null && new Date(nextDueAt).getTime() - now < 2 * 86_400_000),
+    });
   }
 
   const [reports, reviews, myDisputes, myFlags, settlements] = await Promise.all([

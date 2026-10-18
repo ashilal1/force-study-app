@@ -17,6 +17,8 @@ type Props = {
   attemptsLeft: number;
   /** Live submission: today's log and where the photos go. Omitted in the /preview gallery. */
   live?: { logId: string; userId: string; date: string };
+  /** Heading over the declaration ("今日の宣言", or "補習の宣言" for a makeup session). */
+  goalLabel?: string;
 };
 
 type Phase = "idle" | "uploading" | "saving" | "judging";
@@ -28,7 +30,7 @@ const PHASE_LABEL: Record<Phase, string> = {
   judging: "AI が判定中…（数秒〜数十秒）",
 };
 
-export function SubmitForm({ goal, passphrase, attemptsLeft, live }: Props) {
+export function SubmitForm({ goal, passphrase, attemptsLeft, live, goalLabel = "今日の宣言" }: Props) {
   const router = useRouter();
   const [photos, setPhotos] = useState<PickedPhoto[]>([]);
   const [learned, setLearned] = useState("");
@@ -73,7 +75,7 @@ export function SubmitForm({ goal, passphrase, attemptsLeft, live }: Props) {
   return (
     <form className="grid gap-5" onSubmit={submit}>
       <Sticker tone="tape" shadow="sm" className="grid gap-1 px-3.5 py-3">
-        <span className="text-xs">今日の宣言</span>
+        <span className="text-xs">{goalLabel}</span>
         <span className="text-base">{goal}</span>
         <span className="text-sm">
           写真の 1 枚に合言葉 <strong className="font-hand text-lg">{passphrase}</strong> を写してください

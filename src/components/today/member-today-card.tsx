@@ -10,8 +10,17 @@ import { formatJstDateTime, formatJstDay } from "@/lib/time";
 import type { TodayLog, TodayMember } from "@/lib/today";
 import { FlagForm } from "./flag-form";
 
-/** One member's day on the home board: declaration, deadline, passphrase and flags. */
-export function MemberTodayCard({ member }: { member: TodayMember }) {
+/**
+ * One member's day on the home board: declaration, deadline, passphrase and flags, and the
+ * makeup sessions (補習) they still owe.
+ */
+export function MemberTodayCard({
+  member,
+  makeup,
+}: {
+  member: TodayMember;
+  makeup?: { remaining: number; overdue: number };
+}) {
   const { state } = member;
   return (
     <Sticker className="grid gap-2.5 px-3.5 py-3">
@@ -30,6 +39,15 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
       </div>
 
       {member.previous ? <PreviousLine member={member} log={member.previous} /> : null}
+
+      {makeup && makeup.remaining > 0 ? (
+        <Link
+          href={member.isMe ? "/makeup" : "/makeup#others"}
+          className={`text-sm font-bold underline underline-offset-2 ${makeup.overdue > 0 ? "text-red" : ""}`}
+        >
+          補習 残り {makeup.remaining} 回{makeup.overdue > 0 ? `（期限切れ ${makeup.overdue} 回・逃走中）` : ""} →
+        </Link>
+      ) : null}
 
       {state.kind === "declared" ? (
         <>

@@ -136,6 +136,19 @@ export default function GuidePage() {
         <p className="m-0 text-xs text-sub">金額は既定の値です。グループの設定で変わることがあります。1 日に付くのは 1 件までです。</p>
       </Section>
 
+      <Section title="補習（グループで使っているとき）">
+        <p className="m-0 text-sm leading-relaxed font-medium">
+          サボり（宣言しなかった・サボった・理由を申告しなかった・書き直さなかった）が <b>3 回続くと</b>、3 回目から 1
+          回ごとに<b>補習が 1 回</b>付きます。お金とは別に、追加で勉強して返します。1 日でも達成すると数え直しです。
+        </p>
+        <ul className="m-0 grid gap-1 pl-5 text-sm leading-relaxed font-medium">
+          <li>補習の画面で宣言して、合言葉を写した写真を 24 時間以内に提出。AI の判定と「怪しい」はいつもの日と同じです。</li>
+          <li>補習の宣言は 1 日 1 回まで。中身はサボった日の宣言のやり直しが基本です。</li>
+          <li>期限は、補習が付いた週の次の週の土曜 23:59。過ぎると毎週 1 回ずつ増えます。</li>
+          <li>補習に失敗しても、ペナルティは付きません（借りが減らないだけ）。</li>
+        </ul>
+      </Section>
+
       <Link href="/" className="text-center text-sm font-bold underline underline-offset-2">
         アプリを開く →
       </Link>

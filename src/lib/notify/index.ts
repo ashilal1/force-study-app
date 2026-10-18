@@ -23,7 +23,7 @@ export async function dispatch(eventId: string): Promise<void> {
     const admin = createAdminClient();
     const { data: event, error: eventError } = await admin
       .from("activity_events")
-      .select("id, type, actor_id, study_log_id, payload, group_id")
+      .select("id, type, actor_id, study_log_id, payload, group_id, study_logs(is_makeup)")
       .eq("id", eventId)
       .single();
     if (eventError) throw eventError;
@@ -35,7 +35,10 @@ export async function dispatch(eventId: string): Promise<void> {
       .eq("group_id", event.group_id);
     if (membersError) throw membersError;
 
-    const drafts = draftNotifications(event as ActivityEvent, members);
+    const drafts = draftNotifications(
+      { ...(event as ActivityEvent), makeup: event.study_logs?.is_makeup ?? false },
+      members,
+    );
     if (drafts.length === 0) return;
 
     const { data: created, error } = await admin.rpc("create_notifications", {
