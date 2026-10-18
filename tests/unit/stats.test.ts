@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { achievementRate, rangeStart, streaks, summarize, type HistoryDay } from "@/lib/stats";
+import { achievementRate, periodKey, rangeStart, ratesByPeriod, streaks, summarize, type HistoryDay } from "@/lib/stats";
 
 const day = (date: string, kind: HistoryDay["kind"], extra: Partial<HistoryDay> = {}): HistoryDay => ({
   date,
@@ -47,5 +47,30 @@ describe("stats", () => {
     expect(rangeStart("4w", "2026-10-31")).toBe("2026-10-04");
     expect(rangeStart("3m", "2026-10-31")).toBe("2026-08-03");
     expect(rangeStart("all", "2026-10-31")).toBeNull();
+  });
+});
+
+describe("periodKey / ratesByPeriod (long ranges by month)", () => {
+  const weeks = [
+    { weekEnd: "2026-09-26", completed: 5, counted: 6 },
+    { weekEnd: "2026-10-03", completed: 3, counted: 6 },
+    { weekEnd: "2026-10-10", completed: 6, counted: 6 },
+  ];
+
+  it("keeps weeks up to 16 of them", () => {
+    expect(periodKey("2026-10-10", 16)).toBe("2026-10-10");
+    expect([...ratesByPeriod(weeks, 3)]).toEqual([
+      ["2026-09-26", 83],
+      ["2026-10-03", 50],
+      ["2026-10-10", 100],
+    ]);
+  });
+
+  it("bundles into months beyond 16 weeks, weighting by the days counted", () => {
+    expect(periodKey("2026-10-10", 17)).toBe("2026-10");
+    expect([...ratesByPeriod(weeks, 17)]).toEqual([
+      ["2026-09", 83],
+      ["2026-10", 75],
+    ]);
   });
 });
