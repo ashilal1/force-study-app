@@ -91,6 +91,13 @@ export type Database = {
             foreignKeyName: "activity_events_actor_id_fkey"
             columns: ["actor_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "activity_events_actor_id_fkey"
+            columns: ["actor_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -195,6 +202,13 @@ export type Database = {
             columns: ["flagger_id"]
             isOneToOne: false
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "declaration_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -491,6 +505,13 @@ export type Database = {
             foreignKeyName: "invites_created_by_fkey"
             columns: ["created_by"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -520,6 +541,13 @@ export type Database = {
             columns: ["used_by"]
             isOneToOne: true
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "invites_used_by_fkey"
+            columns: ["used_by"]
+            isOneToOne: true
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -597,6 +625,13 @@ export type Database = {
             foreignKeyName: "leave_requests_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "leave_requests_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -658,6 +693,13 @@ export type Database = {
             foreignKeyName: "makeup_debts_study_log_id_fkey"
             columns: ["study_log_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
+          },
+          {
+            foreignKeyName: "makeup_debts_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: false
             referencedRelation: "study_logs"
             referencedColumns: ["id"]
           },
@@ -665,8 +707,36 @@ export type Database = {
             foreignKeyName: "makeup_debts_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "makeup_debts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "makeup_debts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "makeup_debts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "makeup_debts_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
           },
         ]
       }
@@ -720,6 +790,13 @@ export type Database = {
             columns: ["recipient_id"]
             isOneToOne: false
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "notifications_recipient_id_fkey"
+            columns: ["recipient_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -782,6 +859,13 @@ export type Database = {
             columns: ["reviewer_id"]
             isOneToOne: false
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "peer_reviews_reviewer_id_fkey"
+            columns: ["reviewer_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -884,6 +968,13 @@ export type Database = {
             foreignKeyName: "penalties_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "penalties_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -971,6 +1062,13 @@ export type Database = {
             foreignKeyName: "profiles_payee_id_fkey"
             columns: ["payee_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -993,6 +1091,13 @@ export type Database = {
             columns: ["removed_by"]
             isOneToOne: false
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "profiles_removed_by_fkey"
+            columns: ["removed_by"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -1064,6 +1169,13 @@ export type Database = {
             foreignKeyName: "push_subscriptions_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "push_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -1105,6 +1217,13 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "rest_days_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -1176,6 +1295,13 @@ export type Database = {
             foreignKeyName: "settlements_debtor_id_fkey"
             columns: ["debtor_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_debtor_id_fkey"
+            columns: ["debtor_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -1198,6 +1324,13 @@ export type Database = {
             columns: ["payee_id"]
             isOneToOne: false
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "settlements_payee_id_fkey"
+            columns: ["payee_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -1296,6 +1429,13 @@ export type Database = {
             foreignKeyName: "study_logs_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "study_logs_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -1385,6 +1525,13 @@ export type Database = {
             columns: ["flagger_id"]
             isOneToOne: false
             referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "submission_flags_flagger_id_fkey"
+            columns: ["flagger_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
             referencedColumns: ["user_id"]
           },
           {
@@ -1553,6 +1700,13 @@ export type Database = {
             foreignKeyName: "weekly_reviews_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "weekly_reviews_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "penalty_summary"
             referencedColumns: ["user_id"]
           },
@@ -1691,6 +1845,28 @@ export type Database = {
           isSetofReturn: false
         }
       }
+      award_makeups: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cancel_leave: {
         Args: { p_leave_request_id: string; p_user_id: string }
         Returns: {
@@ -1764,6 +1940,28 @@ export type Database = {
         }
       }
       close_declarations: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      close_makeup_week: {
         Args: never
         Returns: {
           actor_id: string | null
@@ -2021,11 +2219,7 @@ export type Database = {
         }
       }
       declare_makeup: {
-        Args: {
-          p_declaration: string
-          p_passphrase: string
-          p_user_id: string
-        }
+        Args: { p_declaration: string; p_passphrase: string; p_user_id: string }
         Returns: {
           actor_id: string | null
           created_at: string
@@ -2078,6 +2272,28 @@ export type Database = {
           image_paths: string[]
           submission_id: string
         }[]
+      }
+      due_makeup_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       due_submit_reminders: {
         Args: never
