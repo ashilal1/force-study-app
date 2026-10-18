@@ -78,3 +78,27 @@ export function rangeStart(range: Range, today: string): string | null {
 export function parseRange(value: unknown): Range {
   return value === "3m" || value === "all" ? value : "4w";
 }
+
+/** Long ranges read better by month: more than 16 weeks are bundled into months ("YYYY-MM"). */
+export function periodKey(weekEnd: string, weekCount: number): string {
+  return weekCount > 16 ? weekEnd.slice(0, 7) : weekEnd;
+}
+
+/** Achievement rate per period from completed / counted days (weeks bundled by periodKey). */
+export function ratesByPeriod<T extends { weekEnd: string; completed: number; counted: number }>(
+  weeks: T[],
+  weekCount: number,
+): Map<string, number | null> {
+  const sums = new Map<string, { completed: number; counted: number }>();
+  for (const week of weeks) {
+    const key = periodKey(week.weekEnd, weekCount);
+    const entry = sums.get(key) ?? { completed: 0, counted: 0 };
+    entry.completed += week.completed;
+    entry.counted += week.counted;
+    sums.set(key, entry);
+  }
+  return new Map(
+    [...sums].sort(([a], [b]) => a.localeCompare(b)).map(([key, entry]) => [key, entry.counted === 0 ? null : Math.round((100 * entry.completed) / entry.counted)]),
+  );
+}
+

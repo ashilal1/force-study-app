@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Avatar } from "@/components/brand/avatar";
 import type { CalendarDay } from "@/components/review/achievement-calendar";
-import { DayMark } from "@/components/review/achievement-calendar";
+import { DayMark, GROUP_MARKS } from "@/components/review/achievement-calendar";
 import { addDays, weekStartOf } from "@/lib/time";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
@@ -78,6 +78,18 @@ export function GroupCalendar({
           ))}
         </tbody>
       </table>
+      <ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-[0.7rem]">
+        {GROUP_MARKS.map((mark) => (
+          <li key={mark.label} className="flex items-center gap-1">
+            <span className={`grid size-3.5 place-items-center rounded-[3px] border border-ink text-[0.5rem] ${mark.className}`}>{mark.symbol}</span>
+            {mark.label}
+          </li>
+        ))}
+        <li className="flex items-center gap-1">
+          <span className="size-3.5 rounded-[3px] border border-dashed border-ink/40" />
+          記録なし
+        </li>
+      </ul>
     </div>
   );
 }

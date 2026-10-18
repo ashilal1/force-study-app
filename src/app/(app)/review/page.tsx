@@ -9,7 +9,7 @@ import { RangeTabs } from "@/components/review/range-tabs";
 import { RankingSwitch } from "@/components/review/ranking-switch";
 import { FAILURE_CATEGORY } from "@/lib/chart-colors";
 import { getGroupHistory } from "@/lib/history";
-import { parseRange, summarize } from "@/lib/stats";
+import { parseRange, periodKey, ratesByPeriod, summarize } from "@/lib/stats";
 
 export const metadata: Metadata = { title: "振り返り | Commit or Treat" };
 
@@ -48,7 +48,10 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
     days: member.allDays,
   }));
   const rows = members.map((member) => ({ member, summary: summarize(member.days, member.allDays) }));
-  const weekEnds = [...new Set(members.flatMap((member) => member.weeks.map((week) => week.weekEnd)))].sort();
+  // Weekly, or monthly once the range covers more than 16 weeks.
+  const weekCount = new Set(members.flatMap((member) => member.weeks.map((week) => week.weekEnd))).size;
+  const memberRates = new Map(members.map((member) => [member.id, ratesByPeriod(member.weeks, weekCount)]));
+  const periods = [...new Set(members.flatMap((member) => member.weeks.map((week) => periodKey(week.weekEnd, weekCount))))].sort();
   const sum = (member: (typeof members)[number], from: string | null) =>
     member.allDays.filter((day) => from === null || day.date >= from).reduce((total, day) => total + day.penaltyPoints, 0);
 
@@ -119,9 +122,9 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
           <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">週ごとの達成率</h2>
           <MemberRateChart
             members={members.map((member) => ({ id: member.id, name: member.name }))}
-            weeks={weekEnds.map((weekEnd) => {
-              const entry: { weekEnd: string } & Record<string, number | string | null> = { weekEnd };
-              for (const member of members) entry[member.id] = member.weeks.find((week) => week.weekEnd === weekEnd)?.rate ?? null;
+            weeks={periods.map((period) => {
+              const entry: { weekEnd: string } & Record<string, number | string | null> = { weekEnd: period };
+              for (const member of members) entry[member.id] = memberRates.get(member.id)!.get(period) ?? null;
               return entry;
             })}
           />

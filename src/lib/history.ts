@@ -17,7 +17,7 @@ export type DayRow = HistoryDay & {
   failureCategory: string | null;
 };
 
-export type WeekRow = { weekEnd: string; rate: number | null; avgScore: number | null; penalty: number };
+export type WeekRow = { weekEnd: string; rate: number | null; avgScore: number | null; penalty: number; completed: number; counted: number };
 
 export type PenaltyRow = { weekEnd: string; reason: string; points: number };
 
@@ -44,7 +44,7 @@ export type MemberHistory = {
   /** Days within the selected range. */
   days: DayRow[];
   weeks: WeekRow[];
-  groupWeeks: { weekEnd: string; rate: number | null }[];
+  groupWeeks: { weekEnd: string; rate: number | null; completed: number; counted: number }[];
   penalties: PenaltyRow[];
   objections: ObjectionRow[];
   nextPlans: NextPlanRow[];
@@ -101,7 +101,11 @@ export async function getMemberHistory(userId: string, range: Range): Promise<Me
   const from = rangeStart(range, today);
   const [days, weeks, groupWeeks, penalties, objections, reports] = await Promise.all([
     supabase.from("daily_history").select("*").eq("user_id", userId).order("date"),
-    supabase.from("weekly_stats").select("week_end, achievement_rate, avg_score, penalty_points").eq("user_id", userId).order("week_end"),
+    supabase
+      .from("weekly_stats")
+      .select("week_end, achievement_rate, avg_score, penalty_points, completed_days, counted_days")
+      .eq("user_id", userId)
+      .order("week_end"),
     supabase.from("weekly_stats").select("week_end, completed_days, counted_days"),
     supabase
       .from("penalties")
@@ -154,13 +158,22 @@ export async function getMemberHistory(userId: string, range: Range): Promise<Me
     days: allDays.filter((day) => inRange(day.date)),
     weeks: weeks
       .data!.filter((week) => inRange(week.week_end!))
-      .map((week) => ({ weekEnd: week.week_end!, rate: week.achievement_rate, avgScore: week.avg_score, penalty: week.penalty_points ?? 0 })),
+      .map((week) => ({
+        weekEnd: week.week_end!,
+        rate: week.achievement_rate,
+        avgScore: week.avg_score,
+        penalty: week.penalty_points ?? 0,
+        completed: week.completed_days ?? 0,
+        counted: week.counted_days ?? 0,
+      })),
     groupWeeks: [...group]
       .filter(([weekEnd]) => inRange(weekEnd))
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([weekEnd, entry]) => ({
         weekEnd,
         rate: entry.counted === 0 ? null : Math.round((100 * entry.completed) / entry.counted),
+        completed: entry.completed,
+        counted: entry.counted,
       })),
     penalties: penalties
       .data!.map((penalty) => {
@@ -190,7 +203,7 @@ export type GroupMember = {
   colorIndex: number;
   days: DayRow[];
   allDays: DayRow[];
-  weeks: { weekEnd: string; rate: number | null }[];
+  weeks: { weekEnd: string; rate: number | null; completed: number; counted: number }[];
 };
 
 /** Everyone's history for the comparison screen (G11-G14). */
@@ -202,7 +215,7 @@ export async function getGroupHistory(range: Range): Promise<{ today: string; me
   const [profiles, days, weeks] = await Promise.all([
     supabase.from("profiles").select("id, display_name, avatar_url").is("deactivated_at", null).order("created_at"),
     supabase.from("daily_history").select("*").order("date"),
-    supabase.from("weekly_stats").select("user_id, week_end, achievement_rate").order("week_end"),
+    supabase.from("weekly_stats").select("user_id, week_end, achievement_rate, completed_days, counted_days").order("week_end"),
   ]);
   for (const result of [profiles, days, weeks]) if (result.error) throw result.error;
   const inRange = (date: string) => from === null || date >= from;
@@ -220,7 +233,12 @@ export async function getGroupHistory(range: Range): Promise<{ today: string; me
         days: allDays.filter((day) => inRange(day.date)),
         weeks: weeks
           .data!.filter((week) => week.user_id === profile.id && inRange(week.week_end!))
-          .map((week) => ({ weekEnd: week.week_end!, rate: week.achievement_rate })),
+          .map((week) => ({
+            weekEnd: week.week_end!,
+            rate: week.achievement_rate,
+            completed: week.completed_days ?? 0,
+            counted: week.counted_days ?? 0,
+          })),
       };
     }),
   };
