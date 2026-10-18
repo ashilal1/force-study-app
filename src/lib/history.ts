@@ -2,6 +2,7 @@ import "server-only";
 import { requireMember } from "@/lib/auth";
 import type { DayKind } from "@/lib/chart-colors";
 import { rangeStart, type HistoryDay, type Range } from "@/lib/stats";
+import { fetchAll } from "@/lib/supabase/fetch-all";
 import { createClient } from "@/lib/supabase/server";
 import { jstDateString } from "@/lib/time";
 
@@ -100,13 +101,16 @@ export async function getMemberHistory(userId: string, range: Range): Promise<Me
   const today = jstDateString();
   const from = rangeStart(range, today);
   const [days, weeks, groupWeeks, penalties, objections, reports] = await Promise.all([
-    supabase.from("daily_history").select("*").eq("user_id", userId).order("date"),
+    fetchAll((from, to) => supabase.from("daily_history").select("*").eq("user_id", userId).order("date").range(from, to)),
     supabase
       .from("weekly_stats")
       .select("week_end, achievement_rate, avg_score, penalty_points, completed_days, counted_days")
       .eq("user_id", userId)
       .order("week_end"),
-    supabase.from("weekly_stats").select("week_end, completed_days, counted_days"),
+    // Every member's weeks: past 1000 rows after a few years.
+    fetchAll((from, to) =>
+      supabase.from("weekly_stats").select("week_end, completed_days, counted_days").order("user_id").order("week_end").range(from, to),
+    ),
     supabase
       .from("penalties")
       .select("reason, points, created_at, waived, study_logs(date)")
@@ -214,8 +218,16 @@ export async function getGroupHistory(range: Range): Promise<{ today: string; me
   const from = rangeStart(range, today);
   const [profiles, days, weeks] = await Promise.all([
     supabase.from("profiles").select("id, display_name, avatar_url").is("deactivated_at", null).order("created_at"),
-    supabase.from("daily_history").select("*").order("date"),
-    supabase.from("weekly_stats").select("user_id, week_end, achievement_rate, completed_days, counted_days").order("week_end"),
+    // The whole group's history passes the API's 1000-row limit within months: read it in pages.
+    fetchAll((from, to) => supabase.from("daily_history").select("*").order("user_id").order("date").range(from, to)),
+    fetchAll((from, to) =>
+      supabase
+        .from("weekly_stats")
+        .select("user_id, week_end, achievement_rate, completed_days, counted_days")
+        .order("user_id")
+        .order("week_end")
+        .range(from, to),
+    ),
   ]);
   for (const result of [profiles, days, weeks]) if (result.error) throw result.error;
   const inRange = (date: string) => from === null || date >= from;

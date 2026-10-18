@@ -3,6 +3,7 @@ import { cache } from "react";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { DayKind } from "@/lib/chart-colors";
 import { requireMember } from "@/lib/auth";
+import { fetchAll as all } from "@/lib/supabase/fetch-all";
 import { createClient } from "@/lib/supabase/server";
 import { jstDateString } from "@/lib/time";
 import type { Database } from "@/types/database";
@@ -12,19 +13,6 @@ import { computeStandings, lastCloseOf, type Standing, type StandingDay, type St
 // Through RLS for pages (getStandings); the tick passes the admin client and a group id.
 
 type Client = SupabaseClient<Database>;
-
-const PAGE = 1000;
-
-/** Every row of a query, read a page at a time (the API returns at most 1000 rows per request). */
-async function all<T>(page: (from: number, to: number) => PromiseLike<{ data: T[] | null; error: unknown }>): Promise<{ data: T[]; error: null }> {
-  const rows: T[] = [];
-  for (let from = 0; ; from += PAGE) {
-    const { data, error } = await page(from, from + PAGE - 1);
-    if (error) throw error;
-    rows.push(...(data ?? []));
-    if (!data || data.length < PAGE) return { data: rows, error: null };
-  }
-}
 
 /** Standings of the viewer's group, read through RLS. Deduplicated per request. */
 export const getStandings = cache(async (): Promise<Map<string, Standing>> => {
