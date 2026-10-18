@@ -15,7 +15,7 @@ export const metadata: Metadata = { title: "振り返り | Commit or Treat" };
 
 export default function ReviewPage({ searchParams }: PageProps<"/review">) {
   return (
-    <div data-wide className="grid gap-6">
+    <div data-wide className="grid grid-cols-1 gap-6">
       <div className="flex items-center justify-between gap-2">
         <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">みんなの振り返り</h1>
         <Link href="/search" className="text-sm font-bold underline underline-offset-2">
@@ -95,7 +95,7 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
         </div>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2 lg:gap-x-10">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
         <section className="grid gap-2.5">
           <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">グループのカレンダー</h2>
           <div className="grid gap-2">
