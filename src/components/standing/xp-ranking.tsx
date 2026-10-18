@@ -25,6 +25,7 @@ export function XpRanking({ rows }: { rows: XpRow[] }) {
               <Sticker
                 shadow="sm"
                 data-rank={row.standing.rank.id}
+                data-compact
                 className={cn(
                   "rank-card relative grid grid-cols-[1.6rem_36px_1fr_auto] items-center gap-2.5 px-3 py-2",
                   row.standing.crown && "py-3",
