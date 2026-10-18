@@ -85,8 +85,9 @@
 
 ## M11. 補習・称号・ランク（ADR-036・ADR-037）
 - [x] 仕様: `docs/requirements.md` の §2・F8b・F13・F14
-- [ ] DB の設計（`docs/database.md`）: 補習の借りと補習ごとの宣言・提出の持ち方、P9（サボり 3 回連続）・P10（補習の期限切れ）、グループ設定の連続回数と補習の回数。P9・P10 はお金が 0 円で、P9 は同じ日の P1 などに重なるので、今の `penalties`（`points > 0`、1 学習日 1 件の `dedupe_key`）にはそのまま入らない。別の台帳にするか決める。マイグレーションは追加だけ
-- [ ] 補習: RPC（宣言・提出・判定・「怪しい」の確定・期限切れ）、P9 の連続の判定、`run_weekly_settlement` で期限の確定と P10、補習の画面と「自分がやること」
+- [x] DB の設計（`docs/database.md`）: 補習 1 回 = `study_logs` の `is_makeup` の行（提出・判定・「怪しい」を使い回す）、借りは別の台帳 `makeup_debts`（`penalties` はお金だけのまま）、残りは `private.makeup_balance` / `makeup_summary` で計算。マイグレーション `20261021000001_makeup.sql`
+- [x] 補習の DB 側: `declare_makeup`、補習の行の分岐（「できなかった」・期限切れ・書き直しなしは `missed` だけ、P8 なし）、P9 `award_makeups`・P10 `close_makeup_week`・`due_makeup_reminders` を tick に追加、グループ設定の 4 項目（テスト `tests/db/makeup.test.ts`）
+- [ ] 補習のアプリ側: Server Action、補習の画面（宣言・提出は今の画面を使い回す）、「自分がやること」、通知の文言（`lib/notify`）、ホームの今日の表示が補習の行を学習日と取り違えないようにする（`lib/today.ts` など）、設定画面の 4 項目、`supabase gen types`。出すときに `makeup_since` を入れて始める（入れるまで P9 は付かない）
 - [ ] 称号: 記録から計算する処理、付いた・外れたの出来事（`activity_events`）と通知、仮のバッジ画像（`public/badges/`）
 - [ ] XP とランク: 記録から計算する処理、ゲージ、ランクと順位で変わる見た目（金・銀の枠、くすみ、王冠、傾き）
 - [ ] 画面の文言を「pt」から「円」に置き換える（列名はそのまま）、「奢り確定」を「貧乏人」に
