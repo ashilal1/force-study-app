@@ -7,10 +7,11 @@ import { ActionButton } from "@/components/brand/action-button";
 import { Sticker } from "@/components/brand/sticker";
 import { NotificationHelp } from "@/components/notifications/notification-help";
 import { ProfileForm } from "@/components/profile/profile-form";
+import { GroupAdmin } from "@/components/settings/group-admin";
 import { GroupSettingsForm } from "@/components/settings/group-settings-form";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { getSessionUser, requireMember } from "@/lib/auth";
-import { isInTrial } from "@/lib/members";
+import { isInTrial, listMembers } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "設定 | Commit or Treat" };
@@ -83,22 +84,44 @@ async function Profile() {
 
 async function AdminSettings() {
   const me = await requireMember();
-  if (!me.is_admin) return null;
   const supabase = await createClient();
-  const { data, error } = await supabase.from("group_settings").select("*").single();
+  const { data: group, error: groupError } = await supabase.from("groups").select("name").single();
+  if (groupError) throw groupError;
+  if (!me.is_admin) {
+    return <p className="m-0 text-sm font-medium text-sub">グループ: {group.name}</p>;
+  }
+  const [{ data, error }, members] = await Promise.all([supabase.from("group_settings").select("*").single(), listMembers()]);
   if (error) throw error;
   return (
-    <details className="group">
-      <summary className="cursor-pointer list-none font-heading text-[1.2rem] leading-tight font-normal [&::-webkit-details-marker]:hidden">
-        グループ設定（管理者）<span className="ml-1 text-sm group-open:hidden">▾</span>
-      </summary>
-      <p className="m-0 mt-2 text-sm font-medium text-sub">
-        ペナルティの額や締切などのルールです。変えると全員に通知されます。その日の途中で時刻を変えると、すでに決まった期限には影響しません。
-      </p>
-      <Sticker className="mt-3 px-4 py-5">
-        <GroupSettingsForm current={data as unknown as Record<string, string | number>} />
-      </Sticker>
-    </details>
+    <>
+      <section className="grid gap-2.5">
+        <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">グループ（管理者）</h2>
+        <Sticker className="px-4 py-5">
+          <GroupAdmin
+            groupName={group.name}
+            members={members.map((member, index) => ({
+              id: member.id,
+              name: member.display_name,
+              avatarUrl: member.avatar_url,
+              colorIndex: index,
+              isAdmin: member.is_admin,
+              isMe: member.id === me.id,
+            }))}
+          />
+        </Sticker>
+      </section>
+      <details className="group">
+        <summary className="cursor-pointer list-none font-heading text-[1.2rem] leading-tight font-normal [&::-webkit-details-marker]:hidden">
+          グループ設定（管理者）<span className="ml-1 text-sm group-open:hidden">▾</span>
+        </summary>
+        <p className="m-0 mt-2 text-sm font-medium text-sub">
+          ペナルティの額や締切などのルールです。変えると全員に通知されます。その日の途中で時刻を変えると、すでに決まった期限には影響しません。
+        </p>
+        <Sticker className="mt-3 px-4 py-5">
+          <GroupSettingsForm current={data as unknown as Record<string, string | number>} />
+        </Sticker>
+      </details>
+    </>
   );
 }
 

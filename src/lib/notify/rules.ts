@@ -74,6 +74,25 @@ const RULES: Record<string, Rule> = {
     }));
   },
 
+  // --- Groups (M10) ------------------------------------------------------------------------
+  group_renamed: (event, members) =>
+    draft(
+      everyoneExcept(members, event.actor_id),
+      `グループ名が「${text(event.payload.name)}」になりました`,
+      `${nameOf(members, event.actor_id)} さんが変えました`,
+      "/settings",
+    ),
+
+  admin_changed: (event, members) =>
+    draft(
+      everyoneExcept(members, event.actor_id),
+      event.payload.is_admin
+        ? `${nameOf(members, event.payload.user_id)} さんが管理者になりました`
+        : `${nameOf(members, event.payload.user_id)} さんが管理者ではなくなりました`,
+      `${nameOf(members, event.actor_id)} さんが変えました`,
+      "/settings",
+    ),
+
   // --- Declarations (F3, F3b) -------------------------------------------------------------
   declared: (event, members) =>
     draft(

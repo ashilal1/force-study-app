@@ -130,8 +130,19 @@ async function Ranking() {
   return <RankingReceipt rows={rows} iOwe={rows.some((row) => row.userId === me.id && row.owes)} />;
 }
 
+/** The latest few; the rest is on /timeline. */
 async function GroupTimeline() {
-  return <Timeline items={await getTimeline()} />;
+  const { items, next } = await getTimeline({ limit: 5 });
+  return (
+    <>
+      <Timeline items={items} />
+      {next ? (
+        <Link href="/timeline" className="text-sm font-bold underline underline-offset-2">
+          もっと見る →
+        </Link>
+      ) : null}
+    </>
+  );
 }
 
 async function Invite() {

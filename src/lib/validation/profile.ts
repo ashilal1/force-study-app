@@ -28,6 +28,18 @@ export const joinSchema = z.object({
   avatar: avatarChoiceSchema,
 });
 
+export const groupNameSchema = z
+  .string()
+  .trim()
+  .refine((value) => [...value].length >= 1, "グループ名を入力してください")
+  .refine((value) => [...value].length <= 40, "グループ名は 40 文字以内にしてください");
+
+export const createGroupSchema = z.object({
+  groupName: groupNameSchema,
+  displayName: displayNameSchema,
+  avatar: avatarChoiceSchema,
+});
+
 export const profileSchema = z.object({
   displayName: displayNameSchema,
   avatar: avatarChoiceSchema,
