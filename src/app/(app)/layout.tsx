@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AppShell } from "@/components/app/app-shell";
 import { PageLoading } from "@/components/app/page-loading";
 import { NotificationGuard } from "@/components/notifications/notification-guard";
+import { ViewerTheme } from "@/components/standing/viewer-theme";
 import { hasConfirmedNotifications, requireMember } from "@/lib/auth";
 
 // Members-only screens. The shell (bottom navigation) is static; the membership check reads the
@@ -28,6 +29,10 @@ async function RequireMember({ children }: { children: React.ReactNode }) {
     <>
       <NotificationGuard />
       {children}
+      {/* The viewer's rank restyles the screen (F14); it streams in after the page. */}
+      <Suspense fallback={null}>
+        <ViewerTheme />
+      </Suspense>
     </>
   );
 }

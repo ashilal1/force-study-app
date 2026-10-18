@@ -301,6 +301,7 @@ flowchart LR
     │   ├── group-settings.ts      # 管理者が変えられるグループ設定の一覧
     │   ├── history.ts             # 振り返り（個人・グループ）のデータの読み込み
     │   ├── makeup.ts              # 補習（F8b）: 残り・借り・いまの補習・みんなの補習の読み込み
+    │   ├── standing/              # 称号・XP・ランク（F13・F14）: rules.ts（計算。純粋な関数）・load.ts（記録の読み込み）・changes.ts / record.ts（変化の記録）・assets.ts（届いた画像の一覧）
     │   ├── stats.ts               # 達成率・連続達成日数・平均などの計算（純粋な関数）
     │   ├── chart-colors.ts        # 結果・ペナルティ理由・指摘の色・記号・ラベル
     │   ├── evidence-client.ts     # ブラウザ側: 写真の圧縮（WebP）と Storage へのアップロード

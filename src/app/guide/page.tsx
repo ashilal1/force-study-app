@@ -149,6 +149,17 @@ export default function GuidePage() {
         </ul>
       </Section>
 
+      <Section title="称号とランク">
+        <p className="m-0 text-sm leading-relaxed font-medium">
+          記録に応じて<b>称号</b>（「サボラー」「皆勤賞」など）が自動で付き、<b>ランク</b>は直近 28 日の XP で決まります。どちらも全員から見えます。
+        </p>
+        <ul className="m-0 grid gap-1 pl-5 text-sm leading-relaxed font-medium">
+          <li>XP: 1 日達成で +10（90 点以上でさらに +3、7 日連続ごとに +20）。宣言なし −15、サボり −25 など。</li>
+          <li>ランク: どうしようもない（−50 以下）／三日坊主（はじめはここ）／やればできる（50〜）／優等生（150〜）／天才（300〜）。</li>
+          <li>グループの XP 1 位には王冠。天才の画面は金色に、どうしようもない人の画面は……見てのお楽しみです。</li>
+        </ul>
+      </Section>
+
       <Link href="/" className="text-center text-sm font-bold underline underline-offset-2">
         アプリを開く →
       </Link>

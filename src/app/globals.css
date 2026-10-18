@@ -177,3 +177,111 @@
     clip-path: polygon(0 10%, 6% 0, 12% 12%, 18% 0, 82% 0, 88% 14%, 94% 0, 100% 10%, 100% 90%, 94% 100%, 88% 86%, 82% 100%, 18% 100%, 12% 88%, 6% 100%, 0 90%);
   }
 }
+/* ---------------------------------------------------------------------------------------------
+   Rank themes (F14). Cards follow their member's rank (.rank-card[data-rank]); the whole screen
+   follows the viewer's (ViewerTheme renders [data-viewer-rank] and the images that exist in
+   [data-theme-assets]). Decoration only: text, contrast and controls stay as they are.
+   Unlayered so they win over the utility backgrounds.
+   --------------------------------------------------------------------------------------------- */
+
+/* 天才: gold. */
+.rank-card[data-rank="tensai"] {
+  border-color: #a8841f;
+  background: linear-gradient(135deg, #fffaf0 0%, #f6e3a6 45%, #fff6dc 70%, #ecd08a 100%);
+  box-shadow: 6px 6px 0 #8a6d1d, inset 0 0 0 2px #f7dd85;
+}
+/* 優等生: a quieter silver. */
+.rank-card[data-rank="yuutousei"] {
+  border-color: #6f7782;
+  background: linear-gradient(135deg, #ffffff 0%, #e7eaee 50%, #ffffff 70%, #d5dae0 100%);
+  box-shadow: 6px 6px 0 #6f7782;
+}
+/* どうしようもない: grubby concrete with a crack in the corner (away from the text). */
+.rank-card[data-rank="doushiyou-mo-nai"] {
+  border-color: #2b2b2b;
+  background-color: #d8d4cc;
+  background-image:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 140 90'%3E%3Cpath d='M140 6 L112 18 L104 38 L84 44 L78 64 L62 70 M104 38 L118 52 M84 44 L70 30' fill='none' stroke='%23333' stroke-width='2' stroke-linecap='round'/%3E%3C/svg%3E"),
+    radial-gradient(circle at 15% 80%, rgba(0, 0, 0, 0.08) 0 18px, transparent 19px),
+    radial-gradient(circle at 70% 30%, rgba(0, 0, 0, 0.06) 0 26px, transparent 27px);
+  background-repeat: no-repeat;
+  background-position: right top, 0 0, 0 0;
+  background-size: 140px 90px, auto, auto;
+}
+body:has([data-theme-assets~="crack"]) .rank-card[data-rank="doushiyou-mo-nai"] {
+  background-image: url("/theme/crack-1.png"), url("/theme/crack-2.png");
+  background-position: right top, left bottom;
+  background-size: 180px auto, 160px auto;
+}
+
+/* The viewer is 天才: gold dust, a gold title with a crown, gold buttons. */
+body:has([data-viewer-rank="tensai"]) {
+  background:
+    radial-gradient(circle at 12% 18%, rgba(214, 167, 44, 0.45) 0 1.5px, transparent 2.5px) 0 0 / 86px 86px,
+    radial-gradient(circle at 64% 72%, rgba(214, 167, 44, 0.35) 0 1px, transparent 2px) 0 0 / 64px 64px,
+    linear-gradient(#fbf6ea, #f3e8cc) fixed;
+}
+body:has([data-viewer-rank="tensai"]) .brand-title {
+  background: linear-gradient(180deg, #fff3b0 0%, #f2c94c 45%, #b8860b 72%, #f7d774 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(2px 2px 0 #6b4f12);
+}
+body:has([data-viewer-rank="tensai"]) .brand-title::before {
+  content: "";
+  position: absolute;
+  left: -0.55em;
+  top: -0.8em;
+  width: 1.4em;
+  height: 1.05em;
+  transform: rotate(-16deg);
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 18'%3E%3Cpath d='M2 16 L1 5 L7 10 L12 2 L17 10 L23 5 L22 16 Z' fill='%23f2c94c' stroke='%238a6d1d' stroke-width='1.4' stroke-linejoin='round'/%3E%3Ccircle cx='12' cy='11' r='1.6' fill='%23c0392b'/%3E%3Ccircle cx='6.5' cy='12.5' r='1.2' fill='%238e44ad'/%3E%3Ccircle cx='17.5' cy='12.5' r='1.2' fill='%238e44ad'/%3E%3C/svg%3E")
+    no-repeat center / contain;
+}
+body:has([data-viewer-rank="tensai"][data-theme-assets~="crown"]) .brand-title::before {
+  background-image: url("/theme/crown.png");
+}
+body:has([data-viewer-rank="tensai"]) main :is(a, button).bg-mint {
+  background: linear-gradient(180deg, #ffe58a 0%, #f2c94c 55%, #d4a72c 100%);
+}
+
+/* The viewer is どうしようもない: concrete, everything a little drained, the title defaced. */
+body:has([data-viewer-rank="doushiyou-mo-nai"]) {
+  background-color: #a9a59c;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(0, 0, 0, 0.07) 0 40px, transparent 41px),
+    radial-gradient(circle at 75% 65%, rgba(0, 0, 0, 0.06) 0 60px, transparent 61px),
+    radial-gradient(circle at 50% 10%, rgba(255, 255, 255, 0.08) 0 30px, transparent 31px);
+  background-size: 220px 220px, 300px 300px, 180px 180px;
+}
+body:has([data-viewer-rank="doushiyou-mo-nai"][data-theme-assets~="concrete"]) {
+  background-image: url("/theme/concrete.webp");
+  background-size: 512px 512px;
+}
+body:has([data-viewer-rank="doushiyou-mo-nai"]) main {
+  filter: saturate(0.6);
+}
+body:has([data-viewer-rank="doushiyou-mo-nai"]) .brand-or-treat {
+  position: relative;
+  text-decoration: line-through 0.12em #d0312d;
+}
+body:has([data-viewer-rank="doushiyou-mo-nai"]) .brand-or-treat::after {
+  content: "OR PENALTY";
+  position: absolute;
+  right: -0.4em;
+  top: 0.75em;
+  color: #d0312d;
+  font-size: 0.85em;
+  font-style: italic;
+  text-shadow: none;
+  transform: rotate(-7deg);
+  white-space: nowrap;
+}
+body:has([data-viewer-rank="doushiyou-mo-nai"][data-theme-assets~="orPenalty"]) .brand-or-treat::after {
+  content: "";
+  width: 5.5em;
+  height: 1.4em;
+  background: url("/theme/or-penalty.png") no-repeat center / contain;
+}

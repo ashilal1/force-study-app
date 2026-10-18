@@ -18,6 +18,9 @@ import {
 import { LogTable } from "@/components/review/log-table";
 import { RangeTabs } from "@/components/review/range-tabs";
 import { StatCards } from "@/components/review/stat-cards";
+import { StandingPanel } from "@/components/standing/standing-panel";
+import { getStandings } from "@/lib/standing/load";
+import type { TitleId } from "@/lib/standing/rules";
 import { DAY_KIND, OBJECTION_KIND } from "@/lib/chart-colors";
 import { getMemberHistory } from "@/lib/history";
 import { parseRange, periodKey, RANGES, ratesByPeriod, summarize } from "@/lib/stats";
@@ -41,7 +44,14 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
   if (!history) notFound();
 
   const supabase = await createClient();
-  const { data: settings } = await supabase.from("group_settings").select("passing_score").single();
+  const [{ data: settings }, standings, { data: awarded }] = await Promise.all([
+    supabase.from("group_settings").select("passing_score").single(),
+    getStandings(),
+    // Titles held before (F13): only the changes are recorded (ADR-041).
+    supabase.from("activity_events").select("payload").eq("type", "title_awarded").eq("actor_id", history.member.id),
+  ]);
+  const pastTitles = [...new Set((awarded ?? []).map((event) => (event.payload as { title?: TitleId }).title).filter((id) => id !== undefined))];
+  const standing = standings.get(history.member.id);
   const { member, days, allDays } = history;
   const rangeLabel = RANGES.find((option) => option.value === range)!.label;
   const summary = summarize(days, allDays);
@@ -63,6 +73,8 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
           <span className="truncate text-base font-bold">{member.name}</span>
         </div>
       </header>
+
+      {standing ? <StandingPanel standing={standing} pastTitles={pastTitles} /> : null}
 
       <RangeTabs basePath={`/members/${member.id}`} current={range} />
 

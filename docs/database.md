@@ -334,6 +334,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - 休会: `leave_requested` / `leave_approved` / `leave_rejected` / `leave_ending`
 - 振り返り: `weekly_review_created`
 - 精算: `payee_assigned` / `settlement_created` / `weekly_summary` / `settlement_sent` / `settlement_completed` / `settlement_not_received` / `late_payment`
+- 称号・ランク（M11・ADR-041）: `title_awarded` / `title_removed`（payload に `title`）/ `rank_changed`（`from`・`to`・`up`）/ `crown_moved`（`from`）。`standing_snapshot`（actor なし。その時点の全員のランク・称号・王冠。通知もタイムラインもない、比べるための記録）
 - 補習（M11）: `makeup_warning`（サボりが P9 の 1 回手前。直近の日だけ）/ `makeup_assigned`（P9。payload に `count`・`streak`・`waived`・`due_at`）/ `makeup_declared` / `makeup_failed`（payload の `cause` は `gave_up` / `deadline` / `unrevised`）/ `makeup_completed` / `makeup_overdue`（P10）/ `makeup_due`（週の締めで、残りがある人へ）/ `reminder_makeup_due`（期限の 24 時間前）。補習の提出・判定・「軽すぎる」・「怪しい」は学習日と同じ type（`study_log_id` の行の `is_makeup` で見分ける）
 - その他: `penalized` / `trial_ending` / `member_joined`（payload に `invited_by`）
 - リマインド: `reminder_declare_midnight` / `reminder_declare_last_call` / `reminder_submit` / `reminder_revision_due` / `reminder_resend_due` / `reminder_report_due` / `reminder_review_due` / `reminder_late_payment`
@@ -461,6 +462,12 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 |---|---|
 | `declare_makeup(user_id, declaration, passphrase)` | まだ始めていない借りがあるか（`remaining - open > 0`、なければ `no_makeup_due`）、今日 (JST) まだ補習を宣言していないか（`makeup_already_today`）を検査。時刻・休息日・休会・前の日の片付けは関係ない。`is_makeup` の `pending` の行を作り、`target_end_time = 今 + makeup_hours`。`makeup_declared` を記録 |
 | 提出・判定・「怪しい」 | 学習日と同じ `create_submission` / `record_judgement` / `flag_submission` / `resend_evidence` / `withdraw_flag` / `cast_review('dispute')` を使う。違いは: `flag_declaration` は日付を見ない（夜に宣言しても 3 時間押せる）、`give_up_day`・`close_overdue_logs`・`expire_revisions` は `missed` にして `makeup_failed` を記録するだけ（理由申告・P5・P6 なし）、`confirm_passed_logs` は `makeup_completed` を記録、証拠不認定は P8 なし |
+
+### 称号・ランク（M11・F13・F14・ADR-041）
+称号・XP・ランク・王冠は保存せず、アプリ（`src/lib/standing/`）が記録から毎回計算する。DB に残すのは「変わった」ことだけ。
+| 関数 | 処理 |
+|---|---|
+| `record_standings(group_id, previous_id, snapshot, changes)` | tick の Route Handler が、グループごとに今の状態を計算して前の `standing_snapshot` と比べ、違えば呼ぶ。`previous_id` がそのグループの最新のスナップショットでなければ何もしない（古い状態と比べた tick の二重記録を防ぐ。advisory lock で 1 つずつ）。新しい `standing_snapshot` と、変化ごとのイベント（`title_awarded` など 4 種類、そのグループの有効なメンバーの分だけ）を記録して、変化のイベントを返す |
 
 ### グループ（M10）
 | 関数 | 処理 |
