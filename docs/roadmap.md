@@ -88,7 +88,8 @@
 - [x] DB の設計（`docs/database.md`）: 補習 1 回 = `study_logs` の `is_makeup` の行（提出・判定・「怪しい」を使い回す）、借りは別の台帳 `makeup_debts`（`penalties` はお金だけのまま）、残りは `private.makeup_balance` / `makeup_summary` で計算。マイグレーション `20261021000001_makeup.sql`
 - [x] 補習の DB 側: `declare_makeup`、補習の行の分岐（「できなかった」・期限切れ・書き直しなしは `missed` だけ、P8 なし）、P9 `award_makeups`・P10 `close_makeup_week`・`due_makeup_reminders` を tick に追加、グループ設定の 4 項目（テスト `tests/db/makeup.test.ts`）
 - [x] 補習のアプリ側: `declareMakeup`、`/makeup`（残り・期限・借りの内訳・いまの補習・みんなの補習）、提出は `/submit?makeup=1`、「あなたがやること」・ホームのカード・宣言の画面のリンク、通知の文言（共通のイベントは `makeup` で言い方を変える）、学習日の読み込みから補習の行を外す（`lib/today.ts`・理由申告・週のまとめ）、設定画面の 4 項目と「補習を使う」、`/guide`
-- [ ] Supabase に push して `supabase gen types` で型を作り直す（今は `src/types/database.ts` を手で足している）。DB と画面は一緒に main へ出し、そのあと管理者が設定で「補習を使う」をオンにする
+- [x] Supabase に push して `supabase gen types` で型を作り直す（`20261021000001_makeup.sql`・`20261022000001_standings.sql`）
+- [ ] DB と画面を一緒に main へ出し、そのあと管理者が設定で「補習を使う」をオンにする
 - [ ] 実機で確かめる（宣言 → 提出 → 判定 → 返した、「軽すぎる」、期限切れ）
 - [x] 称号と XP・ランク: 記録から計算する処理（`src/lib/standing/`、単体テスト）、カード・XP ランキング・振り返り画面（ゲージ・称号の説明・XP の内訳・これまでの称号）、「貧乏人」（P7 の人だけ）
 - [x] ランクで変わる見た目: カードの枠（金・銀・コンクリートとひび）、見ている本人のランクで画面全体（天才は金・王冠のタイトル・金のボタン、どうしようもないはコンクリート・くすみ・「OR PENALTY」・サイレンと柵・「提出して罪を償う」）。画像が届くまでは CSS・SVG の仮の絵（`docs/visual-assets.md`）
