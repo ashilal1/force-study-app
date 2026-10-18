@@ -2097,6 +2097,8 @@ export type Database = {
           payee_id: string | null
           paypay_link: string | null
           removed_by: string | null
+          rules_accepted_at: string | null
+          seen_tips: string[]
           trial_ends_at: string
         }
         SetofOptions: {
@@ -2513,6 +2515,8 @@ export type Database = {
           payee_id: string | null
           paypay_link: string | null
           removed_by: string | null
+          rules_accepted_at: string | null
+          seen_tips: string[]
           trial_ends_at: string
         }
         SetofOptions: {
@@ -2574,10 +2578,6 @@ export type Database = {
         Args: { p_ids: string[] }
         Returns: undefined
       }
-      mark_tip_seen: {
-        Args: { p_tip: string; p_user_id: string }
-        Returns: undefined
-      }
       mark_settlement_sent: {
         Args: { p_debtor_id: string; p_settlement_id: string }
         Returns: {
@@ -2599,6 +2599,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      mark_tip_seen: {
+        Args: { p_tip: string; p_user_id: string }
+        Returns: undefined
       }
       pass_unjudged: {
         Args: never
