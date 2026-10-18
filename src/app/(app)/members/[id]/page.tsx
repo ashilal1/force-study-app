@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import { PageLoading } from "@/components/app/page-loading";
 import { Avatar } from "@/components/brand/avatar";
 import { Sticker } from "@/components/brand/sticker";
-import { AchievementCalendar } from "@/components/review/achievement-calendar";
+import { AchievementCalendar, pickMonth } from "@/components/review/achievement-calendar";
 import {
   ElapsedChart,
   FailureReasonChart,
@@ -20,7 +20,7 @@ import { RangeTabs } from "@/components/review/range-tabs";
 import { StatCards } from "@/components/review/stat-cards";
 import { DAY_KIND, OBJECTION_KIND } from "@/lib/chart-colors";
 import { getMemberHistory } from "@/lib/history";
-import { parseRange, RANGES, summarize } from "@/lib/stats";
+import { parseRange, periodKey, RANGES, ratesByPeriod, summarize } from "@/lib/stats";
 import { createClient } from "@/lib/supabase/server";
 import { formatJstDateTime, formatJstDay, jstDateString } from "@/lib/time";
 
@@ -45,7 +45,9 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
   const { member, days, allDays } = history;
   const rangeLabel = RANGES.find((option) => option.value === range)!.label;
   const summary = summarize(days, allDays);
-  const groupRate = new Map(history.groupWeeks.map((week) => [week.weekEnd, week.rate]));
+  // Weekly, or monthly once the range covers more than 16 weeks.
+  const weekCount = history.weeks.length;
+  const groupRates = ratesByPeriod(history.groupWeeks, weekCount);
 
   return (
     <div data-wide className="grid grid-cols-1 gap-6">
@@ -67,13 +69,19 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
       <StatCards summary={summary} label={rangeLabel} />
 
       <Section title="達成カレンダー">
-        <AchievementCalendar days={days} />
+        <AchievementCalendar
+          days={allDays}
+          month={pickMonth(query.month, allDays)}
+          hrefFor={(month) => `/members/${member.id}?${new URLSearchParams({ range, month })}`}
+        />
       </Section>
 
       {/* PC: the charts sit two to a row. */}
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
         <Section title="週ごとの達成率">
-          <WeeklyRateChart weeks={history.weeks.map((week) => ({ weekEnd: week.weekEnd, rate: week.rate, group: groupRate.get(week.weekEnd) ?? null }))} />
+          <WeeklyRateChart
+            weeks={[...ratesByPeriod(history.weeks, weekCount)].map(([period, rate]) => ({ weekEnd: period, rate, group: groupRates.get(period) ?? null }))}
+          />
         </Section>
 
         <Section title="点数の推移">
@@ -94,7 +102,7 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
         </Section>
 
         <Section title="ペナルティ（週ごと・理由別）">
-          <PenaltyChart rows={history.penalties} />
+          <PenaltyChart rows={history.penalties.map((row) => ({ ...row, weekEnd: periodKey(row.weekEnd, weekCount) }))} />
         </Section>
 
         <Section title="未達成の理由">

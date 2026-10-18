@@ -17,7 +17,9 @@ import { FAILURE_CATEGORY, OBJECTION_KIND, PENALTY_REASON } from "@/lib/chart-co
 // Retrospective charts (G3-G9, G13, G14). Data arrives aggregated from the server; these only
 // draw. Each shows a short note instead of an empty chart while there's too little data.
 
-const shortDate = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
+/** "10/18" for a day or week end; "10月" for a month bucket ("YYYY-MM", long ranges). */
+const shortDate = (date: string) =>
+  date.length === 7 ? `${Number(date.slice(5, 7))}月` : `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 
 function NotEnough() {
   return <p className="m-0 py-6 text-center text-sm text-sub">まだデータが足りません</p>;

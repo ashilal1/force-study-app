@@ -1,11 +1,12 @@
 import Link from "next/link";
+import { Avatar } from "@/components/brand/avatar";
 import type { CalendarDay } from "@/components/review/achievement-calendar";
-import { DayMark } from "@/components/review/achievement-calendar";
+import { DayMark, GROUP_MARKS } from "@/components/review/achievement-calendar";
 import { addDays, weekStartOf } from "@/lib/time";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
-type Member = { id: string; name: string; days: CalendarDay[] };
+type Member = { id: string; name: string; avatarUrl: string | null; colorIndex: number; days: CalendarDay[] };
 
 /**
  * G12: who did what on which day, one week at a time (this week first; ‹ › to go back and forth):
@@ -34,19 +35,21 @@ export function GroupCalendar({
   const label = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 
   return (
-    <div className="grid gap-2">
-      <div className="flex items-center justify-between gap-2 text-sm font-bold">
+    <div className="grid w-full max-w-xl gap-2">
+      <div className="flex items-center justify-between gap-2">
         <WeekLink href={previous ? hrefFor(previous) : null}>‹ 前の週</WeekLink>
-        <span>
-          {label(week)}〜{label(dates[6])}
-          {week === current ? <span className="ml-1 text-xs text-sub">（今週）</span> : null}
+        <span className="grid justify-items-center leading-none">
+          <span className="font-en text-xl md:text-2xl">
+            {label(week)}〜{Number(dates[6].slice(8, 10))}
+          </span>
+          {week === current ? <span className="mt-1 text-[0.65rem] font-bold text-sub">今週</span> : null}
         </span>
         <WeekLink href={next ? hrefFor(next) : null}>次の週 ›</WeekLink>
       </div>
       <table className="w-full table-fixed border-collapse text-center text-xs">
         <thead>
           <tr>
-            <th className="w-[6.5rem]" />
+            <th className="w-[6.5rem] md:w-[9rem]" />
             {dates.map((date, i) => (
               <th key={date} className={date === today ? "pb-1 font-black" : "pb-1 font-bold text-sub"}>
                 <span className="block text-[0.65rem]">{WEEKDAYS[i]}</span>
@@ -58,13 +61,14 @@ export function GroupCalendar({
         <tbody>
           {members.map((member) => (
             <tr key={member.id}>
-              <td className="truncate py-1 pr-1 text-left">
-                <Link href={`/members/${member.id}`} className="font-bold underline">
-                  {member.name}
+              <td className="py-1.5 pr-1 text-left">
+                <Link href={`/members/${member.id}`} className="flex min-w-0 items-center gap-1.5 font-bold underline">
+                  <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} className="size-6 shrink-0 border-2 text-[0.6rem]" />
+                  <span className="truncate">{member.name}</span>
                 </Link>
               </td>
               {dates.map((date) => (
-                <td key={date} className="py-1">
+                <td key={date} className="py-1.5">
                   <span className="inline-grid">
                     <DayMark date={date} day={byMember.get(member.id)!.get(date)} />
                   </span>
@@ -74,6 +78,18 @@ export function GroupCalendar({
           ))}
         </tbody>
       </table>
+      <ul className="m-0 flex list-none flex-wrap gap-x-3 gap-y-1 p-0 text-[0.7rem]">
+        {GROUP_MARKS.map((mark) => (
+          <li key={mark.label} className="flex items-center gap-1">
+            <span className={`grid size-3.5 place-items-center rounded-[3px] border border-ink text-[0.5rem] ${mark.className}`}>{mark.symbol}</span>
+            {mark.label}
+          </li>
+        ))}
+        <li className="flex items-center gap-1">
+          <span className="size-3.5 rounded-[3px] border border-dashed border-ink/40" />
+          記録なし
+        </li>
+      </ul>
     </div>
   );
 }
@@ -92,9 +108,10 @@ export function pickWeek(value: unknown, today: string, members: Member[]): stri
 }
 
 function WeekLink({ href, children }: { href: string | null; children: React.ReactNode }) {
-  if (!href) return <span className="text-sub/50">{children}</span>;
+  const pill = "shrink-0 rounded-full border-2 px-3 py-1 text-xs font-bold";
+  if (!href) return <span className={`${pill} border-ink/20 text-sub/50`}>{children}</span>;
   return (
-    <Link href={href} scroll={false} className="underline underline-offset-2">
+    <Link href={href} scroll={false} className={`${pill} border-ink bg-card shadow-[2px_2px_0_var(--ink)]`}>
       {children}
     </Link>
   );
