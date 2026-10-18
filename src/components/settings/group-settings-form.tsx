@@ -28,7 +28,7 @@ export function GroupSettingsForm({
         <span>
           補習を使う
           <span className="block text-xs font-medium text-sub">
-            サボりが続いたら追加の学習を科します（F8b）。オンにした日からのサボりだけを数えます。
+            サボりが続いたら追加の学習（補習）を科します。オンにした日からのサボりだけを数えます。
           </span>
         </span>
       </label>
