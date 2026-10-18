@@ -101,9 +101,10 @@
 ## M12. はじめての体験（F15・ADR-038）
 - [x] 仕様: `docs/requirements.md` の F15、`docs/database.md`、`docs/architecture.md` の 2.8
 - [x] 入口: 招待リンクに `openExternalBrowser=1`、`/login` でアプリの中のブラウザを見分けて開き直しを案内、招待メッセージとログイン画面の注意書き
-- [ ] マイグレーション: `profiles.rules_accepted_at`・`seen_tips`（今いるメンバーは同意済み・全部見たことにする）、RPC `accept_rules` / `mark_tip_seen` / `reset_tips`、`join_group`・`create_group` で入り直した人の `seen_tips`
-- [ ] レクチャー `/onboarding/intro`（6 枚・グループの設定と本人のお試しで数字を出す）と、`(app)/layout.tsx`・`/onboarding/notifications` のゲートの順番
-- [ ] F0 のホーム画面に追加の手順に「アイコンから開いたらもう一度ログイン」
+- [x] マイグレーション: `profiles.rules_accepted_at`・`seen_tips`（今いるメンバーは同意済み・全部見たことにする）、RPC `accept_rules` / `mark_tip_seen` / `reset_tips`、入り直した人の `seen_tips`（insert のトリガー）
+- [x] レクチャー `/onboarding/intro`（6 枚・グループの設定と本人のお試しで数字を出す）と、`(app)/layout.tsx`・`/onboarding/notifications` のゲートの順番
+- [x] F0 のホーム画面に追加の手順に「アイコンから開いたらもう一度ログイン」
 - [ ] コーチマークの部品と 11 か所、用語の「？」
-- [ ] 設定の「使い方をもう一度見る」、`/preview/intro`・`/preview/tips`
+- [x] 設定の「使い方をもう一度見る」、`/preview/intro`
+- [ ] `/preview/tips`（コーチマークと一緒に）
 - [ ] Android の LINE から招待リンクを開いて、外のブラウザでログイン → 参加 → レクチャー → 通知まで通ることを実機で確かめる（iPhone は友人に頼む）
