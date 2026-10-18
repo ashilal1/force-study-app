@@ -100,7 +100,7 @@ export function ReasonForm({ deadline, goal, minChars, unrealisticStreak, amount
         </div>
       </Sticker>
 
-      <fieldset className="m-0 grid gap-3 border-0 p-0">
+      <fieldset data-tip="report" className="m-0 grid gap-3 border-0 p-0">
         <legend className="sr-only">理由</legend>
         {options.map((option) => (
           <label

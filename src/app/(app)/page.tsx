@@ -6,6 +6,7 @@ import { RankingReceipt, type RankingRow } from "@/components/dashboard/ranking-
 import { Timeline } from "@/components/dashboard/timeline";
 import { TodoList } from "@/components/dashboard/todo-list";
 import { InvitePanel } from "@/components/invite/invite-panel";
+import { PageTip } from "@/components/onboarding/page-tip";
 import { MemberTodayCard } from "@/components/today/member-today-card";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { requireMember } from "@/lib/auth";
@@ -16,6 +17,7 @@ import { getMaxMembers, isInTrial, listMembers } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
 import { getTimeline } from "@/lib/timeline";
 import { getTodayBoard } from "@/lib/today";
+import { TIPS } from "@/lib/tips";
 import { getTodos } from "@/lib/todo";
 
 // Home (F10): what's waiting on you, everyone's day (with 「軽すぎる」 / 「怪しい」 links), this
@@ -43,7 +45,7 @@ export default function HomePage() {
       {/* PC: what to do on the left, the group's week on the right. On a phone the columns
           dissolve (contents) and the sections stack in the original order. */}
       <div className="contents lg:grid lg:content-start lg:gap-6">
-        <section className="grid gap-2.5">
+        <section data-tip="home_todo" className="grid gap-2.5">
           <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">あなたがやること</h2>
           <Suspense fallback={<PageLoading />}>
             <Todos />
@@ -77,7 +79,24 @@ export default function HomePage() {
           </Suspense>
         </section>
       </div>
+
+      <Suspense fallback={null}>
+        <HomeTip />
+      </Suspense>
     </div>
+  );
+}
+
+/** Coach marks (F15): what to do first, then the 「軽すぎる？」 link once someone else has one. */
+async function HomeTip() {
+  const board = await getTodayBoard();
+  return (
+    <PageTip
+      candidates={[
+        ["home_todo", TIPS.home_todo],
+        board.members.some((member) => member.canFlag) && ["peer_buttons", TIPS.peer_buttons],
+      ]}
+    />
   );
 }
 

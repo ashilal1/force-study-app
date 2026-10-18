@@ -82,7 +82,9 @@ export function SubmitForm({ goal, passphrase, attemptsLeft, live, goalLabel = "
         </span>
       </Sticker>
 
-      <PhotoPicker photos={photos} onChange={setPhotos} disabled={busy} />
+      <div data-tip="submit_photos">
+        <PhotoPicker photos={photos} onChange={setPhotos} disabled={busy} />
+      </div>
 
       <div className="grid gap-1.5">
         <FieldLabel htmlFor="learned">学んだこと</FieldLabel>
