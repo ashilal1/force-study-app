@@ -190,7 +190,8 @@ export function MemberRateChart({
   members: { id: string; name: string }[];
   weeks: ({ weekEnd: string } & Record<string, number | string | null>)[];
 }) {
-  if (weeks.length < 2) return <NotEnough />;
+  const withData = weeks.filter((week) => members.some((member) => typeof week[member.id] === "number"));
+  if (withData.length < 2) return <NotEnough />;
   const config: ChartConfig = {};
   members.forEach((member, index) => (config[member.id] = { label: member.name, color: MEMBER_COLORS[index % MEMBER_COLORS.length] }));
   return (
