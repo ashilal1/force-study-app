@@ -1,4 +1,5 @@
 import { SETTING_FIELDS } from "@/lib/group-settings";
+import { RANKS, TITLES, type TitleId } from "@/lib/standing/rules";
 import { formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 
 // Who hears about an event, and what it says (requirements N1). Pure so it can be tested without
@@ -638,6 +639,38 @@ const RULES: Record<string, Rule> = {
       MAKEUP_URL,
       true,
     ),
+
+  // --- Titles, ranks and the crown (F13, F14) --------------------------------------------------
+  title_awarded: (event, members) => {
+    const title = TITLES[event.payload.title as TitleId];
+    if (!title) return [];
+    return draft(
+      members,
+      `${nameOf(members, event.actor_id)} さんに称号「${title.name}」`,
+      `${title.how}（${title.until}）`,
+      `/members/${event.actor_id}`,
+    );
+  },
+
+  title_removed: (event, members) => {
+    const title = TITLES[event.payload.title as TitleId];
+    if (!title) return [];
+    return draft(members, `${nameOf(members, event.actor_id)} さんの「${title.name}」が外れました`, "", `/members/${event.actor_id}`);
+  },
+
+  rank_changed: (event, members) => {
+    const to = RANKS.find((rank) => rank.id === event.payload.to);
+    if (!to) return [];
+    return draft(
+      members,
+      `${nameOf(members, event.actor_id)} さんが「${to.name}」に${event.payload.up ? "上がりました" : "下がりました"}`,
+      "ランクは直近 28 日の XP で決まります",
+      `/members/${event.actor_id}`,
+    );
+  },
+
+  crown_moved: (event, members) =>
+    draft(members, `王冠が ${nameOf(members, event.actor_id)} さんに移りました`, "直近 28 日の XP でグループ 1 位", `/members/${event.actor_id}`),
 
   // --- Group settings (F11) ---------------------------------------------------------------
   settings_changed: (event, members) => {

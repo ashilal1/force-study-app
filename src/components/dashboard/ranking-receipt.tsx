@@ -9,10 +9,13 @@ export type RankingRow = {
   /** Trial members: what this week would have cost (「本番なら」). */
   thisWeekTrial: number;
   total: number;
+  /** An open settlement: the PayPay button shows. */
   owes: boolean;
+  /** 貧乏人 (F13): a settlement past its deadline (P7). */
+  broke: boolean;
 };
 
-/** This week's penalties (unsettled, Sunday-Saturday), with the running total and 奢り確定. */
+/** This week's penalties (unsettled, Sunday-Saturday), with the running total and 貧乏人. */
 export function RankingReceipt({ rows, iOwe }: { rows: RankingRow[]; iOwe: boolean }) {
   const ranked = [...rows].sort((a, b) => b.thisWeek + b.thisWeekTrial - (a.thisWeek + a.thisWeekTrial) || b.total - a.total);
   return (
@@ -25,7 +28,7 @@ export function RankingReceipt({ rows, iOwe }: { rows: RankingRow[]; iOwe: boole
             <span>{index + 1}.</span>
             <span className="truncate">
               {row.name}
-              {row.owes ? <span className="ml-1.5 text-xs text-red">奢り確定</span> : null}
+              {row.broke ? <span className="ml-1.5 text-xs text-red">貧乏人</span> : null}
             </span>
             <span className="text-right">
               {row.thisWeekTrial > 0 ? (

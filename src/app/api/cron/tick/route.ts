@@ -4,6 +4,7 @@ import { summarizeWeek } from "@/lib/gemini/weekly-summary";
 import { judgeSubmission } from "@/lib/judging";
 import { dispatch } from "@/lib/notify";
 import { secureEqual } from "@/lib/secure-compare";
+import { recordStandingChanges } from "@/lib/standing/record";
 import { createAdminClient } from "@/lib/supabase/admin";
 
 // Called by pg_cron every 5 minutes (docs/architecture.md §2.5, ADR-003). Runs every scheduled
@@ -33,10 +34,17 @@ export async function POST(request: NextRequest) {
   }
   for (const event of events) await dispatch(event.id);
 
+  // Titles, ranks and the crown (F13, F14) follow from what the tick just settled.
+  const standings = await recordStandingChanges().catch((standingsError) => {
+    console.error("standings failed", standingsError);
+    return [];
+  });
+  for (const event of standings) await dispatch(event.id);
+
   const rejudged = await rejudgeStuckSubmissions();
   const summarized = await fillWeeklySummaries();
   const purged = await purgeOriginalImages();
-  return NextResponse.json({ events: events.length, rejudged, summarized, purged });
+  return NextResponse.json({ events: events.length, standings: standings.length, rejudged, summarized, purged });
 }
 
 /**

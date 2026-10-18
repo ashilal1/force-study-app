@@ -2611,6 +2611,33 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      record_standings: {
+        Args: {
+          p_changes: Json
+          p_group_id: string
+          p_previous_id: string
+          p_snapshot: Json
+        }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       record_judge_error: {
         Args: { p_message: string; p_submission_id: string }
         Returns: undefined
