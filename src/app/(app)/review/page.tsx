@@ -3,7 +3,7 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { PageLoading } from "@/components/app/page-loading";
 import { Avatar } from "@/components/brand/avatar";
-import { GroupCalendar } from "@/components/review/group-calendar";
+import { GroupCalendar, pickWeek } from "@/components/review/group-calendar";
 import { MemberRateChart } from "@/components/review/charts";
 import { RangeTabs } from "@/components/review/range-tabs";
 import { RankingSwitch } from "@/components/review/ranking-switch";
@@ -30,7 +30,8 @@ export default function ReviewPage({ searchParams }: PageProps<"/review">) {
 }
 
 async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams">) {
-  const range = parseRange((await searchParams).range);
+  const query = await searchParams;
+  const range = parseRange(query.range);
   const { today, members } = await getGroupHistory(range);
   const weekStart = (() => {
     const at = new Date(`${today}T00:00:00Z`);
@@ -39,6 +40,7 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
   })();
   const monthStart = `${today.slice(0, 8)}01`;
 
+  const calendarMembers = members.map((member) => ({ id: member.id, name: member.name, days: member.allDays }));
   const rows = members.map((member) => ({ member, summary: summarize(member.days, member.allDays) }));
   const weekEnds = [...new Set(members.flatMap((member) => member.weeks.map((week) => week.weekEnd)))].sort();
   const sum = (member: (typeof members)[number], from: string | null) =>
@@ -98,8 +100,13 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">
         <section className="grid min-w-0 gap-2.5">
           <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">グループのカレンダー</h2>
-          <p className="m-0 text-xs text-sub">直近 4 週の毎日の結果です。マスを押すとその日の詳細へ。</p>
-          <GroupCalendar today={today} members={members.map((member) => ({ id: member.id, name: member.name, days: member.allDays }))} />
+          <p className="m-0 text-xs text-sub">1 週間ずつの毎日の結果です。マスを押すとその日の詳細へ。</p>
+          <GroupCalendar
+            today={today}
+            members={calendarMembers}
+            week={pickWeek(query.week, today, calendarMembers)}
+            hrefFor={(week) => `/review?${new URLSearchParams({ range, week })}`}
+          />
         </section>
 
         <section className="grid gap-2.5">
