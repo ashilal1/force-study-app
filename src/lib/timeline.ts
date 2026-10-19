@@ -9,7 +9,15 @@ import { createClient } from "@/lib/supabase/server";
 
 const OBSERVER = "__timeline__";
 
-export type TimelineItem = { id: string; at: string; title: string; body: string; href: string };
+export type TimelineItem = {
+  id: string;
+  at: string;
+  title: string;
+  body: string;
+  href: string;
+  /** Who the line is about, to put the crown next to their name (F14). */
+  actor: MemberName | null;
+};
 
 type Options = {
   limit?: number;
@@ -60,7 +68,8 @@ export async function getTimeline({ limit = 30, before, studyLogId }: Options = 
       (candidate) => candidate.recipientId === OBSERVER,
     );
     if (!draft) continue;
-    items.push({ id: event.id, at: event.created_at, title: draft.title, body: draft.body, href: draft.url });
+    const actor = profiles.find((profile) => profile.id === event.actor_id) ?? null;
+    items.push({ id: event.id, at: event.created_at, title: draft.title, body: draft.body, href: draft.url, actor });
     if (items.length === limit) break;
   }
   const more = items.length === limit || events.length === batch;
