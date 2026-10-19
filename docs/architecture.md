@@ -255,11 +255,13 @@ flowchart LR
 │   └── seed.sql
 ├── public/
 │   ├── sw.js                      # Service Worker（push / notificationclick）
-│   └── icons/                     # PWA アイコン
+│   ├── icons/                     # PWA アイコン
+│   └── theme/                     # ランクの見た目の素材（王冠・金のロゴ・ひび・テープ・ざらつき。docs/visual-assets.md）
 └── src/
     ├── proxy.ts                   # セッション更新・認証ガード
     ├── app/
     │   ├── manifest.ts            # PWA manifest
+    │   ├── rank-themes.css        # 見ている本人のランクで画面全体を着せ替える（F14・ADR-042）
     │   ├── (auth)/                # 未ログイン・未参加向け（下部メニューなし）
     │   │   ├── login/             # 「Google でログイン」
     │   │   └── join/              # 招待コードの入力（profile がない人はここへ）

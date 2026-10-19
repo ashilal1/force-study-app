@@ -7,7 +7,6 @@ import { MarkAllRead } from "@/components/notifications/mark-all-read";
 import { requireMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { formatJstDateTime } from "@/lib/time";
-import { cn } from "@/lib/utils";
 
 export const metadata: Metadata = { title: "通知 | Commit or Treat" };
 
@@ -45,10 +44,7 @@ async function NotificationList() {
         {notifications.map((notification) => (
           <li key={notification.id}>
             <Link href={notification.url ?? "/notifications"} className="block">
-              <Sticker
-                shadow="sm"
-                className={cn("grid gap-0.5 px-3.5 py-3", !notification.read_at && "bg-tape")}
-              >
+              <Sticker shadow="sm" tone={notification.read_at ? "white" : "tape"} className="grid gap-0.5 px-3.5 py-3">
                 <span className="flex items-baseline justify-between gap-3">
                   <b className="text-sm">{notification.title}</b>
                   <time dateTime={notification.created_at} className="shrink-0 text-xs text-sub">

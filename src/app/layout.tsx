@@ -4,11 +4,12 @@ import "./globals.css";
 
 // Latin display face is self-hosted by next/font. Japanese faces load from Google Fonts in the
 // browser instead: their CSS is split by unicode-range, so the browser fetches only the glyphs a
-// page uses (self-hosting them would download every slice at build time).
+// page uses (self-hosting them would download every slice at build time). Rubik Wet Paint (the
+// "OR PENALTY" graffiti of the lowest rank's theme) rides along: it is only fetched when shown.
 const archivo = Archivo_Black({ weight: "400", subsets: ["latin"], variable: "--font-archivo" });
 
 const JAPANESE_FONTS =
-  "https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=BIZ+UDGothic:wght@700&family=Klee+One:wght@600&display=swap";
+  "https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=Rubik+Wet+Paint&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=BIZ+UDGothic:wght@700&family=Klee+One:wght@600&display=swap";
 
 export const metadata: Metadata = {
   title: "Commit or Treat",

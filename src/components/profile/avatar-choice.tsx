@@ -29,7 +29,7 @@ export function AvatarChoice({
           <label
             key={option.value}
             className={cn(
-              "flex cursor-pointer items-center gap-2.5 rounded-[14px] border-[3px] border-ink bg-card px-3 py-2.5 shadow-hard-sm",
+              "th-choice flex cursor-pointer items-center gap-2.5 rounded-[14px] border-[3px] border-ink bg-card px-3 py-2.5 shadow-hard-sm",
               "has-checked:bg-mint has-focus-visible:outline-[3px] has-focus-visible:outline-offset-2",
             )}
           >

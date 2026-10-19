@@ -9,6 +9,7 @@ export function PassphraseCard({ value, compact = false }: { value: string; comp
     <Sticker
       tone="note"
       shadow="none"
+      data-surface="pass"
       className={cn(
         "relative flex items-end justify-between border-[2.5px] border-dashed",
         compact ? "px-2.5 pt-2.5 pb-1.5" : "px-3 pt-3.5 pb-2.5",

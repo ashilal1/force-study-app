@@ -17,8 +17,8 @@ import { FlagForm } from "./flag-form";
 
 /**
  * One member's day on the home board: declaration, deadline, passphrase and flags, the makeup
- * sessions (補習) they still owe, and their rank, titles and crown (F13, F14). The card's look
- * follows the member's rank; the whole screen follows the viewer's (ViewerTheme).
+ * sessions (補習) they still owe, and their rank, titles and crown (F13, F14). Like every card,
+ * it follows the viewer's rank (ViewerTheme, ADR-042); ranks show as the badge and the crown.
  */
 export function MemberTodayCard({
   member,
@@ -33,100 +33,109 @@ export function MemberTodayCard({
   viewerRank?: RankId;
 }) {
   const { state } = member;
+  const wanted = member.isMe && viewerRank === "doushiyou-mo-nai";
   return (
-    <Sticker
-      data-rank={standing?.rank.id}
-      className={cn("rank-card relative grid gap-2.5 px-3.5 py-3", standing?.last && "-rotate-1")}
-    >
-      {standing?.crown ? <Crown className="absolute -top-3 -left-2 w-9 -rotate-12" /> : null}
-      <div className="grid grid-cols-[44px_1fr_auto] items-center gap-x-3">
-        <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
-        <div className="min-w-0">
-          <p className="m-0 truncate font-heading text-[1.2rem] leading-tight">
-            <Link href={`/members/${member.id}`} className="hover:underline">
-              {member.name}
-            </Link>
-            {member.isMe ? <span className="ml-1.5 align-middle text-xs font-bold text-sub">（あなた）</span> : null}
-          </p>
-          <p className="m-0 truncate text-sm font-bold">{headline(member)}</p>
-        </div>
-        <Badge member={member} />
-      </div>
-
-      {standing ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {standing.crown ? (
-            <span className="inline-flex items-center gap-0.5 text-xs font-black">
-              <Crown className="w-4" />
-              1位
-            </span>
-          ) : null}
-          <RankBadge standing={standing} />
-          <TitleBadges titles={standing.titles} />
-        </div>
-      ) : null}
-
-      {member.previous ? <PreviousLine member={member} log={member.previous} /> : null}
-
-      {makeup && makeup.remaining > 0 ? (
-        <Link
-          href={member.isMe ? "/makeup" : "/makeup#others"}
-          className={`text-sm font-bold underline underline-offset-2 ${makeup.overdue > 0 ? "text-red" : ""}`}
-        >
-          補習 残り {makeup.remaining} 回{makeup.overdue > 0 ? `（期限切れ ${makeup.overdue} 回・逃走中）` : ""} →
-        </Link>
-      ) : null}
-
-      {state.kind === "declared" ? (
-        <>
-          <p className="m-0 text-sm leading-snug font-medium whitespace-pre-wrap">{state.log.declaration}</p>
-          {state.log.original_declaration ? (
-            <p className="m-0 text-xs text-sub">
-              書き直す前: <s>{state.log.original_declaration}</s>
+    // The crown and the stamp sit outside the card so its (themed) edge doesn't trace them.
+    <div className="relative">
+      <Sticker className={cn("grid gap-2.5 px-3.5 py-3", standing?.last && "-rotate-1")}>
+        <div className="grid grid-cols-[44px_1fr_auto] items-center gap-x-3">
+          <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
+          <div className="min-w-0">
+            <p className="m-0 truncate font-heading text-[1.2rem] leading-tight">
+              <Link href={`/members/${member.id}`} className="hover:underline">
+                {member.name}
+              </Link>
+              {member.isMe ? <span className="ml-1.5 align-middle text-xs font-bold text-sub">（あなた）</span> : null}
             </p>
-          ) : null}
-          <PassphraseCard value={state.log.passphrase!} compact />
-          <SubmissionLine log={state.log} />
-          {state.log.dispute === "resending" || state.log.dispute === "final_review" ? (
-            <p className="m-0 text-xs font-bold text-red">
-              「怪しい」の指摘あり ・ {state.log.dispute === "resending" ? "証拠の送り直し受付中" : "最終審査中"}
-            </p>
-          ) : null}
-          <FlagList flags={state.log.flags} />
-          {member.canFlag ? <FlagForm logId={state.log.id} ownerName={member.name} /> : null}
-          {state.log.status === "missed" ? (
-            <Link
-              href={`/reports/${state.log.id}`}
-              className={
-                member.isMe && state.log.report === "awaiting_report"
-                  ? actionButtonVariants({ tone: "red" })
-                  : "text-sm font-bold underline underline-offset-2"
-              }
-            >
-              {member.isMe && state.log.report === "awaiting_report"
-                ? "理由を申告する"
-                : state.log.report === "under_review"
-                  ? "理由を見る（審査中）→"
-                  : "理由を見る →"}
-            </Link>
-          ) : null}
-          {state.log.latest ? (
-            <Link href={`/logs/${state.log.id}`} className="text-sm font-bold underline underline-offset-2">
-              {state.log.status === "passed" && !member.isMe
-                ? state.log.unverified
-                  ? "AI 未判定。写真を確認する →"
-                  : "証拠を見る（怪しければ指摘）→"
-                : "証拠と判定を見る →"}
-            </Link>
-          ) : null}
-          {member.isMe && state.log.status === "pending" ? (
-            <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
-              {viewerRank === "doushiyou-mo-nai" ? "提出して罪を償う" : "提出する"}
-            </Link>
-          ) : null}
-        </>
+            <p className="m-0 truncate text-sm font-bold">{headline(member)}</p>
+          </div>
+          <Badge member={member} />
+        </div>
+
+        {standing ? (
+          <div className="flex flex-wrap items-center gap-1.5">
+            {standing.crown ? (
+              <span className="inline-flex items-center gap-0.5 text-xs font-black">
+                <Crown className="w-4" />
+                1位
+              </span>
+            ) : null}
+            <RankBadge standing={standing} />
+            <TitleBadges titles={standing.titles} />
+          </div>
+        ) : null}
+
+        {member.previous ? <PreviousLine member={member} log={member.previous} /> : null}
+
+        {makeup && makeup.remaining > 0 ? (
+          <Link
+            href={member.isMe ? "/makeup" : "/makeup#others"}
+            className={`text-sm font-bold underline underline-offset-2 ${makeup.overdue > 0 ? "text-red" : ""}`}
+          >
+            補習 残り {makeup.remaining} 回{makeup.overdue > 0 ? `（期限切れ ${makeup.overdue} 回・逃走中）` : ""} →
+          </Link>
+        ) : null}
+
+        {state.kind === "declared" ? (
+          <>
+            <p className="m-0 text-sm leading-snug font-medium whitespace-pre-wrap">{state.log.declaration}</p>
+            {state.log.original_declaration ? (
+              <p className="m-0 text-xs text-sub">
+                書き直す前: <s>{state.log.original_declaration}</s>
+              </p>
+            ) : null}
+            <PassphraseCard value={state.log.passphrase!} compact />
+            <SubmissionLine log={state.log} />
+            {state.log.dispute === "resending" || state.log.dispute === "final_review" ? (
+              <p className="m-0 text-xs font-bold text-red">
+                「怪しい」の指摘あり ・ {state.log.dispute === "resending" ? "証拠の送り直し受付中" : "最終審査中"}
+              </p>
+            ) : null}
+            <FlagList flags={state.log.flags} />
+            {member.canFlag ? <FlagForm logId={state.log.id} ownerName={member.name} /> : null}
+            {state.log.status === "missed" ? (
+              <Link
+                href={`/reports/${state.log.id}`}
+                className={
+                  member.isMe && state.log.report === "awaiting_report"
+                    ? actionButtonVariants({ tone: "red" })
+                    : "text-sm font-bold underline underline-offset-2"
+                }
+              >
+                {member.isMe && state.log.report === "awaiting_report"
+                  ? "理由を申告する"
+                  : state.log.report === "under_review"
+                    ? "理由を見る（審査中）→"
+                    : "理由を見る →"}
+              </Link>
+            ) : null}
+            {state.log.latest ? (
+              <Link href={`/logs/${state.log.id}`} className="text-sm font-bold underline underline-offset-2">
+                {state.log.status === "passed" && !member.isMe
+                  ? state.log.unverified
+                    ? "AI 未判定。写真を確認する →"
+                    : "証拠を見る（怪しければ指摘）→"
+                  : "証拠と判定を見る →"}
+              </Link>
+            ) : null}
+            {member.isMe && state.log.status === "pending" ? (
+              <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
+                {viewerRank === "doushiyou-mo-nai" ? "提出して罪を償う" : "提出する"}
+              </Link>
+            ) : null}
+          </>
+        ) : null}
+      </Sticker>
+      {standing?.crown ? <Crown className="pointer-events-none absolute top-0 left-1 z-10 w-8 -rotate-[18deg]" /> : null}
+      {wanted ? (
+        <Stamp
+          tone="red"
+          label="WANTED"
+          sub="指名手配・逃走中"
+          className="pointer-events-none absolute -top-7 right-3.5 z-10 bg-[rgba(240,236,228,0.88)] text-[1.1rem] [&>span:last-child]:text-[0.6rem]"
+        />
       ) : null}
-    </Sticker>
+    </div>
   );
 }
 
@@ -151,7 +160,7 @@ function PreviousLine({ member, log }: { member: TodayMember; log: TodayLog }) {
               member.isMe ? null : "証拠を見る（怪しければ指摘）→",
             ];
   return (
-    <p className="m-0 flex flex-wrap items-baseline justify-between gap-x-2 rounded-[8px] border-[1.5px] border-dashed border-ink px-2.5 py-1.5 text-xs font-bold">
+    <p className="th-box m-0 flex flex-wrap items-baseline justify-between gap-x-2 rounded-[8px] border-[1.5px] border-dashed border-ink px-2.5 py-1.5 text-xs font-bold">
       <span>{text}</span>
       {link ? (
         <Link href={href} className="underline underline-offset-2">

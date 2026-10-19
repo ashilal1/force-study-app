@@ -177,7 +177,7 @@ function DisputeSection({ detail }: { detail: LogDetail }) {
   const { dispute, submissionFlags, reviews, can, log } = detail;
   if (!dispute && submissionFlags.length === 0) return null;
   return (
-    <Sticker className="grid gap-3 border-red px-4 py-4">
+    <Sticker tone="alert" className="grid gap-3 px-4 py-4">
       <div className="flex items-center justify-between gap-2">
         <Stamp tone="red" label="怪しい" className="text-lg" />
         {dispute ? <Pill variant="outline">{DISPUTE[dispute.status] ?? dispute.status}</Pill> : null}

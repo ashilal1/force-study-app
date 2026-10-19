@@ -56,7 +56,7 @@ export function PhotoPicker({
         {photos.length < MAX_PHOTOS ? (
           <label
             className={cn(
-              "relative grid aspect-square cursor-pointer place-items-center rounded-[14px] border-[3px] border-dashed border-ink bg-card text-center text-sm",
+              "th-drop relative grid aspect-square cursor-pointer place-items-center rounded-[14px] border-[3px] border-dashed border-ink bg-card text-center text-sm",
               photos.length === 0 && "col-span-3 aspect-[16/9]",
             )}
           >

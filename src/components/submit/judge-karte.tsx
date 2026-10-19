@@ -48,7 +48,7 @@ export function JudgeKarte({ result }: { result: JudgeResult }) {
     );
   }
   return (
-    <Karte title="AI 検問カルテ" className={result.passed ? undefined : "bg-[#f6c9c5]"}>
+    <Karte title="AI 検問カルテ" tone={result.passed ? "mint" : "red"}>
       <div className="flex items-baseline justify-center gap-1.5">
         <b className="font-en text-[3.4rem] leading-none font-normal">{result.score}</b>
         <span className="font-en text-xl">/ 100</span>

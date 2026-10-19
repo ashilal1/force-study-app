@@ -11,7 +11,7 @@ export function StandingPanel({ standing, pastTitles = [] }: { standing: Standin
   const window = xpWindowDates(standing);
   const recent = standing.events.filter((event) => window.has(event.date)).reverse();
   return (
-    <Sticker data-rank={standing.rank.id} className="rank-card grid gap-3 px-4 py-4">
+    <Sticker className="grid gap-3 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <RankGauge standing={standing} />
         {standing.crown ? (
