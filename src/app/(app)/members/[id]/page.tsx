@@ -74,7 +74,7 @@ async function Member({ params, searchParams }: Pick<PageProps<"/members/[id]">,
         </div>
       </header>
 
-      {standing ? <StandingPanel standing={standing} pastTitles={pastTitles} /> : null}
+      {standing ? <StandingPanel standing={standing} name={history.member.name} pastTitles={pastTitles} /> : null}
 
       <RangeTabs basePath={`/members/${member.id}`} current={range} />
 

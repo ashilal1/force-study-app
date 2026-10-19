@@ -12,7 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { ChartContainer, ChartLegend, ChartLegendContent, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { FAILURE_CATEGORY, OBJECTION_KIND, PENALTY_REASON } from "@/lib/chart-colors";
+import { FAILURE_CATEGORY, MEMBER_COLORS, OBJECTION_KIND, PENALTY_REASON } from "@/lib/chart-colors";
 
 // Retrospective charts (G3-G9, G13, G14). Data arrives aggregated from the server; these only
 // draw. Each shows a short note instead of an empty chart while there's too little data.
@@ -181,8 +181,6 @@ export function ObjectionChart({ rows }: { rows: { month: string; kind: string }
     </ChartContainer>
   );
 }
-
-const MEMBER_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "#7b5ea7", "var(--orange)"];
 
 /** G13: weekly achievement rate per member. */
 export function MemberRateChart({
