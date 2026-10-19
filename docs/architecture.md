@@ -223,7 +223,8 @@ flowchart LR
 - **アプリの中のブラウザ**: `src/lib/in-app-browser.ts` が User-Agent から LINE（`Line/`）・Instagram・Facebook（`FBAN`/`FBAV`）・Android の WebView（`; wv)`）などを見分ける。`/login` は `<Suspense>` の中で `headers()` を読み、当たったらログインのボタンの代わりに開き直しの案内（URL のコピー、Android は `intent://…#Intent;scheme=https;package=com.android.chrome;end`）を出す。招待リンクを作るところ（`components/invite`）は `openExternalBrowser=1` を付ける。
 - **レクチャー**: `(auth)/onboarding/intro`（`(app)` の外。ゲートでループしないように）。カードはサーバーで、本人の profile・グループの設定・今日の状態（`lib/time.ts`）から作り、めくるのはクライアント。「このルールで始める」は Server Action → `rpc accept_rules` → `/onboarding/notifications` へ。`/onboarding/notifications` も `rules_accepted_at` が null なら `/onboarding/intro` に戻す。設定の「使い方をもう一度見る」は同じカードを `?again=1` で開き、最後のボタンは `rpc reset_tips` のあと設定に戻るだけ。
 - **コーチマーク**: キーと文言は `src/lib/tips.ts` の定数（金額や時刻の入る文言は関数）。画面のサーバー側で、状態を知っている所に `<PageTip candidates={[…]} />`（`components/onboarding/page-tip.tsx`）を置く。候補は「キーと文言」か `false` の並びで、自分の `seen_tips` を見て、まだ見ていない最初の 1 つを `<CoachMark>`（クライアント）に渡す。`<CoachMark>` は `data-tip="…"` を付けた要素を待って（あとから流れてくる部分もあるので最大 10 秒）、画面外ならスクロールし、`document.body` へのポータルで暗い背景・明るく抜いた枠・吹き出しを出す。背景と枠は `pointer-events: none` で、指している部品は押せる。どこかのクリックか Escape で閉じ、Server Action `markTipSeen` → `rpc mark_tip_seen`（返事を待たない）。同じタブで閉じたものは、記録が届く前に戻っても出さない。
-- `/preview/intro`・`/preview/tips` で、全カード・全コーチマークを並べる（開発のときだけ）。
+- **用語の「？」**: 説明は `src/lib/terms.ts`、ボタンは `components/onboarding/term-help.tsx`（クライアント）。タップで `document.body` へのポータルに吹き出しを出し、ほかの所のタップ・スクロール・Escape で閉じる。何も記録しない。
+- `/preview/intro`・`/preview/tips` で、全カード・全コーチマーク・全用語を並べる（開発のときだけ）。
 
 ## 3. 認証とアクセス制御
 

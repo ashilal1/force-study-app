@@ -14,6 +14,7 @@ import { PassphraseCard } from "@/components/declare/passphrase-card";
 import { RestDayPlanner, type PlannerDay } from "@/components/declare/rest-day-planner";
 import { ReviseForm } from "@/components/declare/revise-form";
 import { PageTip } from "@/components/onboarding/page-tip";
+import { TermHelp } from "@/components/onboarding/term-help";
 import { getMakeupBoard } from "@/lib/makeup";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
@@ -34,7 +35,10 @@ export default function DeclarePage() {
       </Suspense>
 
       <section className="grid gap-3">
-        <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">休息日</h2>
+        <h2 className="m-0 flex items-center gap-2 font-heading text-[1.2rem] leading-tight font-normal">
+          休息日
+          <TermHelp term="rest_vs_leave" />
+        </h2>
         <p className="m-0 text-sm font-medium text-sub">
           宣言しなくていい日を、明日以降で選べます（週 1 日まで。当日は変えられません）。
         </p>

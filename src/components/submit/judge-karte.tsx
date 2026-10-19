@@ -1,5 +1,6 @@
 import { Karte } from "@/components/brand/karte";
 import { Stamp } from "@/components/brand/stamp";
+import { TermHelp } from "@/components/onboarding/term-help";
 import { formatJstDateTime } from "@/lib/time";
 
 export type JudgeResult = {
@@ -29,6 +30,7 @@ export function JudgeKarte({ result }: { result: JudgeResult }) {
         <div className="flex items-baseline justify-center gap-2">
           <b className="font-heading text-2xl leading-none font-normal">AI 未判定</b>
           <Stamp tone="ink" label="仮合格" className="ml-2 bg-transparent text-xl" />
+          <TermHelp term="provisional" className="self-center" />
         </div>
         <ul className="m-0 flex list-none flex-wrap justify-center gap-2 p-0 text-[0.78rem]">
           <li className="rounded-full border-[2.5px] border-ink bg-card px-2.5 py-0.5">合言葉はメンバーが確認</li>
