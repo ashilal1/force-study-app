@@ -1,4 +1,6 @@
+import { TermHelp } from "@/components/onboarding/term-help";
 import { TipGallery, type GallerySample } from "@/components/onboarding/tip-gallery";
+import { TERM_KEYS } from "@/lib/terms";
 import { TIPS } from "@/lib/tips";
 
 // Every coach mark (F15) with the default settings. 「出す」 points it at its card.
@@ -54,6 +56,16 @@ export default function PreviewTipsPage() {
     <div className="grid gap-4">
       <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">コーチマーク</h1>
       <TipGallery samples={SAMPLES} />
+
+      <h2 className="m-0 mt-4 font-heading text-[1.2rem] leading-tight font-normal">用語の「？」</h2>
+      <ul className="m-0 grid list-none gap-2 p-0">
+        {TERM_KEYS.map((term) => (
+          <li key={term} className="flex items-center gap-2 text-sm font-bold">
+            <code className="text-xs">{term}</code>
+            <TermHelp term={term} />
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

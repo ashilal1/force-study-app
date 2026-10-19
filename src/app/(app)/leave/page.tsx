@@ -5,6 +5,7 @@ import { Pill } from "@/components/brand/pill";
 import { Sticker } from "@/components/brand/sticker";
 import { CancelLeave, LeaveReview } from "@/components/leave/leave-actions";
 import { LeaveForm } from "@/components/leave/leave-form";
+import { TermHelp } from "@/components/onboarding/term-help";
 import { requireMember } from "@/lib/auth";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, formatJstDay, formatJstTime } from "@/lib/time";
@@ -22,7 +23,10 @@ const STATUS: Record<string, string> = {
 export default function LeavePage() {
   return (
     <div className="grid gap-6">
-      <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">休会</h1>
+      <h1 className="m-0 flex items-center gap-2 font-heading text-[1.55rem] leading-tight font-normal">
+        休会
+        <TermHelp term="rest_vs_leave" />
+      </h1>
       <p className="m-0 text-sm font-medium text-sub">
         テスト期間や旅行など、休息日では足りないときに使います。休会中は宣言も審査もお休みで、休息日の数にも入りません。
       </p>
