@@ -130,6 +130,9 @@ export function NotificationSetup({ vapidPublicKey }: { vapidPublicKey: string |
             <li>「ホーム画面に追加」を押し、「Web アプリとして開く」がオンのまま「追加」を押す</li>
             <li>ホーム画面にできた Commit or Treat のアイコンから開き直す</li>
           </ol>
+          <p className="m-0 mt-2">
+            アイコンから開くと、もう一度 Google でログインします（Safari とは別にログインするため）。招待コードはもう要りません。
+          </p>
         </StepCard>
       ) : null}
 

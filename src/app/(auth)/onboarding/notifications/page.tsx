@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
 import { NotificationSetup } from "@/components/notifications/notification-setup";
+import { redirect } from "next/navigation";
 import { requireMember } from "@/lib/auth";
 import { vapidPublicKey } from "@/lib/env";
 
@@ -17,6 +18,8 @@ export default function NotificationOnboardingPage() {
 }
 
 async function Setup() {
-  await requireMember();
+  const member = await requireMember();
+  // The intro lecture comes first (F15): it explains why notifications can't be skipped.
+  if (!member.rules_accepted_at) redirect("/onboarding/intro");
   return <NotificationSetup vapidPublicKey={vapidPublicKey()} />;
 }

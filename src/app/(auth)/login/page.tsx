@@ -1,10 +1,14 @@
 import type { Metadata } from "next";
 import { Suspense } from "react";
+import { headers } from "next/headers";
 import Link from "next/link";
 import { signInWithGoogle } from "@/actions/auth";
+import { OpenInBrowser } from "@/components/auth/open-in-browser";
+import { ActionButton } from "@/components/brand/action-button";
 import { Sticker } from "@/components/brand/sticker";
 import { Tape } from "@/components/brand/tape";
 import { SubmitButton } from "@/components/form/submit-button";
+import { detectInAppBrowser } from "@/lib/in-app-browser";
 import { safeNextPath } from "@/lib/redirect";
 
 export const metadata: Metadata = { title: "ログイン | Commit or Treat" };
@@ -29,14 +33,15 @@ export default function LoginPage({ searchParams }: PageProps<"/login">) {
       <Suspense>
         <LoginError searchParams={searchParams} />
       </Suspense>
-      <form action={signInWithGoogle}>
-        <Suspense>
-          <NextField searchParams={searchParams} />
-        </Suspense>
-        <SubmitButton tone="mint" pendingLabel="Google に移動中…">
-          Google でログイン
-        </SubmitButton>
-      </form>
+      <Suspense
+        fallback={
+          <ActionButton type="button" tone="mint" disabled>
+            Google でログイン
+          </ActionButton>
+        }
+      >
+        <SignIn searchParams={searchParams} />
+      </Suspense>
       <p className="m-0 text-center text-xs text-sub">
         はじめての人は、ログインのあとにメンバーからもらった招待コードを入れます。
       </p>
@@ -58,8 +63,26 @@ async function LoginError({ searchParams }: { searchParams: SearchParams }) {
   );
 }
 
-/** Carries ?next= (set by the proxy, e.g. an invite link) into the sign-in action. */
-async function NextField({ searchParams }: { searchParams: SearchParams }) {
+/**
+ * The Google button, carrying ?next= (set by the proxy, e.g. an invite link) into the sign-in
+ * action. Inside LINE and other in-app browsers Google refuses to sign in, so those get directions
+ * to Safari / Chrome instead (F15).
+ */
+async function SignIn({ searchParams }: { searchParams: SearchParams }) {
+  const inApp = detectInAppBrowser((await headers()).get("user-agent"));
+  if (inApp) return <OpenInBrowser app={inApp.app} android={inApp.android} />;
   const next = safeNextPath((await searchParams).next);
-  return next ? <input type="hidden" name="next" value={next} /> : null;
+  return (
+    <div className="grid gap-2">
+      <form action={signInWithGoogle}>
+        {next ? <input type="hidden" name="next" value={next} /> : null}
+        <SubmitButton tone="mint" pendingLabel="Google に移動中…">
+          Google でログイン
+        </SubmitButton>
+      </form>
+      <p className="m-0 text-center text-xs text-sub">
+        LINE などのアプリから開いてログインできないときは、Safari か Chrome で開き直してください。
+      </p>
+    </div>
+  );
 }

@@ -15,6 +15,8 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
           <Link href="/preview/submit">提出</Link>
           <Link href="/preview/result">判定結果</Link>
           <Link href="/preview/report">理由申告</Link>
+          <Link href="/preview/intro">はじめに</Link>
+          <Link href="/preview/tips">コーチマーク</Link>
         </div>
       </div>
       <AppShell basePath="/preview">{children}</AppShell>

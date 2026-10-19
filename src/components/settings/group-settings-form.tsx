@@ -8,7 +8,14 @@ import { FieldError, SubmitButton } from "@/components/form/submit-button";
 import { SETTING_FIELDS, type SettingField } from "@/lib/group-settings";
 
 /** F11: admins change the rules. Changing them notifies everyone. */
-export function GroupSettingsForm({ current }: { current: Record<string, string | number> }) {
+export function GroupSettingsForm({
+  current,
+  makeupEnabled,
+}: {
+  current: Record<string, string | number>;
+  /** Makeup study (補習) is on: group_settings.makeup_since is set. */
+  makeupEnabled: boolean;
+}) {
   const [state, formAction] = useActionState<FormState, FormData>(updateGroupSettings, {});
   const sections = [...new Set(SETTING_FIELDS.map((field) => field.section))];
   const value = (field: SettingField) =>
@@ -16,6 +23,15 @@ export function GroupSettingsForm({ current }: { current: Record<string, string 
 
   return (
     <form action={formAction} className="grid gap-5">
+      <label className="flex items-start gap-3 text-sm font-bold">
+        <input type="checkbox" name="makeup_enabled" defaultChecked={makeupEnabled} className="mt-0.5 size-5 shrink-0 accent-ink" />
+        <span>
+          補習を使う
+          <span className="block text-xs font-medium text-sub">
+            サボりが続いたら追加の学習（補習）を科します。オンにした日からのサボりだけを数えます。
+          </span>
+        </span>
+      </label>
       {sections.map((section) => (
         <fieldset key={section} className="m-0 grid gap-2 border-0 p-0">
           <legend className="mb-1 font-sans text-base font-black">{section}</legend>

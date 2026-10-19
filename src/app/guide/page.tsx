@@ -136,6 +136,30 @@ export default function GuidePage() {
         <p className="m-0 text-xs text-sub">金額は既定の値です。グループの設定で変わることがあります。1 日に付くのは 1 件までです。</p>
       </Section>
 
+      <Section title="補習（グループで使っているとき）">
+        <p className="m-0 text-sm leading-relaxed font-medium">
+          サボり（宣言しなかった・サボった・理由を申告しなかった・書き直さなかった）が <b>3 回続くと</b>、3 回目から 1
+          回ごとに<b>補習が 1 回</b>付きます。お金とは別に、追加で勉強して返します。1 日でも達成すると数え直しです。
+        </p>
+        <ul className="m-0 grid gap-1 pl-5 text-sm leading-relaxed font-medium">
+          <li>補習の画面で宣言して、合言葉を写した写真を 24 時間以内に提出。AI の判定と「怪しい」はいつもの日と同じです。</li>
+          <li>補習の宣言は 1 日 1 回まで。中身はサボった日の宣言のやり直しが基本です。</li>
+          <li>期限は、補習が付いた週の次の週の土曜 23:59。過ぎると毎週 1 回ずつ増えます。</li>
+          <li>補習に失敗しても、ペナルティは付きません（借りが減らないだけ）。</li>
+        </ul>
+      </Section>
+
+      <Section title="称号とランク">
+        <p className="m-0 text-sm leading-relaxed font-medium">
+          記録に応じて<b>称号</b>（「サボラー」「皆勤賞」など）が自動で付き、<b>ランク</b>は直近 28 日の XP で決まります。どちらも全員から見えます。
+        </p>
+        <ul className="m-0 grid gap-1 pl-5 text-sm leading-relaxed font-medium">
+          <li>XP: 1 日達成で +10（90 点以上でさらに +3、7 日連続ごとに +20）。宣言なし −15、サボり −25 など。</li>
+          <li>ランク: どうしようもない（−50 以下）／三日坊主（はじめはここ）／やればできる（50〜）／優等生（150〜）／天才（300〜）。</li>
+          <li>グループの XP 1 位には王冠。天才の画面は金色に、どうしようもない人の画面は……見てのお楽しみです。</li>
+        </ul>
+      </Section>
+
       <Link href="/" className="text-center text-sm font-bold underline underline-offset-2">
         アプリを開く →
       </Link>

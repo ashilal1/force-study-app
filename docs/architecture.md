@@ -214,17 +214,23 @@ flowchart LR
 
 ### 2.7 通知の強制 (F0)
 `src/app/(app)/layout.tsx` で、ログイン済みの全画面の手前に「通知ゲート」を置く。
-1. サーバー側（`lib/auth.ts` の `hasConfirmedNotifications`）: `profiles.notifications_verified_at` と、確認済み（`verified_at` あり）の `push_subscriptions` があるかを見る。なければ `/onboarding/notifications` へリダイレクト。
+1. サーバー側（`lib/auth.ts` の `hasConfirmedNotifications`）: その前に `profiles.rules_accepted_at` を見て、null なら `/onboarding/intro`（2.8）へ。次に `profiles.notifications_verified_at` と、確認済み（`verified_at` あり）の `push_subscriptions` があるかを見る。なければ `/onboarding/notifications` へリダイレクト。
 2. クライアント側（`NotificationGuard`）: 開くたびに、iOS ならホーム画面から開いたか（`display-mode: standalone`）、`Notification.permission === 'granted'`、`pushManager.getSubscription()` があるか、その endpoint が確認済みか（RLS で自分の端末を読む）を確かめ、だめなら同じ画面へ。
 3. 設定画面（`(auth)/onboarding/notifications`。`(app)` の外に置いてゲートの対象にしない）: iOS はホーム画面への追加の手順 → 許可（iOS はタップからしか確認を出せないのでボタン）→ 購読を `rpc save_push_subscription` で登録 → テスト通知 → OS ごとのバナー・サウンド設定の手順 → 本人が「表示され、音も鳴った」を押す → `rpc confirm_push_subscription` が端末と profile に確認時刻を記録。
 4. PWA: `app/manifest.ts`（`display: standalone`）、`public/icons/`（`scripts/generate-icons.mjs` で生成）、`public/sw.js`（push の表示と、タップで該当ページを開く。キャッシュはしない。`next.config.ts` でキャッシュ禁止のヘッダーを付ける）。
+
+### 2.8 はじめての体験 (F15)
+- **アプリの中のブラウザ**: `src/lib/in-app-browser.ts` が User-Agent から LINE（`Line/`）・Instagram・Facebook（`FBAN`/`FBAV`）・Android の WebView（`; wv)`）などを見分ける。`/login` は `<Suspense>` の中で `headers()` を読み、当たったらログインのボタンの代わりに開き直しの案内（URL のコピー、Android は `intent://…#Intent;scheme=https;package=com.android.chrome;end`）を出す。招待リンクを作るところ（`components/invite`）は `openExternalBrowser=1` を付ける。
+- **レクチャー**: `(auth)/onboarding/intro`（`(app)` の外。ゲートでループしないように）。カードはサーバーで、本人の profile・グループの設定・今日の状態（`lib/time.ts`）から作り、めくるのはクライアント。「このルールで始める」は Server Action → `rpc accept_rules` → `/onboarding/notifications` へ。`/onboarding/notifications` も `rules_accepted_at` が null なら `/onboarding/intro` に戻す。設定の「使い方をもう一度見る」は同じカードを `?again=1` で開き、最後のボタンは `rpc reset_tips` のあと設定に戻るだけ。
+- **コーチマーク**: キーと文言は `src/lib/tips.ts` の定数（金額や時刻の入る文言は関数）。画面のサーバー側で、状態を知っている所に `<PageTip candidates={[…]} />`（`components/onboarding/page-tip.tsx`）を置く。候補は「キーと文言」か `false` の並びで、自分の `seen_tips` を見て、まだ見ていない最初の 1 つを `<CoachMark>`（クライアント）に渡す。`<CoachMark>` は `data-tip="…"` を付けた要素を待って（あとから流れてくる部分もあるので最大 10 秒）、画面外ならスクロールし、`document.body` へのポータルで暗い背景・明るく抜いた枠・吹き出しを出す。背景と枠は `pointer-events: none` で、指している部品は押せる。どこかのクリックか Escape で閉じ、Server Action `markTipSeen` → `rpc mark_tip_seen`（返事を待たない）。同じタブで閉じたものは、記録が届く前に戻っても出さない。
+- `/preview/intro`・`/preview/tips` で、全カード・全コーチマークを並べる（開発のときだけ）。
 
 ## 3. 認証とアクセス制御
 
 | 対象 | 方法 |
 |---|---|
 | セッション | `@supabase/ssr` の Cookie セッション。`src/proxy.ts`（Next.js 16 で middleware から改名）でトークンを更新し、未ログインなら `/login` へ（`/login`・`/auth/callback`・使い方の `/guide` だけは未ログインでも開ける）。proxy はログインの有無だけを見る楽観的なチェック |
-| ログイン | Google OAuth（Supabase Auth の Google プロバイダー、PKCE）。`signInWithOAuth` → Google → `/auth/callback` で `exchangeCodeForSession` |
+| ログイン | Google OAuth（Supabase Auth の Google プロバイダー、PKCE）。`signInWithOAuth` → Google → `/auth/callback` で `exchangeCodeForSession`。アプリの中のブラウザでは Google が拒否するので、`/login` で見分けて外のブラウザへ案内する（2.8） |
 | 招待 | メンバーがホームの「招待コードを発行する」を押すと、Server Action が暗号用の乱数でコードを作り、そのハッシュを `rpc create_invite` で保存して、コードとリンクを画面に返す（ADR-026） |
 | 参加 | ログインしただけでは**メンバーではない**。`/join` で招待コードを入れると、Server Action がハッシュにして `rpc join_group` に渡し、招待の照合・使用済みへの更新・profile の作成（発行した人のグループに入れる）を 1 つのトランザクションで行う。同じ画面の「新しいグループを作る」は `rpc create_group` で、作った人が管理者になる（1 人 1 グループ。ADR-034）。`INVITE_CODE` はグループが 1 つもないときだけ使える。profile のない人は何も読めず、メンバーは RLS（`private.my_group()`）で自分のグループの行だけを読む |
 | ログイン後の戻り先 | 未ログインで開いたページ（招待リンクなど）は proxy が `/login?next=…` に付け、ログインの開始時に 10 分の httpOnly Cookie に入れ、`/auth/callback` で戻す。同じサイト内のパスだけを受け付ける（`lib/redirect.ts`） |
@@ -294,6 +300,8 @@ flowchart LR
     │   ├── timeline.ts            # タイムライン（通知の受信者ルールを、何にも関わっていない人の目線で使う）
     │   ├── group-settings.ts      # 管理者が変えられるグループ設定の一覧
     │   ├── history.ts             # 振り返り（個人・グループ）のデータの読み込み
+    │   ├── makeup.ts              # 補習（F8b）: 残り・借り・いまの補習・みんなの補習の読み込み
+    │   ├── standing/              # 称号・XP・ランク（F13・F14）: rules.ts（計算。純粋な関数）・load.ts（記録の読み込み）・changes.ts / record.ts（変化の記録）・assets.ts（届いた画像の一覧）
     │   ├── stats.ts               # 達成率・連続達成日数・平均などの計算（純粋な関数）
     │   ├── chart-colors.ts        # 結果・ペナルティ理由・指摘の色・記号・ラベル
     │   ├── evidence-client.ts     # ブラウザ側: 写真の圧縮（WebP）と Storage へのアップロード
@@ -313,7 +321,7 @@ flowchart LR
 - 達成カレンダー（G2・G12）はライブラリを使わず、CSS Grid のマス目で作る（軽くて、スマホでも崩れない）。
 - データの集計は DB のビュー（`daily_history`・`weekly_stats`・`user_stats`・`received_objections`）で行い、Server Component で取って、グラフの Client Component に渡す。ブラウザでは集計しない。
 - 結果の色（達成・未達成・宣言なし・休み）とペナルティ理由の色は 1 か所（`src/lib/chart-colors.ts`）で決め、全グラフで同じ色にする。
-- 画面: タイムライン `/timeline`（ホームは最新 5 件。`?before=` で 30 件ずつさかのぼる）、週の振り返り `/members/[id]/weeks/[weekEnd]`（G1・その週の 7 マス・G7・AI のまとめ・本人のメモ）、検索 `/search`（`ilike` + trigram インデックス）、書き出し `/api/export?format=csv|json`（本人の記録だけ。CSV は 1 日 1 行で Excel 用に BOM 付き）、個人の振り返り `/members/[id]`（G1〜G10・次の計画の追跡）、グループの比較 `/review`（G11〜G14。下部メニューの「振り返り」）、その日の詳細 `/logs/[id]` に「この日のタイムライン」。期間は `?range=4w|3m|all`。
+- 画面: タイムライン `/timeline`（ホームは最新 5 件。`?before=` で 30 件ずつさかのぼる）、週の振り返り `/members/[id]/weeks/[weekEnd]`（G1・その週の 7 マス・G7・AI のまとめ・本人のメモ）、検索 `/search`（`ilike` + trigram インデックス）、書き出し `/api/export?format=csv|json`（本人の記録だけ。CSV は 1 日 1 行で Excel 用に BOM 付き）、個人の振り返り `/members/[id]`（G1〜G10・次の計画の追跡）、グループの比較 `/review`（G11〜G14。下部メニューの「振り返り」）、その日の詳細 `/logs/[id]` に「この日のタイムライン」（補習の行なら「〇〇 さんの補習」）、補習 `/makeup`（提出は `/submit?makeup=1`）。期間は `?range=4w|3m|all`。
 - 画面の幅: スマホ（〜767px）は 440px の 1 列。768px からは 720px に広げる。1024px からは、`data-wide` を付けたページ（ホーム・`/review`・`/members/[id]`）だけ 1040px の 2 列にする（`AppShell` が `:has([data-wide])` で判定）。入力フォームは横に伸びすぎないよう 720px のまま。文字は 768px から基準を 106.25%、1024px から 112.5% にする（大きさ・余白は rem なので一緒に大きくなる）。
 - TanStack Table は v9（`useTable` + `tableFeatures`）。学習ログの表は並べ替えだけを TanStack に任せ、結果での絞り込みは渡す前に行う。
 

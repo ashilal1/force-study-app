@@ -37,9 +37,14 @@ export default function SettingsPage() {
           この端末の通知を設定し直す
         </Link>
       </section>
-      <Link href="/guide" className="text-sm font-bold underline underline-offset-2">
-        使い方・写真と記録の扱い →
-      </Link>
+      <div className="grid gap-1.5">
+        <Link href="/onboarding/intro?again=1" className="text-sm font-bold underline underline-offset-2">
+          使い方をもう一度見る →
+        </Link>
+        <Link href="/guide" className="text-sm font-bold underline underline-offset-2">
+          使い方・写真と記録の扱い（くわしく） →
+        </Link>
+      </div>
       <section className="grid gap-2">
         <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">記録の書き出し</h2>
         <p className="m-0 text-sm font-medium text-sub">自分の記録をすべてダウンロードできます。</p>
@@ -122,7 +127,10 @@ async function AdminSettings() {
           ペナルティの額や締切などのルールです。変えると全員に通知されます。その日の途中で時刻を変えると、すでに決まった期限には影響しません。
         </p>
         <Sticker className="mt-3 px-4 py-5">
-          <GroupSettingsForm current={data as unknown as Record<string, string | number>} />
+          <GroupSettingsForm
+            current={data as unknown as Record<string, string | number>}
+            makeupEnabled={data.makeup_since !== null}
+          />
         </Sticker>
       </details>
     </>

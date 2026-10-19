@@ -27,7 +27,7 @@ export function ExcuseReview({ logId }: { logId: string }) {
         placeholder="ひとこと（任意。本人に届きます）"
         className="min-h-14 text-sm"
       />
-      <div className="grid grid-cols-2 gap-2">
+      <div data-tip="review" className="grid grid-cols-2 gap-2">
         <ActionButton type="button" tone="mint" disabled={pending} onClick={() => decide("accept")} className="py-2 text-base">
           納得
         </ActionButton>

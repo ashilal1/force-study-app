@@ -10,11 +10,14 @@ import { Sticker } from "@/components/brand/sticker";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import { DisputeReview, WithdrawFlagButton } from "@/components/dispute/dispute-actions";
 import { ResendForm } from "@/components/dispute/resend-form";
+import { PageTip } from "@/components/onboarding/page-tip";
 import { JudgeKarte } from "@/components/submit/judge-karte";
 import { FlagForm } from "@/components/today/flag-form";
 import { Timeline } from "@/components/dashboard/timeline";
 import { getLogDetail, type DetailSubmission, type LogDetail } from "@/lib/log-detail";
+import { createClient } from "@/lib/supabase/server";
 import { getTimeline } from "@/lib/timeline";
+import { TIPS } from "@/lib/tips";
 import { formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 
 export const metadata: Metadata = { title: "その日の記録 | Commit or Treat" };
@@ -26,6 +29,12 @@ const STATUS: Record<string, string> = {
   missed: "未達成",
   no_declaration: "宣言なし",
   invalidated: "証拠不認定",
+};
+
+/** A makeup session (補習) pays one back when completed; a failed one just doesn't count. */
+const MAKEUP_STATUS: Record<string, string> = {
+  completed: "返した",
+  missed: "数えない",
 };
 
 const DISPUTE: Record<string, string> = {
@@ -52,10 +61,17 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
   return (
     <div className="grid gap-5">
       <header className="grid gap-1">
-        <p className="m-0 text-sm font-bold text-sub">{formatJstDay(log.date)}</p>
+        <p className="m-0 text-sm font-bold text-sub">
+          {formatJstDay(log.date)}
+          {log.isMakeup ? " ・ 補習" : ""}
+        </p>
         <div className="flex items-center justify-between gap-2">
-          <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">{owner.name} さんの記録</h1>
-          <Pill variant={log.status === "completed" ? "ink" : "outline"}>{STATUS[log.status] ?? log.status}</Pill>
+          <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">
+            {owner.name} さんの{log.isMakeup ? "補習" : "記録"}
+          </h1>
+          <Pill variant={log.status === "completed" ? "ink" : "outline"}>
+            {(log.isMakeup ? MAKEUP_STATUS[log.status] : undefined) ?? STATUS[log.status] ?? log.status}
+          </Pill>
         </div>
       </header>
 
@@ -79,7 +95,7 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
         </Sticker>
       ) : null}
 
-      {log.status === "missed" ? (
+      {log.status === "missed" && !log.isMakeup ? (
         <Link href={`/reports/${log.id}`} className="text-sm font-bold underline underline-offset-2">
           理由申告を見る →
         </Link>
@@ -120,7 +136,7 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
       </section>
 
       {dispute && can.resend ? (
-        <Sticker tone="tape" className="grid gap-3 px-4 py-4">
+        <Sticker data-tip="flagged" tone="tape" className="grid gap-3 px-4 py-4">
           <b>証拠を送り直す</b>
           <span className="text-sm font-medium">
             {formatJstDateTime(dispute.resendDueAt)} まで（あと <Countdown until={dispute.resendDueAt} />
@@ -129,7 +145,27 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
           <ResendForm logId={log.id} userId={detail.meId} date={log.date} />
         </Sticker>
       ) : null}
+
+      <LogTip detail={detail} />
     </div>
+  );
+}
+
+/** Coach marks (F15): flagged and resending, asked for the final review, or able to flag. */
+async function LogTip({ detail }: { detail: LogDetail }) {
+  const { dispute, can } = detail;
+  if (!(dispute && can.resend) && !can.review && !can.flag) return null;
+  const supabase = await createClient();
+  const { data: settings, error } = await supabase.from("group_settings").select("penalty_fake_evidence").single();
+  if (error) throw error;
+  return (
+    <PageTip
+      candidates={[
+        dispute && can.resend && ["flagged", TIPS.flagged({ target: "submission", dueAt: formatJstDateTime(dispute.resendDueAt) })],
+        can.review && ["review", TIPS.review({ target: "dispute", yen: settings.penalty_fake_evidence })],
+        can.flag && ["peer_buttons", TIPS.peer_buttons],
+      ]}
+    />
   );
 }
 
@@ -170,7 +206,11 @@ function DisputeSection({ detail }: { detail: LogDetail }) {
         </ul>
       ) : null}
       {can.withdraw ? <WithdrawFlagButton logId={log.id} /> : null}
-      {can.review ? <DisputeReview logId={log.id} /> : null}
+      {can.review ? (
+        <div data-tip="review">
+          <DisputeReview logId={log.id} />
+        </div>
+      ) : null}
     </Sticker>
   );
 }

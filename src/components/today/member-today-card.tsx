@@ -3,18 +3,42 @@ import { Pill } from "@/components/brand/pill";
 import { Stamp } from "@/components/brand/stamp";
 import { Sticker } from "@/components/brand/sticker";
 import { FlagList } from "@/components/declare/flag-list";
+import { Crown } from "@/components/standing/crown";
+import { RankBadge } from "@/components/standing/rank-badge";
+import { TitleBadges } from "@/components/standing/title-badges";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import Link from "next/link";
 import { actionButtonVariants } from "@/components/brand/action-button";
 import { formatJstDateTime, formatJstDay } from "@/lib/time";
+import type { RankId, Standing } from "@/lib/standing/rules";
 import type { TodayLog, TodayMember } from "@/lib/today";
+import { cn } from "@/lib/utils";
 import { FlagForm } from "./flag-form";
 
-/** One member's day on the home board: declaration, deadline, passphrase and flags. */
-export function MemberTodayCard({ member }: { member: TodayMember }) {
+/**
+ * One member's day on the home board: declaration, deadline, passphrase and flags, the makeup
+ * sessions (補習) they still owe, and their rank, titles and crown (F13, F14). The card's look
+ * follows the member's rank; the whole screen follows the viewer's (ViewerTheme).
+ */
+export function MemberTodayCard({
+  member,
+  makeup,
+  standing,
+  viewerRank,
+}: {
+  member: TodayMember;
+  makeup?: { remaining: number; overdue: number };
+  standing?: Standing;
+  /** The viewer's rank: the lowest one words the submit button differently. */
+  viewerRank?: RankId;
+}) {
   const { state } = member;
   return (
-    <Sticker className="grid gap-2.5 px-3.5 py-3">
+    <Sticker
+      data-rank={standing?.rank.id}
+      className={cn("rank-card relative grid gap-2.5 px-3.5 py-3", standing?.last && "-rotate-1")}
+    >
+      {standing?.crown ? <Crown className="absolute -top-3 -left-2 w-9 -rotate-12" /> : null}
       <div className="grid grid-cols-[44px_1fr_auto] items-center gap-x-3">
         <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
         <div className="min-w-0">
@@ -29,7 +53,29 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
         <Badge member={member} />
       </div>
 
+      {standing ? (
+        <div className="flex flex-wrap items-center gap-1.5">
+          {standing.crown ? (
+            <span className="inline-flex items-center gap-0.5 text-xs font-black">
+              <Crown className="w-4" />
+              1位
+            </span>
+          ) : null}
+          <RankBadge standing={standing} />
+          <TitleBadges titles={standing.titles} />
+        </div>
+      ) : null}
+
       {member.previous ? <PreviousLine member={member} log={member.previous} /> : null}
+
+      {makeup && makeup.remaining > 0 ? (
+        <Link
+          href={member.isMe ? "/makeup" : "/makeup#others"}
+          className={`text-sm font-bold underline underline-offset-2 ${makeup.overdue > 0 ? "text-red" : ""}`}
+        >
+          補習 残り {makeup.remaining} 回{makeup.overdue > 0 ? `（期限切れ ${makeup.overdue} 回・逃走中）` : ""} →
+        </Link>
+      ) : null}
 
       {state.kind === "declared" ? (
         <>
@@ -75,7 +121,7 @@ export function MemberTodayCard({ member }: { member: TodayMember }) {
           ) : null}
           {member.isMe && state.log.status === "pending" ? (
             <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
-              提出する
+              {viewerRank === "doushiyou-mo-nai" ? "提出して罪を償う" : "提出する"}
             </Link>
           ) : null}
         </>

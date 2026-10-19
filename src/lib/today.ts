@@ -117,7 +117,9 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
       .select(
         "id, user_id, date, status, declaration, original_declaration, target_end_time, passphrase, declared_at, revision_due_at, revised_at, dispute_window_ends_at",
       )
-      .in("date", [yesterday, date]),
+      .in("date", [yesterday, date])
+      // Makeup sessions (補習) are not study days; /makeup shows them.
+      .eq("is_makeup", false),
     supabase.from("rest_days").select("user_id").eq("date", date),
     supabase
       .from("leave_requests")

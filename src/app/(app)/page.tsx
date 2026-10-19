@@ -6,13 +6,18 @@ import { RankingReceipt, type RankingRow } from "@/components/dashboard/ranking-
 import { Timeline } from "@/components/dashboard/timeline";
 import { TodoList } from "@/components/dashboard/todo-list";
 import { InvitePanel } from "@/components/invite/invite-panel";
+import { PageTip } from "@/components/onboarding/page-tip";
 import { MemberTodayCard } from "@/components/today/member-today-card";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { requireMember } from "@/lib/auth";
+import { XpRanking } from "@/components/standing/xp-ranking";
+import { getMakeupBoard } from "@/lib/makeup";
+import { getStandings } from "@/lib/standing/load";
 import { getMaxMembers, isInTrial, listMembers } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
 import { getTimeline } from "@/lib/timeline";
 import { getTodayBoard } from "@/lib/today";
+import { TIPS } from "@/lib/tips";
 import { getTodos } from "@/lib/todo";
 
 // Home (F10): what's waiting on you, everyone's day (with 「軽すぎる」 / 「怪しい」 links), this
@@ -21,8 +26,10 @@ export default function HomePage() {
   return (
     <div data-wide className="grid gap-6 lg:grid-cols-2 lg:gap-x-10">
       <header className="flex items-center justify-between gap-3 lg:col-span-2">
-        <h1 className="m-0 font-en text-[clamp(1.4rem,7vw,1.8rem)] leading-none whitespace-nowrap [text-shadow:3px_3px_0_#fff,5px_5px_0_var(--ink)]">
-          COMMIT OR TREAT
+        {/* The viewer's rank restyles the title (globals.css: .brand-title under [data-viewer-rank]). */}
+        <h1 className="brand-title relative m-0 font-en text-[clamp(1.4rem,7vw,1.8rem)] leading-none whitespace-nowrap [text-shadow:3px_3px_0_#fff,5px_5px_0_var(--ink)]">
+          <span>COMMIT </span>
+          <span className="brand-or-treat">OR TREAT</span>
         </h1>
         <Suspense fallback={<span className="size-11 rounded-full border-[3px] border-ink bg-card" />}>
           <MyAvatarLink />
@@ -38,7 +45,7 @@ export default function HomePage() {
       {/* PC: what to do on the left, the group's week on the right. On a phone the columns
           dissolve (contents) and the sections stack in the original order. */}
       <div className="contents lg:grid lg:content-start lg:gap-6">
-        <section className="grid gap-2.5">
+        <section data-tip="home_todo" className="grid gap-2.5">
           <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">あなたがやること</h2>
           <Suspense fallback={<PageLoading />}>
             <Todos />
@@ -61,6 +68,10 @@ export default function HomePage() {
           <Ranking />
         </Suspense>
 
+        <Suspense fallback={null}>
+          <Ranks />
+        </Suspense>
+
         <section className="grid gap-3">
           <h2 className="m-0 font-en text-[1.4rem] leading-none">TIMELINE</h2>
           <Suspense fallback={<PageLoading />}>
@@ -68,7 +79,24 @@ export default function HomePage() {
           </Suspense>
         </section>
       </div>
+
+      <Suspense fallback={null}>
+        <HomeTip />
+      </Suspense>
     </div>
+  );
+}
+
+/** Coach marks (F15): what to do first, then the 「軽すぎる？」 link once someone else has one. */
+async function HomeTip() {
+  const board = await getTodayBoard();
+  return (
+    <PageTip
+      candidates={[
+        ["home_todo", TIPS.home_todo],
+        board.members.some((member) => member.canFlag) && ["peer_buttons", TIPS.peer_buttons],
+      ]}
+    />
   );
 }
 
@@ -96,7 +124,13 @@ async function Todos() {
 }
 
 async function Missions() {
-  const [board, maxMembers] = await Promise.all([getTodayBoard(), getMaxMembers()]);
+  const [board, maxMembers, makeup, standings] = await Promise.all([
+    getTodayBoard(),
+    getMaxMembers(),
+    getMakeupBoard(),
+    getStandings(),
+  ]);
+  const viewerRank = standings.get(board.me.id)?.rank.id;
   return (
     <section className="grid gap-3">
       <div className="flex items-baseline justify-between">
@@ -106,7 +140,13 @@ async function Missions() {
         </span>
       </div>
       {board.members.map((member) => (
-        <MemberTodayCard key={member.id} member={member} />
+        <MemberTodayCard
+          key={member.id}
+          member={member}
+          makeup={makeup.enabled ? makeup.remainingByMember.get(member.id) : undefined}
+          standing={standings.get(member.id)}
+          viewerRank={viewerRank}
+        />
       ))}
     </section>
   );
@@ -115,9 +155,12 @@ async function Missions() {
 async function Ranking() {
   const me = await requireMember();
   const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("penalty_summary")
-    .select("user_id, display_name, this_week_points, this_week_trial_points, total_points, open_settlement_id");
+  const [{ data, error }, standings] = await Promise.all([
+    supabase
+      .from("penalty_summary")
+      .select("user_id, display_name, this_week_points, this_week_trial_points, total_points, open_settlement_id"),
+    getStandings(),
+  ]);
   if (error) throw error;
   const rows: RankingRow[] = data.map((row) => ({
     userId: row.user_id!,
@@ -126,8 +169,22 @@ async function Ranking() {
     thisWeekTrial: row.this_week_trial_points ?? 0,
     total: row.total_points ?? 0,
     owes: row.open_settlement_id !== null,
+    // 貧乏人 (F13): only past the deadline (P7), not every open settlement.
+    broke: standings.get(row.user_id!)?.titles.some((title) => title.id === "binbounin") ?? false,
   }));
   return <RankingReceipt rows={rows} iOwe={rows.some((row) => row.userId === me.id && row.owes)} />;
+}
+
+async function Ranks() {
+  const [members, standings] = await Promise.all([listMembers(), getStandings()]);
+  return (
+    <XpRanking
+      rows={members.flatMap((member, index) => {
+        const standing = standings.get(member.id);
+        return standing ? [{ id: member.id, name: member.display_name, avatarUrl: member.avatar_url, colorIndex: index, standing }] : [];
+      })}
+    />
+  );
 }
 
 /** The latest few; the rest is on /timeline. */

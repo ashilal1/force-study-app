@@ -13,8 +13,11 @@ import { GiveUpButton } from "@/components/declare/give-up-button";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import { RestDayPlanner, type PlannerDay } from "@/components/declare/rest-day-planner";
 import { ReviseForm } from "@/components/declare/revise-form";
+import { PageTip } from "@/components/onboarding/page-tip";
+import { getMakeupBoard } from "@/lib/makeup";
 import { createClient } from "@/lib/supabase/server";
 import { addDays, formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
+import { TIPS } from "@/lib/tips";
 import { getTodayBoard, isOnLeave, type TodayLog } from "@/lib/today";
 
 export const metadata: Metadata = { title: "宣言 | Commit or Treat" };
@@ -25,6 +28,9 @@ export default function DeclarePage() {
       <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">今日の宣言</h1>
       <Suspense fallback={<PageLoading />}>
         <Today />
+      </Suspense>
+      <Suspense fallback={null}>
+        <MakeupLink />
       </Suspense>
 
       <section className="grid gap-3">
@@ -75,19 +81,30 @@ async function Today() {
         return <PreviousDay log={me.previous} cutoff={cutoff} />;
       }
       return (
-        <DeclareForm
-          cutoff={cutoff}
-          submitBy={new Date(`${addDays(date, 1)}T${settings.declaration_cutoff}+09:00`).toISOString()}
-          nextPlan={await lastNextPlan(me.id)}
-        />
+        <>
+          <DeclareForm
+            cutoff={cutoff}
+            submitBy={new Date(`${addDays(date, 1)}T${settings.declaration_cutoff}+09:00`).toISOString()}
+            nextPlan={await lastNextPlan(me.id)}
+          />
+          <PageTip candidates={[["declare_input", TIPS.declare_input]]} />
+        </>
       );
   }
 }
 
 function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
   const revising = Boolean(log.revision_due_at && !log.revised_at && now < new Date(log.revision_due_at).getTime());
+  const canGiveUp = log.status === "pending" && log.latest?.status !== "judging";
   return (
     <div className="grid gap-4">
+      <PageTip
+        candidates={[
+          revising && ["flagged", TIPS.flagged({ target: "declaration", dueAt: formatJstTime(log.revision_due_at!) })],
+          log.status === "pending" && ["passphrase", TIPS.passphrase],
+          canGiveUp && ["give_up", TIPS.give_up],
+        ]}
+      />
       <Sticker className="grid gap-3 px-4 py-4">
         <div className="flex items-center justify-between gap-2">
           <Pill variant="outline">宣言 {formatJstTime(log.declared_at!)}</Pill>
@@ -105,7 +122,9 @@ function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
             書き直す前: <s>{log.original_declaration}</s>
           </p>
         ) : null}
-        <PassphraseCard value={log.passphrase!} />
+        <div data-tip="passphrase">
+          <PassphraseCard value={log.passphrase!} />
+        </div>
       </Sticker>
 
       {log.flags.length > 0 ? (
@@ -121,7 +140,7 @@ function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
       ) : null}
 
       {revising ? (
-        <Sticker className="px-4 py-4">
+        <Sticker data-tip="flagged" className="px-4 py-4">
           <ReviseForm logId={log.id} current={log.declaration!} dueAt={log.revision_due_at!} />
         </Sticker>
       ) : null}
@@ -137,7 +156,11 @@ function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
             <span>提出する</span>
             <span className="font-sans text-xs font-bold">合言葉を紙に書いて、成果物と一緒に撮る</span>
           </Link>
-          {log.latest?.status !== "judging" ? <GiveUpButton logId={log.id} /> : null}
+          {canGiveUp ? (
+            <div data-tip="give_up" className="grid">
+              <GiveUpButton logId={log.id} />
+            </div>
+          ) : null}
         </>
       ) : null}
     </div>
@@ -176,10 +199,25 @@ function PreviousDay({ log, cutoff }: { log: TodayLog; cutoff: string }) {
           <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
             {day} の分を提出する
           </Link>
-          <GiveUpButton logId={log.id} />
+          <div data-tip="give_up" className="grid">
+            <GiveUpButton logId={log.id} />
+          </div>
+          <PageTip candidates={[["give_up", TIPS.give_up]]} />
         </>
       )}
     </div>
+  );
+}
+
+/** Makeup sessions (補習) still owed: they are declared on /makeup, apart from the day. */
+async function MakeupLink() {
+  const { enabled, balance } = await getMakeupBoard();
+  if (!enabled || balance.remaining === 0) return null;
+  return (
+    <Link href="/makeup" className={actionButtonVariants({ tone: balance.overdue > 0 ? "red" : "tape" })}>
+      <span>補習が {balance.remaining} 回あります</span>
+      <span className="font-sans text-xs font-bold">補習の画面で宣言・提出する</span>
+    </Link>
   );
 }
 

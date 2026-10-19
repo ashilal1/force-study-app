@@ -1,4 +1,5 @@
 import { SETTING_FIELDS } from "@/lib/group-settings";
+import { RANKS, TITLES, type TitleId } from "@/lib/standing/rules";
 import { formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 
 // Who hears about an event, and what it says (requirements N1). Pure so it can be tested without
@@ -11,6 +12,8 @@ export type ActivityEvent = {
   actor_id: string | null;
   study_log_id?: string | null;
   payload: Record<string, unknown>;
+  /** The event's study_logs row is a makeup session (補習, F8b), not a study day. Set by the loader. */
+  makeup?: boolean;
 };
 
 export type MemberName = { id: string; display_name: string };
@@ -50,6 +53,14 @@ const self = (members: MemberName[], event: ActivityEvent) => members.filter((me
 const reportUrl = (event: ActivityEvent) => (event.study_log_id ? `/reports/${event.study_log_id}` : "/");
 
 const logUrl = (event: ActivityEvent) => (event.study_log_id ? `/logs/${event.study_log_id}` : "/");
+
+const MAKEUP_URL = "/makeup";
+
+/** Where the member acts on their own day ("/declare", "/submit") or makeup session ("/makeup"). */
+const ownUrl = (event: ActivityEvent, dayUrl: string) => (event.makeup ? MAKEUP_URL : dayUrl);
+
+/** "提出" or "補習の提出". */
+const submissionWord = (event: ActivityEvent) => (event.makeup ? "補習の提出" : "提出");
 
 /** "4 時間 12 分" / "35 分". */
 function duration(minutes: number): string {
@@ -135,14 +146,14 @@ const RULES: Record<string, Rule> = {
     return [
       ...draft(
         members.filter((member) => member.id === owner),
-        `${flagger} さんが「軽すぎる」と指摘しました`,
+        event.makeup ? `${flagger} さんが補習の宣言を「軽すぎる」と指摘しました` : `${flagger} さんが「軽すぎる」と指摘しました`,
         `${comment} ／ ${formatJstTime(text(event.payload.revision_due_at))} までに書き直してください`,
-        "/declare",
+        ownUrl(event, "/declare"),
         true,
       ),
       ...draft(
         everyoneExcept(members, owner, event.actor_id),
-        `${flagger} さんが ${nameOf(members, owner)} さんの宣言に指摘しました`,
+        `${flagger} さんが ${nameOf(members, owner)} さんの${event.makeup ? "補習の" : ""}宣言に指摘しました`,
         comment,
         "/",
       ),
@@ -152,7 +163,7 @@ const RULES: Record<string, Rule> = {
   declaration_revised: (event, members) =>
     draft(
       everyoneExcept(members, event.actor_id),
-      `${nameOf(members, event.actor_id)} さんが宣言を書き直しました`,
+      `${nameOf(members, event.actor_id)} さんが${event.makeup ? "補習の" : ""}宣言を書き直しました`,
       `「${text(event.payload.declaration)}」`,
       "/",
     ),
@@ -161,8 +172,10 @@ const RULES: Record<string, Rule> = {
     draft(
       members.filter((member) => member.id === event.actor_id),
       "書き直しの期限まであと 15 分",
-      "書き直さないと宣言なしになり、ペナルティが付きます",
-      "/declare",
+      event.makeup
+        ? "書き直さないとこの補習は取り消しになります（借りは減りません）"
+        : "書き直さないと宣言なしになり、ペナルティが付きます",
+      ownUrl(event, "/declare"),
       true,
     ),
 
@@ -173,7 +186,7 @@ const RULES: Record<string, Rule> = {
   submitted: (event, members) =>
     draft(
       everyoneExcept(members, event.actor_id),
-      `${nameOf(members, event.actor_id)} さんが提出しました`,
+      `${nameOf(members, event.actor_id)} さんが${event.makeup ? "補習を" : ""}提出しました`,
       `宣言から ${duration(Number(event.payload.elapsed_minutes ?? 0))}`,
       "/",
     ),
@@ -185,13 +198,15 @@ const RULES: Record<string, Rule> = {
     return [
       ...draft(
         members.filter((member) => member.id === event.actor_id),
-        `合格しました（${event.payload.score} 点）`,
-        `${until} まで「怪しい」がなければ達成で確定します`,
-        "/submit",
+        `${event.makeup ? "補習が" : ""}合格しました（${event.payload.score} 点）`,
+        event.makeup
+          ? `${until} まで「怪しい」がなければ、補習を 1 回返したことになります`
+          : `${until} まで「怪しい」がなければ達成で確定します`,
+        ownUrl(event, "/submit"),
       ),
       ...draft(
         everyoneExcept(members, event.actor_id),
-        `${name} さんが合格しました（${event.payload.score} 点）`,
+        `${name} さん${event.makeup ? "の補習" : ""}が合格しました（${event.payload.score} 点）`,
         `怪しければ ${until} までに指摘できます`,
         "/",
       ),
@@ -210,7 +225,7 @@ const RULES: Record<string, Rule> = {
       ),
       ...draft(
         everyoneExcept(members, event.actor_id),
-        `${nameOf(members, event.actor_id)} さんの提出を確認してください（AI 未判定）`,
+        `${nameOf(members, event.actor_id)} さんの${submissionWord(event)}を確認してください（AI 未判定）`,
         `AI が判定できなかったので仮の合格です。合言葉と内容を見て、おかしければ ${until} までに「怪しい」を`,
         logUrl(event),
         true,
@@ -226,18 +241,20 @@ const RULES: Record<string, Rule> = {
     return [
       ...draft(
         members.filter((member) => member.id === event.actor_id),
-        `不合格でした（${event.payload.score} 点）`,
+        `${event.makeup ? "補習は" : ""}不合格でした（${event.payload.score} 点）`,
         `${reason}${text(event.payload.feedback)} ／ ${
           left > 0
             ? `残り ${left} 回（締切 ${formatJstDateTime(text(event.payload.deadline))}）`
-            : "提出回数を使い切りました。宣言の画面で「できなかった」を押して、理由を申告してください"
+            : event.makeup
+              ? "提出回数を使い切りました。この補習は数えられないので、別の日にもう一度宣言してください"
+              : "提出回数を使い切りました。宣言の画面で「できなかった」を押して、理由を申告してください"
         }`,
-        "/submit",
+        ownUrl(event, "/submit"),
         left > 0,
       ),
       ...draft(
         everyoneExcept(members, event.actor_id),
-        `${name} さんの提出は不合格（${event.payload.score} 点）`,
+        `${name} さんの${submissionWord(event)}は不合格（${event.payload.score} 点）`,
         left > 0 ? `残り ${left} 回` : "提出回数を使い切りました",
         "/",
       ),
@@ -258,7 +275,7 @@ const RULES: Record<string, Rule> = {
       ),
       ...draft(
         everyoneExcept(members, owner, event.actor_id),
-        `${flagger} さんが ${nameOf(members, owner)} さんの提出に「怪しい」を押しました`,
+        `${flagger} さんが ${nameOf(members, owner)} さんの${submissionWord(event)}に「怪しい」を押しました`,
         text(event.payload.comment),
         logUrl(event),
       ),
@@ -300,14 +317,14 @@ const RULES: Record<string, Rule> = {
     return [
       ...draft(
         members.filter((member) => reviewers.includes(member.id)),
-        `${owner} さんの提出を最終審査してください`,
+        `${owner} さんの${submissionWord(event)}を最終審査してください`,
         `${formatJstDateTime(text(event.payload.review_due_at))} まで。却下するときは理由が必要です`,
         logUrl(event),
         true,
       ),
       ...draft(
         members.filter((member) => member.id === event.actor_id),
-        "あなたの提出は最終審査になりました",
+        `あなたの${submissionWord(event)}は最終審査になりました`,
         "理由付きの却下が 1 人でもあれば証拠不認定です",
         logUrl(event),
       ),
@@ -315,13 +332,20 @@ const RULES: Record<string, Rule> = {
   },
 
   dispute_upheld: (event, members) =>
-    draft(members, `${nameOf(members, event.actor_id)} さんの達成が認められました`, "", logUrl(event)),
+    draft(
+      members,
+      `${nameOf(members, event.actor_id)} さんの${event.makeup ? "補習" : "達成"}が認められました`,
+      "",
+      logUrl(event),
+    ),
 
   dispute_invalidated: (event, members) =>
     draft(
       members,
       `${nameOf(members, event.actor_id)} さんの証拠は不認定になりました`,
-      `${nameOf(members, event.payload.rejected_by)} さん: ${text(event.payload.comment)} ／ ${yen(event.payload)}`,
+      `${nameOf(members, event.payload.rejected_by)} さん: ${text(event.payload.comment)} ／ ${
+        event.makeup ? "この補習は数えません" : yen(event.payload)
+      }`,
       logUrl(event),
     ),
 
@@ -361,9 +385,9 @@ const RULES: Record<string, Rule> = {
   reminder_submit: (event, members) =>
     draft(
       self(members, event),
-      "提出締切まであと 1 時間",
+      `${event.makeup ? "補習の" : ""}提出締切まであと 1 時間`,
       `締切 ${formatJstDateTime(text(event.payload.deadline))}。まだ合格していません`,
-      "/submit",
+      ownUrl(event, "/submit"),
       true,
     ),
 
@@ -530,10 +554,129 @@ const RULES: Record<string, Rule> = {
       `/members/${event.actor_id}/weeks/${text(event.payload.week_end)}`,
     ),
 
+  // --- Makeup study (補習, F8b, P9, P10) ------------------------------------------------------
+  makeup_warning: (event, members) =>
+    draft(
+      self(members, event),
+      `サボりが ${event.payload.streak} 回続いています`,
+      event.payload.trial
+        ? "次もサボると、本番なら補習が付きます（お試し期間なので付きません）"
+        : `次もサボると補習が ${event.payload.count} 回付きます`,
+      "/declare",
+    ),
+
+  makeup_assigned: (event, members) => {
+    const name = nameOf(members, event.actor_id);
+    const count = Number(event.payload.count ?? 1);
+    if (event.payload.waived === "trial") {
+      return draft(
+        members,
+        `${name} さんがサボり ${event.payload.streak} 連続`,
+        `お試し期間なので本番なら補習 ${count} 回`,
+        "/",
+      );
+    }
+    const due = formatJstDateTime(text(event.payload.due_at));
+    return [
+      ...draft(self(members, event), `補習が ${count} 回付きました（サボり ${event.payload.streak} 連続）`, `${due} までに返してください`, MAKEUP_URL, true),
+      ...draft(everyoneExcept(members, event.actor_id), `${name} さんがサボり ${event.payload.streak} 連続。補習 ${count} 回`, `期限 ${due}`, "/"),
+    ];
+  },
+
+  makeup_declared: (event, members) =>
+    draft(
+      everyoneExcept(members, event.actor_id),
+      `${nameOf(members, event.actor_id)} さんが補習を宣言しました`,
+      `「${text(event.payload.declaration)}」（締切 ${formatJstDateTime(text(event.payload.target_end_time))}）`,
+      "/",
+    ),
+
+  makeup_failed: (event, members) => {
+    const cause = event.payload.cause;
+    const title =
+      cause === "unrevised" ? "補習を取り消しました（書き直しがありませんでした）" : cause === "gave_up" ? "補習をやめました" : "補習の提出締切を過ぎました";
+    return [
+      ...draft(self(members, event), title, "借りは減っていません。別の日にもう一度宣言してください", MAKEUP_URL),
+      ...draft(everyoneExcept(members, event.actor_id), `${nameOf(members, event.actor_id)} さんの補習は数えられませんでした`, "", "/"),
+    ];
+  },
+
+  makeup_completed: (event, members) => [
+    ...draft(self(members, event), "補習を 1 回返しました", "おつかれさまでした", MAKEUP_URL),
+    ...draft(everyoneExcept(members, event.actor_id), `${nameOf(members, event.actor_id)} さんが補習を 1 回返しました`, "", "/"),
+  ],
+
+  makeup_overdue: (event, members) => {
+    const count = Number(event.payload.count ?? 1);
+    return [
+      ...draft(
+        self(members, event),
+        `補習の期限を過ぎたので +${count} 回`,
+        `期限切れが ${event.payload.overdue} 回あります。返し終わるまで毎週増えます`,
+        MAKEUP_URL,
+        true,
+      ),
+      ...draft(everyoneExcept(members, event.actor_id), `${nameOf(members, event.actor_id)} さんが補習から逃走。+${count} 回`, "", "/"),
+    ];
+  },
+
+  makeup_due: (event, members) => {
+    const overdue = Number(event.payload.overdue ?? 0);
+    return draft(
+      self(members, event),
+      `補習が ${event.payload.remaining} 回あります`,
+      `${formatJstDateTime(text(event.payload.next_due_at))} までに返してください${overdue > 0 ? `（期限切れ ${overdue} 回）` : ""}`,
+      MAKEUP_URL,
+      true,
+    );
+  },
+
+  reminder_makeup_due: (event, members) =>
+    draft(
+      self(members, event),
+      "補習の期限まであと 24 時間",
+      `残り ${event.payload.remaining} 回。${formatJstDateTime(text(event.payload.due_at))} を過ぎると +1 回`,
+      MAKEUP_URL,
+      true,
+    ),
+
+  // --- Titles, ranks and the crown (F13, F14) --------------------------------------------------
+  title_awarded: (event, members) => {
+    const title = TITLES[event.payload.title as TitleId];
+    if (!title) return [];
+    return draft(
+      members,
+      `${nameOf(members, event.actor_id)} さんに称号「${title.name}」`,
+      `${title.how}（${title.until}）`,
+      `/members/${event.actor_id}`,
+    );
+  },
+
+  title_removed: (event, members) => {
+    const title = TITLES[event.payload.title as TitleId];
+    if (!title) return [];
+    return draft(members, `${nameOf(members, event.actor_id)} さんの「${title.name}」が外れました`, "", `/members/${event.actor_id}`);
+  },
+
+  rank_changed: (event, members) => {
+    const to = RANKS.find((rank) => rank.id === event.payload.to);
+    if (!to) return [];
+    return draft(
+      members,
+      `${nameOf(members, event.actor_id)} さんが「${to.name}」に${event.payload.up ? "上がりました" : "下がりました"}`,
+      "ランクは直近 28 日の XP で決まります",
+      `/members/${event.actor_id}`,
+    );
+  },
+
+  crown_moved: (event, members) =>
+    draft(members, `王冠が ${nameOf(members, event.actor_id)} さんに移りました`, "直近 28 日の XP でグループ 1 位", `/members/${event.actor_id}`),
+
   // --- Group settings (F11) ---------------------------------------------------------------
   settings_changed: (event, members) => {
     const changes = (event.payload.changes ?? {}) as Record<string, unknown>;
     const lines = Object.entries(changes).map(([key, value]) => {
+      if (key === "makeup_since") return value ? `補習: 使う（${formatJstDay(String(value))} から）` : "補習: 使わない";
       const field = SETTING_FIELDS.find((candidate) => candidate.key === key);
       const shown = field?.type === "time" ? String(value).slice(0, 5) : `${value}${field?.unit ?? ""}`;
       return `${field?.label ?? key}: ${shown}`;

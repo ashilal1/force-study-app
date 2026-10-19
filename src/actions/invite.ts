@@ -39,7 +39,8 @@ export async function createInvite(): Promise<InviteState> {
   return {
     status: "issued",
     code: formatted,
-    url: `${origin}/join?code=${formatted}`,
+    // openExternalBrowser=1: LINE opens the link in Safari / Chrome, where Google sign-in works (F15).
+    url: `${origin}/join?code=${formatted}&openExternalBrowser=1`,
     expiresAt: invite.expires_at,
   };
 }

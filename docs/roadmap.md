@@ -82,3 +82,31 @@
 - [x] `create_group` / `rename_group` / `set_admin`、参加画面の「新しいグループを作る」、設定画面のグループ名と管理者
 - [x] 通知はイベントのグループのメンバーにだけ
 - [x] 退会・管理者が外す・同じアカウントで入り直す（profile を 1 回の所属にする。ADR-035）
+
+## M11. 補習・称号・ランク（ADR-036・ADR-037）
+- [x] 仕様: `docs/requirements.md` の §2・F8b・F13・F14
+- [x] DB の設計（`docs/database.md`）: 補習 1 回 = `study_logs` の `is_makeup` の行（提出・判定・「怪しい」を使い回す）、借りは別の台帳 `makeup_debts`（`penalties` はお金だけのまま）、残りは `private.makeup_balance` / `makeup_summary` で計算。マイグレーション `20261021000001_makeup.sql`
+- [x] 補習の DB 側: `declare_makeup`、補習の行の分岐（「できなかった」・期限切れ・書き直しなしは `missed` だけ、P8 なし）、P9 `award_makeups`・P10 `close_makeup_week`・`due_makeup_reminders` を tick に追加、グループ設定の 4 項目（テスト `tests/db/makeup.test.ts`）
+- [x] 補習のアプリ側: `declareMakeup`、`/makeup`（残り・期限・借りの内訳・いまの補習・みんなの補習）、提出は `/submit?makeup=1`、「あなたがやること」・ホームのカード・宣言の画面のリンク、通知の文言（共通のイベントは `makeup` で言い方を変える）、学習日の読み込みから補習の行を外す（`lib/today.ts`・理由申告・週のまとめ）、設定画面の 4 項目と「補習を使う」、`/guide`
+- [x] Supabase に push して `supabase gen types` で型を作り直す（`20261021000001_makeup.sql`・`20261022000001_standings.sql`）
+- [ ] DB と画面を一緒に main へ出し、そのあと管理者が設定で「補習を使う」をオンにする
+- [ ] 実機で確かめる（宣言 → 提出 → 判定 → 返した、「軽すぎる」、期限切れ）
+- [x] 称号と XP・ランク: 記録から計算する処理（`src/lib/standing/`、単体テスト）、カード・XP ランキング・振り返り画面（ゲージ・称号の説明・XP の内訳・これまでの称号）、「貧乏人」（P7 の人だけ）
+- [x] ランクで変わる見た目: カードの枠（金・銀・コンクリートとひび）、見ている本人のランクで画面全体（天才は金・王冠のタイトル・金のボタン、どうしようもないはコンクリート・くすみ・「OR PENALTY」・サイレンと柵・「提出して罪を償う」）。画像が届くまでは CSS・SVG の仮の絵（`docs/visual-assets.md`）
+- [x] 付いた・外れた・ランクの上下・王冠の移動を tick のあとに見つけて記録し、通知する（`record_standings`、ADR-041）
+- [ ] オーナーの画像に差し替える（`src/lib/standing/assets.ts` に足す）。王冠が移ったときの紙吹雪、タイムラインの名前の横の王冠
+- [x] 「奢り確定」を「貧乏人」に、`/guide` に補習・称号・ランクの説明
+- [ ] 画面の文言を「pt」から「円」に置き換える（列名はそのまま）、振り返り画面に XP の推移のグラフ
+- [ ] オーナーのバッジのイラストに差し替える
+
+## M12. はじめての体験（F15・ADR-038）
+- [x] 仕様: `docs/requirements.md` の F15、`docs/database.md`、`docs/architecture.md` の 2.8
+- [x] 入口: 招待リンクに `openExternalBrowser=1`、`/login` でアプリの中のブラウザを見分けて開き直しを案内、招待メッセージとログイン画面の注意書き
+- [x] マイグレーション: `profiles.rules_accepted_at`・`seen_tips`（今いるメンバーは同意済み・全部見たことにする）、RPC `accept_rules` / `mark_tip_seen` / `reset_tips`、入り直した人の `seen_tips`（insert のトリガー）
+- [x] レクチャー `/onboarding/intro`（6 枚・グループの設定と本人のお試しで数字を出す）と、`(app)/layout.tsx`・`/onboarding/notifications` のゲートの順番
+- [x] F0 のホーム画面に追加の手順に「アイコンから開いたらもう一度ログイン」
+- [x] コーチマークの部品と 11 か所
+- [ ] 用語の「？」
+- [x] 設定の「使い方をもう一度見る」、`/preview/intro`
+- [x] `/preview/tips`
+- [ ] Android の LINE から招待リンクを開いて、外のブラウザでログイン → 参加 → レクチャー → 通知まで通ることを実機で確かめる（iPhone は友人に頼む）

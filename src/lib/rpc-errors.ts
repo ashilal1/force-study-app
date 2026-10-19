@@ -28,6 +28,9 @@ const MESSAGES: Record<string, string> = {
   no_revision_needed: "書き直しは必要ありません",
   revision_expired: "書き直しの期限を過ぎています",
   unchanged: "内容を変えてください",
+  // Makeup study (補習)
+  no_makeup_due: "今は返す補習がありません（宣言中・判定中のものを除く）",
+  makeup_already_today: "補習は 1 日 1 回までです。明日また宣言してください",
   // Rest days
   rest_day_too_soon: "休息日は明日以降の日だけ登録・取り消しできます",
   rest_day_too_far: "休息日は 60 日先まで登録できます",
