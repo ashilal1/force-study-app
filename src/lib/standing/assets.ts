@@ -4,14 +4,13 @@
 /** Title and rank badges in public/badges/<id>.png (rank badges are "rank-<rank id>"). */
 export const BADGE_IMAGES = new Set<string>([]);
 
-/** Rank theme images in public/theme/. */
+/**
+ * Rank theme images in public/theme/ that replace a drawn stand-in. The textures, cracks, tape,
+ * crown and gold title from the design (grain, blotch, crack-*, tape-*, crown, title-gold) are
+ * always there and need no entry.
+ */
 export const THEME_IMAGES = {
-  crown: false,
-  concrete: false,
-  crack: false,
-  tape: false,
-  stain: false,
+  crown: true,
   siren: false,
   bars: false,
-  orPenalty: false,
 } as const satisfies Record<string, boolean>;

@@ -184,14 +184,14 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
           <RejudgeButton submissionId={open.id} />
         </Sticker>
       ) : log.status !== "pending" ? null : !beforeDeadline ? (
-        <Sticker className="grid gap-1 border-red px-4 py-3">
+        <Sticker tone="alert" className="grid gap-1 px-4 py-3">
           <b className="text-red">提出締切を過ぎました</b>
           <span className="text-sm font-medium">
             {log.makeup ? "この補習は数えられません。別の日にもう一度宣言してください。" : "合格できなかった日は、あとで理由を申告します。"}
           </span>
         </Sticker>
       ) : attemptsLeft === 0 ? (
-        <Sticker className="grid gap-1 border-red px-4 py-3">
+        <Sticker tone="alert" className="grid gap-1 px-4 py-3">
           <b className="text-red">{log.makeup ? "この補習の提出回数を使い切りました" : "この日の提出回数を使い切りました"}</b>
           <span className="text-sm font-medium">
             <Link href={declareHref} className="font-bold underline">
@@ -201,7 +201,7 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
           </span>
         </Sticker>
       ) : log.revision_due_at && !log.revised_at ? (
-        <Sticker className="grid gap-1 border-red px-4 py-3">
+        <Sticker tone="alert" className="grid gap-1 px-4 py-3">
           <b className="text-red">宣言の書き直しが先です</b>
           <span className="text-sm font-medium">
             提出はできますが、判定は書き直したあとの宣言で行います。先に

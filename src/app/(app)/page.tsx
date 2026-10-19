@@ -10,6 +10,7 @@ import { PageTip } from "@/components/onboarding/page-tip";
 import { MemberTodayCard } from "@/components/today/member-today-card";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { requireMember } from "@/lib/auth";
+import { Crown } from "@/components/standing/crown";
 import { XpRanking } from "@/components/standing/xp-ranking";
 import { getMakeupBoard } from "@/lib/makeup";
 import { getStandings } from "@/lib/standing/load";
@@ -26,11 +27,18 @@ export default function HomePage() {
   return (
     <div data-wide className="grid gap-6 lg:grid-cols-2 lg:gap-x-10">
       <header className="flex items-center justify-between gap-3 lg:col-span-2">
-        {/* The viewer's rank restyles the title (globals.css: .brand-title under [data-viewer-rank]). */}
-        <h1 className="brand-title relative m-0 font-en text-[clamp(1.4rem,7vw,1.8rem)] leading-none whitespace-nowrap [text-shadow:3px_3px_0_#fff,5px_5px_0_var(--ink)]">
-          <span>COMMIT </span>
-          <span className="brand-or-treat">OR TREAT</span>
-        </h1>
+        {/* The viewer's rank restyles the title (rank-themes.css: .brand-title, .brand-sparkles). */}
+        <div className="relative">
+          <span aria-hidden className="brand-sparkles">
+            {SPARKLES.map(([left, top, size, delay]) => (
+              <span key={`${left},${top}`} style={{ left, top, width: size, height: size, animationDelay: `${delay}s` }} />
+            ))}
+          </span>
+          <h1 className="brand-title relative m-0 font-en text-[clamp(1.4rem,7vw,1.8rem)] leading-none whitespace-nowrap [text-shadow:3px_3px_0_#fff,5px_5px_0_var(--ink)]">
+            <span>COMMIT </span>
+            <span className="brand-or-treat">OR TREAT</span>
+          </h1>
+        </div>
         <Suspense fallback={<span className="size-11 rounded-full border-[3px] border-ink bg-card" />}>
           <MyAvatarLink />
         </Suspense>
@@ -87,6 +95,16 @@ export default function HomePage() {
   );
 }
 
+/** Glints around the gold title: left, top, size (px) and delay (s). */
+const SPARKLES = [
+  [-20, 18, 14, 0],
+  [96, -16, 11, 0.9],
+  [200, -10, 9, 1.7],
+  [270, 30, 10, 2],
+  [292, -14, 22, 0.6],
+  [314, 14, 13, 1.3],
+] as const;
+
 /** Coach marks (F15): what to do first, then the 「軽すぎる？」 link once someone else has one. */
 async function HomeTip() {
   const board = await getTodayBoard();
@@ -102,14 +120,15 @@ async function HomeTip() {
 
 async function MyAvatarLink() {
   const me = await requireMember();
-  const members = await listMembers();
+  const [members, standings] = await Promise.all([listMembers(), getStandings()]);
   return (
-    <Link href="/settings" aria-label="プロフィールと設定">
+    <Link href="/settings" aria-label="プロフィールと設定" className="relative shrink-0">
       <Avatar
         name={me.display_name}
         src={me.avatar_url}
         colorIndex={Math.max(0, members.findIndex((member) => member.id === me.id))}
       />
+      {standings.get(me.id)?.crown ? <Crown className="pointer-events-none absolute -top-3.5 -left-3 w-8 -rotate-[18deg]" /> : null}
     </Link>
   );
 }

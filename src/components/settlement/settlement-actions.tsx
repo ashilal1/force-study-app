@@ -62,7 +62,7 @@ export function PayeeSelect({
           if (!payee) return;
           startTransition(async () => setError((await assignPayee(userId, payee)).error));
         }}
-        className="rounded-[10px] border-[2.5px] border-ink bg-card px-2 py-1.5 text-sm font-bold"
+        className="th-field rounded-[10px] border-[2.5px] border-ink bg-card px-2 py-1.5 text-sm font-bold"
       >
         <option value="" disabled>
           未設定

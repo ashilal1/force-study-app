@@ -21,18 +21,17 @@ export function XpRanking({ rows }: { rows: XpRow[] }) {
         {ranked.map((row) => {
           const place = ranked.findIndex((other) => other.standing.xp === row.standing.xp) + 1;
           return (
-            <li key={row.id}>
+            // The crown sits on the avatar but outside the card, so a themed edge doesn't trace it.
+            <li key={row.id} className="relative">
               <Sticker
                 shadow="sm"
-                data-rank={row.standing.rank.id}
-                data-compact
                 className={cn(
-                  "rank-card relative grid grid-cols-[1.6rem_36px_1fr_auto] items-center gap-2.5 px-3 py-2",
+                  "grid grid-cols-[1.6rem_36px_1fr_auto] items-center gap-2.5 px-3 py-2",
                   row.standing.crown && "py-3",
                   row.standing.last && "-rotate-1",
                 )}
               >
-                <span className="font-en text-lg">{row.standing.crown ? <Crown className="w-6" /> : place}</span>
+                <span className="font-en text-lg">{place}</span>
                 <Avatar name={row.name} src={row.avatarUrl} colorIndex={row.colorIndex} className="size-9 border-2" />
                 <Link href={`/members/${row.id}`} className="min-w-0 truncate font-bold hover:underline">
                   {row.name}
@@ -42,6 +41,9 @@ export function XpRanking({ rows }: { rows: XpRow[] }) {
                   <span className="font-en text-base tabular-nums">{row.standing.xp} XP</span>
                 </span>
               </Sticker>
+              {row.standing.crown ? (
+                <Crown className="pointer-events-none absolute top-[3px] left-[calc(15px+1.6rem)] z-10 w-7 -rotate-[18deg]" />
+              ) : null}
             </li>
           );
         })}

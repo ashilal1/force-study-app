@@ -12,7 +12,7 @@ export function RangeTabs({ basePath, current }: { basePath: string; current: Ra
           href={`${basePath}?range=${range.value}`}
           aria-current={current === range.value ? "page" : undefined}
           className={cn(
-            "rounded-full border-2 border-ink px-3 py-1 text-xs font-bold",
+            "th-chip rounded-full border-2 border-ink px-3 py-1 text-xs font-bold",
             current === range.value ? "bg-ink text-white" : "bg-card",
           )}
         >

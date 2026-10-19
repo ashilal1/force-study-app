@@ -14,7 +14,7 @@ export function Avatar({
   colorIndex?: number;
   className?: string;
 }) {
-  const base = cn("grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-[3px] border-ink", className);
+  const base = cn("th-avatar grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border-[3px] border-ink", className);
   if (src) {
     // eslint-disable-next-line @next/next/no-img-element -- avatars come from Google; no need for next/image here
     return <img src={src} alt="" className={base} />;

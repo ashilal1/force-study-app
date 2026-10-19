@@ -8,7 +8,7 @@ import type { MyToday } from "./types";
 
 function Passphrase({ value }: { value: string }) {
   return (
-    <Sticker tone="note" shadow="none" className="relative flex items-end justify-between border-[2.5px] border-dashed px-3 pt-3.5 pb-2.5">
+    <Sticker tone="note" shadow="none" data-surface="pass" className="relative flex items-end justify-between border-[2.5px] border-dashed px-3 pt-3.5 pb-2.5">
       <Tape className="-top-3 left-3.5" />
       <div>
         <small className="block text-xs text-sub">今日の合言葉（写真に写す）</small>

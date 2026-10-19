@@ -127,7 +127,7 @@ async function Settlements() {
       </Receipt>
 
       {myPayee === null ? (
-        <Sticker className="grid gap-1 border-red px-4 py-3">
+        <Sticker tone="alert" className="grid gap-1 px-4 py-3">
           <b className="text-red">あなたの支払先がまだ決まっていません</b>
           <span className="text-sm font-medium">誰に払うかをグループで決めて、管理者に入力してもらってください。</span>
         </Sticker>

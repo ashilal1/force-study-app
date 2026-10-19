@@ -81,7 +81,7 @@ export function LogTable({ rows }: { rows: LogRow[] }) {
           </button>
         ))}
       </div>
-      <div className="overflow-x-auto rounded-[12px] border-[2.5px] border-ink bg-card">
+      <div className="th-tbl overflow-x-auto rounded-[12px] border-[2.5px] border-ink bg-card">
         <table className="w-full min-w-[640px] border-collapse text-xs">
           <thead>
             {table.getHeaderGroups().map((group) => (

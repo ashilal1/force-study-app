@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 const fieldBox =
-  "w-full rounded-[14px] border-[3px] border-ink bg-card px-3 py-2.5 text-base font-bold text-ink shadow-hard-sm placeholder:font-medium placeholder:text-sub focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
+  "th-field w-full rounded-[14px] border-[3px] border-ink bg-card px-3 py-2.5 text-base font-bold text-ink shadow-hard-sm placeholder:font-medium placeholder:text-sub focus-visible:outline-[3px] focus-visible:outline-offset-2 focus-visible:outline-ink";
 
 export function FieldLabel({ htmlFor, children }: { htmlFor: string; children: React.ReactNode }) {
   return (

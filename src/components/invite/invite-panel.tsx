@@ -59,7 +59,7 @@ function IssuedInvite({ code, url, expiresAt }: { code: string; url: string; exp
 
   return (
     <div className="grid gap-3">
-      <div className="grid justify-items-center gap-1 rounded-[12px] border-[2.5px] border-dashed border-ink bg-card px-3 py-3">
+      <div className="th-box grid justify-items-center gap-1 rounded-[12px] border-[2.5px] border-dashed border-ink bg-card px-3 py-3">
         <span className={expired ? "font-en text-2xl tracking-wider text-sub line-through" : "font-en text-2xl tracking-wider"}>
           {code}
         </span>

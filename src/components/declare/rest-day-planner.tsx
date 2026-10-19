@@ -52,7 +52,7 @@ export function RestDayPlanner({ days, perWeek }: { days: PlannerDay[]; perWeek:
                   aria-pressed={day.rest}
                   aria-label={`${formatJstDay(day.date)}${day.rest ? " 休息日（タップで取り消し）" : day.leave ? " 休会" : ""}`}
                   className={cn(
-                    "grid min-h-14 place-items-center rounded-[10px] border-2 border-ink px-0.5 py-1 text-center text-xs leading-tight font-bold",
+                    "th-cell grid min-h-14 place-items-center rounded-[10px] border-2 border-ink px-0.5 py-1 text-center text-xs leading-tight font-bold",
                     day.rest ? "bg-sky shadow-hard-sm" : day.leave ? "bg-muted text-sub" : "bg-card",
                     busyDate === day.date && "opacity-50",
                   )}

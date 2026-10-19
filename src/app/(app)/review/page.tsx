@@ -61,7 +61,7 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
 
       <section className="grid gap-2.5">
         <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">メンバー比較</h2>
-        <div className="overflow-x-auto rounded-[12px] border-[2.5px] border-ink bg-card">
+        <div className="th-tbl overflow-x-auto rounded-[12px] border-[2.5px] border-ink bg-card">
           <table className="w-full min-w-[560px] border-collapse text-xs">
             <thead>
               <tr className="border-b-2 border-ink text-left">

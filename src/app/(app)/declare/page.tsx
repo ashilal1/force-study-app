@@ -275,7 +275,7 @@ async function lastNextPlan(userId: string): Promise<string | null> {
 
 function Notice({ title, tone = "white", children }: { title: string; tone?: "white" | "red"; children: React.ReactNode }) {
   return (
-    <Sticker className={tone === "red" ? "grid gap-1 border-red px-4 py-4" : "grid gap-1 px-4 py-4"}>
+    <Sticker tone={tone === "red" ? "alert" : "white"} className="grid gap-1 px-4 py-4">
       <b className={tone === "red" ? "text-red" : undefined}>{title}</b>
       <span className="text-sm font-medium">{children}</span>
     </Sticker>

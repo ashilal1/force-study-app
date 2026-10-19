@@ -197,7 +197,7 @@ function StepCard({
   children: React.ReactNode;
 }) {
   return (
-    <Sticker shadow="sm" className={tone === "red" ? "grid gap-1 border-red px-4 py-3" : "grid gap-1 px-4 py-3"}>
+    <Sticker shadow="sm" tone={tone === "red" ? "alert" : "white"} className="grid gap-1 px-4 py-3">
       <b className={tone === "red" ? "text-red" : undefined}>{title}</b>
       <div className="text-sm leading-relaxed font-medium">{children}</div>
     </Sticker>
