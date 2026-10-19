@@ -219,7 +219,7 @@ function Badge({ member }: { member: TodayMember }) {
           <Stamp
             tone="mint"
             label={member.state.log.status === "completed" ? "PASSED" : "合格"}
-            sub={member.state.log.passedScore === null ? undefined : `${member.state.log.passedScore}pt`}
+            sub={member.state.log.passedScore === null ? undefined : `${member.state.log.passedScore}点`}
             className="text-base"
           />
         );

@@ -22,7 +22,7 @@ function goalLine(status: MemberStatus): string {
 function Badge({ status }: { status: MemberStatus }) {
   switch (status.kind) {
     case "completed":
-      return <Stamp tone="mint" label="PASSED" sub={`${status.score}pt`} />;
+      return <Stamp tone="mint" label="PASSED" sub={`${status.score}点`} />;
     case "passed":
       return <Stamp tone="mint" label="合格" sub={`確定まで ${formatJstTime(status.disputeWindowEndsAt)}`} className="text-base" />;
     case "penalized":
