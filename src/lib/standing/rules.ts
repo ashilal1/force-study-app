@@ -413,9 +413,9 @@ export type Standing = {
   rank: (typeof RANKS)[number];
   next: ReturnType<typeof nextRank>;
   titles: Title[];
-  /** Group's XP leader (3+ members, not everyone equal, 1 XP or more). */
+  /** Group's XP leader (2+ members, not everyone equal, 1 XP or more). */
   crown: boolean;
-  /** Group's lowest XP (3+ members, not everyone equal). */
+  /** Group's lowest XP (2+ members, not everyone equal). */
   last: boolean;
   events: XpEvent[];
   /** The dates in the 28-day window (leave days skipped). */
@@ -449,7 +449,7 @@ export function computeStandings(inputs: StandingInput[], ctx: StandingContext):
   const values = rows.map((row) => row.xp);
   const top = Math.max(...values);
   const bottom = Math.min(...values);
-  if (rows.length >= 3 && top !== bottom) {
+  if (rows.length >= 2 && top !== bottom) {
     for (const row of rows) {
       row.crown = row.xp === top && top >= 1;
       row.last = row.xp === bottom;

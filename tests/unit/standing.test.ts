@@ -190,7 +190,7 @@ describe("weeklyWinners", () => {
 });
 
 describe("computeStandings", () => {
-  it("crowns the leader and tilts the last, only with 3+ members who differ", () => {
+  it("crowns the leader and tilts the last, only with 2+ members who differ", () => {
     const standings = computeStandings(
       [member("aki", days(["completed", "completed"])), member("ben", days(["completed"])), member("cho", days(["missed"]))],
       ctx,
@@ -203,6 +203,15 @@ describe("computeStandings", () => {
 
     const even = computeStandings([member("aki", days([])), member("ben", days([])), member("cho", days([]))], ctx);
     expect([...even.values()].some((s) => s.crown || s.last)).toBe(false);
+
+    const pair = computeStandings([member("aki", days(["completed"])), member("ben", days(["missed"]))], ctx);
+    expect([...pair.values()].map((s) => [s.memberId, s.crown, s.last])).toEqual([
+      ["aki", true, false],
+      ["ben", false, true],
+    ]);
+
+    const alone = computeStandings([member("aki", days(["completed"]))], ctx);
+    expect([...alone.values()].some((s) => s.crown || s.last)).toBe(false);
   });
 });
 
