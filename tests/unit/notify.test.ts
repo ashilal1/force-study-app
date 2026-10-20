@@ -313,6 +313,19 @@ describe("draftNotifications (M7b)", () => {
     ]);
   });
 
+  it("tells the admins and the member when a payee is missing, once each", () => {
+    const missing = (actor: string) =>
+      draftNotifications({ id: "e", type: "payee_missing", actor_id: actor, payload: { admin_ids: ["aki"] } }, members).map((d) => [
+        d.recipientId,
+        d.title,
+      ]);
+    expect(missing("ben")).toEqual([
+      ["aki", "べん さんの支払先が未設定です"],
+      ["ben", "あなたの支払先がまだ決まっていません"],
+    ]);
+    expect(missing("aki")).toEqual([["aki", "あき さんの支払先が未設定です"]]);
+  });
+
   it("lists the week's ranking for everyone", () => {
     const drafts = draftNotifications(
       { id: "e", type: "weekly_summary", actor_id: null, payload: { ranking: [{ user_id: "aki", amount: 1200 }, { user_id: "cho", amount: 500 }] } },
