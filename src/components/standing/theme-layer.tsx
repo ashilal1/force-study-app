@@ -1,17 +1,30 @@
 import { THEME_IMAGES } from "@/lib/standing/assets";
 import type { RankId } from "@/lib/standing/rules";
 
-/** The look the viewer's rank gives the whole screen (F14, ADR-042). Other ranks keep the paper. */
-export type ViewerThemeId = "gold" | "silver" | "worn";
+/** The look the viewer's rank gives the whole screen (F14, ADR-042, ADR-044). */
+export type ViewerThemeId = "gold" | "silver" | "bronze" | "slack" | "worn";
 
-export function themeOf(rank: RankId): ViewerThemeId | null {
-  return rank === "tensai" ? "gold" : rank === "yuutousei" ? "silver" : rank === "doushiyou-mo-nai" ? "worn" : null;
+const THEMES: Record<RankId, ViewerThemeId> = {
+  tensai: "gold",
+  yuutousei: "silver",
+  "yareba-dekiru": "bronze",
+  "mikka-bouzu": "slack",
+  "doushiyou-mo-nai": "worn",
+};
+
+export function themeOf(rank: RankId): ViewerThemeId {
+  return THEMES[rank];
+}
+
+/** Gold, silver and bronze share the polished cards; 三日坊主 is slack paper; どうしようもない is worn. */
+function finishOf(theme: ViewerThemeId): string {
+  return theme === "worn" || theme === "slack" ? theme : "polished";
 }
 
 /**
  * The marker rank-themes.css keys on, and the decorations behind the page: gold confetti for
  * 天才, a few silver glints for 優等生, a vignette with a siren and bars above the bottom menu for
- * どうしようもない. Purely decorative: behind the content or clear of it, never takes a tap,
+ * どうしようもない (銅 and 三日坊主 have none). Purely decorative: behind the content or clear of it, never takes a tap,
  * still under "reduce motion".
  */
 export function ThemeLayer({ rank }: { rank: RankId }) {
@@ -21,8 +34,8 @@ export function ThemeLayer({ rank }: { rank: RankId }) {
       <div
         hidden
         data-viewer-rank={rank}
-        data-viewer-theme={theme ?? undefined}
-        data-viewer-finish={theme === "worn" ? "worn" : theme ? "polished" : undefined}
+        data-viewer-theme={theme}
+        data-viewer-finish={finishOf(theme)}
       />
       {theme === "gold" ? <GoldBackdrop /> : theme === "silver" ? <SilverBackdrop /> : theme === "worn" ? <WornDecor /> : null}
     </>
