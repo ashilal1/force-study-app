@@ -52,7 +52,7 @@
 - [x] 理由申告フォーム、審査画面（納得 / 納得できない）: `/reports/[logId]`
 - [x] `penalty_summary` ビュー、RPC `run_weekly_settlement` / `mark_settlement_sent` / `confirm_settlement` / `report_not_received` / `late_payment_reminders`
 - [x] 支払先の割り当て（管理者が入力）、精算ページ（PayPay ボタン、送金した・受け取った・届いていない）、未払いへの P7
-- [ ] 全員の支払先がそろうまでお試し期間を終えない（F8）。今は、支払先のない人の精算を持ち越して管理者に通知するだけ
+- [x] 支払先がなくてもお試し期間は予定どおり終える（F8）。支払先のない人の精算は持ち越し、管理者と本人に通知
 
 ## M8. ダッシュボード・振り返り
 - [x] 本日のステータスカード、「あなたがやること」、ランキング（累計・お試しの本番なら・奢り確定・PayPay）、タイムライン
