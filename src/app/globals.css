@@ -191,3 +191,42 @@
     transform: none;
   }
 }
+
+/* Confetti on the home ranking when the crown moves (F14, crown-confetti.tsx). */
+@keyframes crown-confetti {
+  0% {
+    opacity: 1;
+    transform: translate(-50%, 0) rotate(0deg);
+  }
+  40% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--x)), var(--y)) rotate(calc(var(--spin) * 0.5));
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--x) * 1.25), calc(var(--y) + var(--fall))) rotate(var(--spin));
+  }
+}
+@keyframes crown-banner {
+  /* Opens above the list, then closes; the negative margin cancels the grid gap when closed. */
+  0% {
+    max-height: 0;
+    margin-bottom: -0.75rem;
+    opacity: 0;
+  }
+  10% {
+    max-height: 3rem;
+    margin-bottom: 0;
+    opacity: 1;
+  }
+  85% {
+    max-height: 3rem;
+    margin-bottom: 0;
+    opacity: 1;
+  }
+  100% {
+    max-height: 0;
+    margin-bottom: -0.75rem;
+    opacity: 0;
+  }
+}

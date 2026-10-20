@@ -1,4 +1,5 @@
 import { Sticker } from "@/components/brand/sticker";
+import { CrownConfetti } from "@/components/standing/crown-confetti";
 import { XpTrendChart, type XpTrendLine } from "@/components/standing/xp-trend-chart";
 import { MEMBER_COLORS } from "@/lib/chart-colors";
 import type { XpTrendPoint } from "@/lib/standing/rules";
@@ -36,6 +37,16 @@ const race: XpTrendLine[] = [
 export default function PreviewXpPage() {
   return (
     <div className="grid gap-6">
+      {/* The crown moved: once per browser (clear localStorage "crown-confetti-seen" to see it again). */}
+      <section className="relative isolate grid gap-3">
+        <CrownConfetti eventId="preview-crown" name="ちょう" />
+        <h2 className="m-0 font-en text-[1.4rem] leading-none">RANKING</h2>
+        {["ちょう 316 XP", "あきら 210 XP", "べに 155 XP"].map((row, index) => (
+          <Sticker key={row} shadow="sm" className="px-3 py-2 font-bold">
+            {index + 1}. {row}
+          </Sticker>
+        ))}
+      </section>
       <Sticker className="grid gap-1.5 px-4 py-4">
         <h3 className="m-0 text-sm font-black">XP の推移（直近 8 週）</h3>
         <XpTrendChart lines={solo} />

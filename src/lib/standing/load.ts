@@ -20,6 +20,20 @@ export const getStandings = cache(async (): Promise<Map<string, Standing>> => {
   return loadStandings(await createClient());
 });
 
+/** The crown's latest move in the viewer's group within the last week (crown_moved), or null. */
+export async function getLatestCrownMove(): Promise<{ id: string; actor_id: string | null } | null> {
+  const { data, error } = await (await createClient())
+    .from("activity_events")
+    .select("id, actor_id")
+    .eq("type", "crown_moved")
+    .gte("created_at", new Date(Date.now() - 7 * 86_400_000).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (error) throw error;
+  return data;
+}
+
 /**
  * Standings of one group. With the RLS client the group is the viewer's; the admin client must
  * pass `groupId` (it reads every group otherwise).

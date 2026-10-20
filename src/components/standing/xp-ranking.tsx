@@ -4,15 +4,20 @@ import { Sticker } from "@/components/brand/sticker";
 import type { Standing } from "@/lib/standing/rules";
 import { cn } from "@/lib/utils";
 import { Crown } from "./crown";
+import { CrownConfetti } from "./crown-confetti";
 import { RankBadge } from "./rank-badge";
 
 export type XpRow = { id: string; name: string; avatarUrl: string | null; colorIndex: number; standing: Standing };
 
-/** The group's XP over the last 28 days (F14), with the crown and the tilted last place. */
-export function XpRanking({ rows }: { rows: XpRow[] }) {
+/**
+ * The group's XP over the last 28 days (F14), with the crown and the tilted last place. `crownMoved`
+ * is the latest move of the crown to its current holder, for the confetti.
+ */
+export function XpRanking({ rows, crownMoved = null }: { rows: XpRow[]; crownMoved?: { eventId: string; name: string } | null }) {
   const ranked = [...rows].sort((a, b) => b.standing.xp - a.standing.xp);
   return (
-    <section className="grid gap-3">
+    <section className="relative isolate grid gap-3">
+      {crownMoved ? <CrownConfetti eventId={crownMoved.eventId} name={crownMoved.name} /> : null}
       <div className="flex items-baseline justify-between">
         <h2 className="m-0 font-en text-[1.4rem] leading-none">RANKING</h2>
         <span className="text-xs font-bold text-sub">直近 28 日の XP</span>
