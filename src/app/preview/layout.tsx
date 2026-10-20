@@ -21,6 +21,7 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
           <Link href="/preview/report">理由申告</Link>
           <Link href="/preview/intro">はじめに</Link>
           <Link href="/preview/tips">コーチマーク</Link>
+          <Link href="/preview/xp">XP の推移</Link>
           <Suspense fallback={null}>
             <PreviewTheme />
           </Suspense>

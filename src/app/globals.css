@@ -178,3 +178,16 @@
     clip-path: polygon(0 10%, 6% 0, 12% 12%, 18% 0, 82% 0, 88% 14%, 94% 0, 100% 10%, 100% 90%, 94% 100%, 88% 86%, 82% 100%, 18% 100%, 12% 88%, 6% 100%, 0 90%);
   }
 }
+
+/* The crown hopping onto a new leader in the XP race (F14). */
+@keyframes crown-hop {
+  0% {
+    transform: translateY(-14px) scale(1.35) rotate(-12deg);
+  }
+  60% {
+    transform: translateY(2px) scale(0.95) rotate(4deg);
+  }
+  100% {
+    transform: none;
+  }
+}

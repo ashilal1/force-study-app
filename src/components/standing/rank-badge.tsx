@@ -2,7 +2,8 @@ import { BADGE_IMAGES } from "@/lib/standing/assets";
 import type { Standing } from "@/lib/standing/rules";
 import { cn } from "@/lib/utils";
 
-const TONE: Record<string, string> = {
+/** The rank colors, shared with the XP trend chart. */
+export const RANK_TONE: Record<string, string> = {
   tensai: "border-[#a8841f] bg-gradient-to-br from-[#fff3c4] via-[#f2c94c] to-[#d4a72c] text-ink",
   yuutousei: "border-[#7d8590] bg-gradient-to-br from-[#ffffff] via-[#d9dde3] to-[#aeb6c1] text-ink",
   "yareba-dekiru": "border-ink bg-card text-ink",
@@ -18,7 +19,7 @@ export function RankBadge({ standing, className }: { standing: Standing; classNa
       title={`ランク: ${standing.rank.name}（直近 28 日 ${standing.xp} XP）`}
       className={cn(
         "inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-[0.72rem] font-black whitespace-nowrap",
-        TONE[standing.rank.id],
+        RANK_TONE[standing.rank.id],
         className,
       )}
     >

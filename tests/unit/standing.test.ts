@@ -8,6 +8,7 @@ import {
   titlesOf,
   weeklyWinners,
   xpEvents,
+  xpTrend,
   xpWindow,
   type StandingContext,
   type StandingDay,
@@ -116,6 +117,34 @@ describe("xpWindow", () => {
     expect(window.size).toBe(28);
     expect(window.has(addDays(TODAY, -1))).toBe(false);
     expect(window.has(addDays(TODAY, -30))).toBe(true);
+  });
+});
+
+describe("xpTrend", () => {
+  it("gives each day's 28-day XP, what happened that day and what left the window", () => {
+    // 30 days back: two completed days, then nothing. Completion lands the next day.
+    const list = days(["completed", "completed", ...Array(28).fill("missed")]);
+    const input = member("aki", list);
+    const trend = xpTrend(input, xpEvents(input, TODAY), TODAY);
+    expect(trend).toHaveLength(56);
+    expect(trend.at(-1)!.date).toBe(TODAY);
+    const byDate = new Map(trend.map((point) => [point.date, point]));
+    const first = addDays(TODAY, -29);
+    expect(byDate.get(first)).toMatchObject({ xp: 10, events: [{ points: 10, label: "達成" }], dropped: 0 });
+    expect(byDate.get(addDays(TODAY, -28))!.xp).toBe(20);
+    // 28 days after each completion it leaves the window.
+    expect(byDate.get(addDays(first, 28))).toMatchObject({ xp: 10, dropped: -10 });
+    expect(byDate.get(TODAY)).toMatchObject({ xp: 0, dropped: -10 });
+  });
+
+  it("starts on the day they joined", () => {
+    const input = member("aki", days(["completed"]), { joinedOn: addDays(TODAY, -3) });
+    expect(xpTrend(input, xpEvents(input, TODAY), TODAY).map((point) => point.date)).toEqual([
+      addDays(TODAY, -3),
+      addDays(TODAY, -2),
+      addDays(TODAY, -1),
+      TODAY,
+    ]);
   });
 });
 
