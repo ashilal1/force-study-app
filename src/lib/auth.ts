@@ -27,6 +27,8 @@ export type Member = Pick<
   | "notifications_verified_at"
   | "rules_accepted_at"
   | "seen_tips"
+  | "ui_theme"
+  | "season_themes"
 >;
 
 /** The signed-in user from the verified JWT, or null. Deduplicated per request. */
@@ -63,7 +65,7 @@ export const getMember = cache(async (): Promise<Member | null> => {
   const supabase = await createClient();
   const { data, error } = await supabase
     .from("profiles")
-    .select("id, display_name, avatar_url, paypay_link, is_admin, trial_ends_at, notifications_verified_at, rules_accepted_at, seen_tips")
+    .select("id, display_name, avatar_url, paypay_link, is_admin, trial_ends_at, notifications_verified_at, rules_accepted_at, seen_tips, ui_theme, season_themes")
     // A profile is one membership (ADR-035): the account's active one, if any.
     .eq("auth_user_id", user.id)
     .is("deactivated_at", null)

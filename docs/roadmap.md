@@ -94,7 +94,7 @@
 - [x] 称号と XP・ランク: 記録から計算する処理（`src/lib/standing/`、単体テスト）、カード・XP ランキング・振り返り画面（ゲージ・称号の説明・XP の内訳・これまでの称号）、「貧乏人」（P7 の人だけ）
 - [x] ランクで変わる見た目: カードの枠（金・銀・コンクリートとひび）、見ている本人のランクで画面全体（天才は金・王冠のタイトル・金のボタン、どうしようもないはコンクリート・くすみ・「OR PENALTY」・サイレンと柵・「提出して罪を償う」）。画像が届くまでは CSS・SVG の仮の絵（`docs/visual-assets.md`）
 - [x] ランクの見た目を作り直す（Claude Design・ADR-042）: 見ている本人のランクで画面全体を着せ替える（天才は金・優等生は銀・どうしようもないは破れた紙とひびとガムテープ・アスファルトのボタン・「WANTED」）。素材は `public/theme/`、開発中は `/preview` のバーで切り替え
-- [ ] やればできる・三日坊主の見た目も作る
+- [x] やればできる（銅）・三日坊主（少しだらけた紙）の見た目（ADR-044）
 - [x] 付いた・外れた・ランクの上下・王冠の移動を tick のあとに見つけて記録し、通知する（`record_standings`、ADR-041）
 - [x] 王冠が移ったときの紙吹雪（ホームのランキング、見た人ごとに 1 回）
 - [x] タイムラインの名前の横の王冠（いまの 1 位の人の行）
@@ -115,3 +115,12 @@
 - [x] 設定の「使い方をもう一度見る」、`/preview/intro`
 - [x] `/preview/tips`
 - [x] Android の LINE から招待リンクを開いて、外のブラウザでログイン → 参加 → レクチャー → 通知まで通ることを実機で確かめる。Android で確認済み（2026-10-20）、iPhone は友人に頼む
+
+## M13. 見た目のテーマ（F16・ADR-045）
+- [x] 仕様: `docs/requirements.md` の F16、`docs/database.md`、`docs/visual-assets.md` の 3
+- [x] マイグレーション `20261024000001_ui_themes.sql`: `profiles.ui_theme`・`season_themes`、RPC `set_ui_theme`
+- [x] どのテーマにするかの決まり（`src/lib/theme/themes.ts` の `lookFor`、単体テスト）
+- [x] 森・海・雪・桜・夕焼け・宇宙・ハロウィン・クリスマス・お正月の着せ替え（`src/app/ui-themes.css`）と背景の飾り（`UiThemeLayer`）
+- [x] 設定 →「見た目のテーマ」（`/settings/theme`）、`/preview/theme`、`/preview` のバーのテーマの切り替え
+- [ ] Supabase に push してから main に出す（マイグレーションが先）
+- [ ] 画像に差し替える（オーナーが用意する。`docs/visual-assets.md` の 3）
