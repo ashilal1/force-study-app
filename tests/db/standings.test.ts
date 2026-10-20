@@ -24,6 +24,8 @@ describe("record_standings", () => {
     // A tick that read no snapshot (stale) records nothing.
     expect((await record(null, { members: {}, crown: [] }, [{ type: "crown_moved", actor_id: aki, payload: {} }])).rows).toEqual([]);
 
+    // The next tick, a little later (snapshots are told apart by time).
+    await setNow(db, "2026-10-20 09:05");
     const { rows } = await record(first, { members: {}, crown: [aki] }, [
       { type: "title_awarded", actor_id: ben, payload: { title: "saborer" } },
       { type: "crown_moved", actor_id: aki, payload: { from: [] } },
