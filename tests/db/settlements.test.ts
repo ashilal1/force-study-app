@@ -12,7 +12,7 @@ async function setup() {
   const aki = await createMember(db, "aki"); // admin
   const ben = await createMember(db, "ben");
   const cho = await createMember(db, "cho");
-  await db.query("update public.profiles set trial_ends_at = '2026-01-01', created_at = '2026-10-01'");
+  await db.query("update public.profiles set trial_ends_at = '2026-01-01', created_at = '2026-10-01'::timestamptz + (created_at - (select min(created_at) from public.profiles))");
   return { db, aki, ben, cho };
 }
 
