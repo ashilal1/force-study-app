@@ -13,7 +13,7 @@ import { requireMember } from "@/lib/auth";
 import { Crown } from "@/components/standing/crown";
 import { XpRanking } from "@/components/standing/xp-ranking";
 import { getMakeupBoard } from "@/lib/makeup";
-import { getStandings } from "@/lib/standing/load";
+import { getLatestCrownMove, getStandings } from "@/lib/standing/load";
 import { getMaxMembers, isInTrial, listMembers } from "@/lib/members";
 import { createClient } from "@/lib/supabase/server";
 import { getTimeline } from "@/lib/timeline";
@@ -196,8 +196,14 @@ async function Ranking() {
 
 async function Ranks() {
   const [members, standings] = await Promise.all([listMembers(), getStandings()]);
+  // The crown's latest move this week, if it went to whoever holds it now: confetti once per viewer.
+  const holder = [...standings.values()].find((standing) => standing.crown)?.memberId;
+  const moved = holder ? await getLatestCrownMove() : null;
+  const crownMoved =
+    moved && moved.actor_id === holder ? { eventId: moved.id, name: members.find((member) => member.id === holder)?.display_name ?? "" } : null;
   return (
     <XpRanking
+      crownMoved={crownMoved}
       rows={members.flatMap((member, index) => {
         const standing = standings.get(member.id);
         return standing ? [{ id: member.id, name: member.display_name, avatarUrl: member.avatar_url, colorIndex: index, standing }] : [];
