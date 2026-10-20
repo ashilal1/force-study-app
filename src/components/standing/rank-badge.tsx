@@ -25,7 +25,7 @@ export function RankBadge({ standing, className }: { standing: Standing; classNa
     >
       {BADGE_IMAGES.has(id) ? (
         // eslint-disable-next-line @next/next/no-img-element -- small static badge from public/
-        <img src={`/badges/${id}.png`} alt="" className="size-4" />
+        <img src={`/badges/${id}.png`} alt="" className="-my-1 size-5" />
       ) : null}
       {standing.rank.name}
     </span>

@@ -24,12 +24,12 @@ Claude Design のランク別の見た目（ADR-042）に合わせて、次の�
 「OR PENALTY」の落書き（フォント Rubik Wet Paint）・WANTED のスタンプ・金の紙吹雪・銀のきらめき・コーヒーのしみはアプリが CSS で描くので画像は要らない。
 
 ### あとから差し替えられるもの
-置いたら `src/lib/standing/assets.ts` の `THEME_IMAGES` を `true` にする。
+置いたら `src/lib/standing/assets.ts` の `THEME_IMAGES` を `true` にする。2026-10-20 に Gemini で作った版を入れた（どちらも `true`）。
 
 | ファイル | サイズ | 使う場所 | どういうもの |
 |---|---|---|---|
 | `siren.png` | 256×256 | どうしようもないの画面の左下に固定（幅 42px。下のメニューに重ならない位置）。赤い光の点滅は CSS で重ねる | 赤い回転灯 |
-| `bars.png` | 512×256 | 画面のいちばん下、下のメニューのすぐ上に横長で（うすく） | 黒い鉄の牢屋の柵。縦の棒が並ぶ形で、上下に横棒 |
+| `bars.png` | 176×56（棒 2 本分で継ぎ目なく横に並ぶタイル） | 画面のいちばん下、下のメニューのすぐ上に高さ 14px の帯で横に繰り返す（うすく） | 黒い鉄の牢屋の柵。縦の棒が並ぶ形で、上下に横棒 |
 
 ### 真ん中のランク
 やればできる・三日坊主は今の紙とインクのまま（画像は不要）。
@@ -78,5 +78,10 @@ Claude Design のランク別の見た目（ADR-042）に合わせて、次の�
 | `rank-mikka-bouzu` | 三日坊主 | 白〜生成り。お坊さんの頭、3 本線 |
 | `rank-doushiyou-mo-nai` | どうしようもない | 灰色。ひび割れ・どくろ |
 
-## 届くまで
-画像がないものは、アプリが仮の絵を出す（称号は頭文字と色の丸、サイレンと柵は SVG・CSS）。差し替えたら見た目を確かめるので、置いたことを教えてください。
+## いま入っているもの
+2026-10-20 に、バッジ 26 枚（ランク 5・称号 21）とサイレン・柵を Gemini で作って入れた。太い黒の線と白いフチのステッカー風で、マゼンタ一色の背景で作り、背景を抜いて 512×512（サイレンは 256×256）・1 枚 50KB 以下にしている。描き直したものは同じファイル名で置き換えればよい。
+
+作るときの指示（共通部分）: 「flat vector sticker illustration, thick black outlines, white sticker border, bold simple shapes. It must stay recognizable when shown at 24 pixels, so the main motif is LARGE … Absolutely no text … Background: one solid flat pure magenta color (#FF00FF) … Do not use magenta, pink or purple in the badge itself.」に、モチーフと色（悪い称号は赤・灰、良い称号は金・ミントグリーン）を足す。
+
+## 画像がないとき
+`assets.ts` の一覧にないものは、アプリが仮の絵を出す（称号は文字だけ、サイレンと柵は SVG・CSS）。
