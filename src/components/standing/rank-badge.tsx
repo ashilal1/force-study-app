@@ -18,7 +18,7 @@ export function RankBadge({ standing, className }: { standing: Standing; classNa
     <span
       title={`ランク: ${standing.rank.name}（直近 28 日 ${standing.xp} XP）`}
       className={cn(
-        "inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-[0.72rem] font-black whitespace-nowrap",
+        "th-rank inline-flex items-center gap-1 rounded-full border-2 px-2 py-0.5 text-[0.72rem] font-black whitespace-nowrap",
         RANK_TONE[standing.rank.id],
         className,
       )}

@@ -122,5 +122,5 @@
 - [x] どのテーマにするかの決まり（`src/lib/theme/themes.ts` の `lookFor`、単体テスト）
 - [x] ハロウィン・クリスマス・お正月の着せ替え（`src/app/ui-themes.css`）と背景の飾り（`UiThemeLayer`）、`/preview` のバーの切り替え
 - [x] 選べるテーマ（森・海・雪・桜・夕焼け・宇宙）と設定の「見た目のテーマ」はやめた（ADR-046）
-- [ ] 画像に差し替える（オーナーが用意する。`docs/visual-assets.md` の 3）
+- [x] 画像に差し替える（2026-10-21、38 枚。`docs/visual-assets.md` の 3）。スタンプの下地など一部はまだ使っていない
 - [ ] UI を仕上げて本番に出す（`ViewerTheme` の `SEASON_THEMES_LIVE` を外す）。自動の切り替えを止めるスイッチを置くかもそのとき決める
