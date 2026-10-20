@@ -109,8 +109,8 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 | notifications_verified_at | timestamptz null | テスト通知を本人が確認した時刻（F0）。null のあいだはアプリを使えない |
 | rules_accepted_at | timestamptz null | レクチャー「はじめに」で「このルールで始める」を押した時刻（F15）。null のあいだはアプリを使えない（F0 より手前のゲート）。M12 のマイグレーションで、その時点のメンバーには `created_at` を入れる |
 | seen_tips | text[] not null default '{}' | 見たコーチマークのキー（F15）。`'*'` が入っていたら全部見たことにする（M12 の時点のメンバーと、2 回目以降の所属） |
-| ui_theme | text null | 選んだ見た目のテーマ（F16）。null が標準。値（`forest` など）はコードが持ち、DB は形（`^[a-z]{1,20}$`）だけ確かめる。知らない値は標準として扱う |
-| season_themes | boolean not null default true | 期間限定のテーマ（ハロウィン・クリスマス・お正月）に自動で切り替えるか（F16） |
+| ui_theme | text null | 選んだ見た目のテーマ。**今は使っていない**（選べるテーマをやめた。ADR-046）。DB は形（`^[a-z]{1,20}$`）だけ確かめる |
+| season_themes | boolean not null default true | 期間限定のテーマ（ハロウィン・クリスマス・お正月）に自動で切り替えるか（F16）。切り替える画面はまだない（ADR-046） |
 | deactivated_at | timestamptz null | 退会した・外された時刻。行は消さず、記録はこの所属に残る。同じアカウントはあとで別のグループに（同じグループにも）新しい行で入れる |
 | left_reason | text null | `left`（自分で退会）/ `removed`（管理者が外した）。`deactivated_at` とそろう |
 | removed_by | uuid → profiles null | 外した管理者 |
@@ -499,10 +499,10 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 
 2 回目以降の所属（同じアカウントの profile がすでにある人）の `seen_tips` は、profiles の insert のトリガー（`private.returning_member_tips`）が `'{*}'` にする。`rules_accepted_at` はどの所属でも null で作る（グループごとにルールが違うので、入るたびにレクチャーを見る）。
 
-### 見た目のテーマ（M13・F16）
+### 期間限定のテーマ（M13・F16）
 | 関数 | 処理 |
 |---|---|
-| `set_ui_theme(user_id, theme, season_themes)` | 本人の `ui_theme`（null = 標準）と `season_themes` を書く。`theme` の形が違えば `invalid_theme`、メンバーでなければ `not_a_member`。通知はしない（本人の画面だけのこと） |
+| `set_ui_theme(user_id, theme, season_themes)` | 本人の `ui_theme`（null = 標準）と `season_themes` を書く。今はアプリから呼んでいない（ADR-046）。`theme` の形が違えば `invalid_theme`、メンバーでなければ `not_a_member`。通知はしない（本人の画面だけのこと） |
 
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |

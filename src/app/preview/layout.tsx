@@ -24,7 +24,6 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
           <Link href="/preview/intro">はじめに</Link>
           <Link href="/preview/tips">コーチマーク</Link>
           <Link href="/preview/xp">XP の推移</Link>
-          <Link href="/preview/theme">テーマ</Link>
           <Suspense fallback={null}>
             <PreviewTheme />
           </Suspense>
@@ -36,8 +35,8 @@ export default function PreviewLayout({ children }: { children: React.ReactNode 
 }
 
 /**
- * The rank look (F14) and the look theme (F16) picked in the bar. They also apply to the real
- * screens in development; a look theme wins over the rank look, as it does for members.
+ * The rank look (F14) and the seasonal theme (F16) picked in the bar. They also apply to the real
+ * screens in development; a seasonal theme wins over the rank look, as it does for members.
  */
 async function PreviewTheme() {
   const rank = await devRankOverride();
