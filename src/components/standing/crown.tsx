@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 export function Crown({ className, title = "グループの XP 1 位" }: { className?: string; title?: string }) {
   if (THEME_IMAGES.crown) {
     // eslint-disable-next-line @next/next/no-img-element -- small static decoration from public/
-    return <img src="/theme/crown.png" alt={title} title={title} className={cn("inline-block h-auto w-5", className)} />;
+    return <img src="/theme/crown.png" alt={title} title={title} className={cn("th-crown inline-block h-auto w-5", className)} />;
   }
   return (
     <svg viewBox="0 0 24 18" role="img" aria-label={title} className={cn("inline-block h-auto w-5", className)}>

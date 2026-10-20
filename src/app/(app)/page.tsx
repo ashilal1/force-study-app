@@ -122,7 +122,7 @@ async function MyAvatarLink() {
   const me = await requireMember();
   const [members, standings] = await Promise.all([listMembers(), getStandings()]);
   return (
-    <Link href="/settings" aria-label="プロフィールと設定" className="relative shrink-0">
+    <Link href="/settings" aria-label="プロフィールと設定" className="th-me relative shrink-0">
       <Avatar
         name={me.display_name}
         src={me.avatar_url}
