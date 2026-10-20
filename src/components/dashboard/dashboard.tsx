@@ -11,8 +11,10 @@ export function Dashboard({ data }: { data: DashboardData }) {
         <Pill>
           {data.weekLabel} ・ 精算まで あと {data.daysToSettlement} 日
         </Pill>
-        <h1 className="m-0 font-en text-[clamp(1.6rem,8vw,2rem)] leading-none whitespace-nowrap [text-shadow:3px_3px_0_#fff,5px_5px_0_var(--ink)]">
-          COMMIT OR TREAT
+        {/* Same hooks as the real home's title, so the preview shows each look's title too. */}
+        <h1 className="brand-title relative m-0 font-en text-[clamp(1.6rem,8vw,2rem)] leading-none whitespace-nowrap [text-shadow:3px_3px_0_#fff,5px_5px_0_var(--ink)]">
+          <span>COMMIT </span>
+          <span className="brand-or-treat">OR TREAT</span>
         </h1>
       </header>
 

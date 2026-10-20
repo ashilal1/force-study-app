@@ -1010,8 +1010,10 @@ export type Database = {
           paypay_link: string | null
           removed_by: string | null
           rules_accepted_at: string | null
+          season_themes: boolean
           seen_tips: string[]
           trial_ends_at: string
+          ui_theme: string | null
         }
         Insert: {
           auth_user_id: string
@@ -1028,8 +1030,10 @@ export type Database = {
           paypay_link?: string | null
           removed_by?: string | null
           rules_accepted_at?: string | null
+          season_themes?: boolean
           seen_tips?: string[]
           trial_ends_at: string
+          ui_theme?: string | null
         }
         Update: {
           auth_user_id?: string
@@ -1046,8 +1050,10 @@ export type Database = {
           paypay_link?: string | null
           removed_by?: string | null
           rules_accepted_at?: string | null
+          season_themes?: boolean
           seen_tips?: string[]
           trial_ends_at?: string
+          ui_theme?: string | null
         }
         Relationships: [
           {
@@ -2972,6 +2978,10 @@ export type Database = {
           isOneToOne: true
           isSetofReturn: false
         }
+      }
+      set_ui_theme: {
+        Args: { p_season_themes: boolean; p_theme: string; p_user_id: string }
+        Returns: undefined
       }
       tick: {
         Args: never

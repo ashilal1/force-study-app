@@ -262,6 +262,7 @@ flowchart LR
     ├── app/
     │   ├── manifest.ts            # PWA manifest
     │   ├── rank-themes.css        # 見ている本人のランクで画面全体を着せ替える（F14・ADR-042）
+    │   ├── ui-themes.css          # 本人が選んだ見た目のテーマ・期間限定のテーマ（F16・ADR-045）
     │   ├── (auth)/                # 未ログイン・未参加向け（下部メニューなし）
     │   │   ├── login/             # 「Google でログイン」
     │   │   └── join/              # 招待コードの入力（profile がない人はここへ）

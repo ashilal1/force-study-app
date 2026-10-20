@@ -115,3 +115,12 @@
 - [x] 設定の「使い方をもう一度見る」、`/preview/intro`
 - [x] `/preview/tips`
 - [x] Android の LINE から招待リンクを開いて、外のブラウザでログイン → 参加 → レクチャー → 通知まで通ることを実機で確かめる。Android で確認済み（2026-10-20）、iPhone は友人に頼む
+
+## M13. 見た目のテーマ（F16・ADR-045）
+- [x] 仕様: `docs/requirements.md` の F16、`docs/database.md`、`docs/visual-assets.md` の 3
+- [x] マイグレーション `20261024000001_ui_themes.sql`: `profiles.ui_theme`・`season_themes`、RPC `set_ui_theme`
+- [x] どのテーマにするかの決まり（`src/lib/theme/themes.ts` の `lookFor`、単体テスト）
+- [x] 森・海・雪・桜・夕焼け・宇宙・ハロウィン・クリスマス・お正月の着せ替え（`src/app/ui-themes.css`）と背景の飾り（`UiThemeLayer`）
+- [x] 設定 →「見た目のテーマ」（`/settings/theme`）、`/preview/theme`、`/preview` のバーのテーマの切り替え
+- [ ] Supabase に push してから main に出す（マイグレーションが先）
+- [ ] 画像に差し替える（オーナーが用意する。`docs/visual-assets.md` の 3）

@@ -43,7 +43,7 @@ export function ThemeLayer({ rank }: { rank: RankId }) {
 }
 
 /** Same pieces on every render (no hydration mismatch, no reshuffle on navigation). */
-function seeded(seed: number) {
+export function seeded(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
