@@ -1,9 +1,10 @@
 /* ---------------------------------------------------------------------------------------------
    Rank themes (F14, ADR-042). The whole screen — every card, button and field — follows the
-   VIEWER's rank: 天才 gold, 優等生 silver, どうしようもない worn concrete; the other ranks keep the
-   plain paper look. Members tell each other's ranks apart by the badge and the crown.
+   VIEWER's rank: 天才 gold, 優等生 silver, やればできる bronze (ADR-044), 三日坊主 slack paper (the
+   usual paper with a crease and a curled corner, ADR-044), どうしようもない worn concrete. Members
+   tell each other's ranks apart by the badge and the crown.
    ThemeLayer (components/standing/theme-layer.tsx) renders the marker
-   [data-viewer-theme="gold|silver|worn"] with [data-viewer-finish="polished|worn"] and the
+   [data-viewer-theme="gold|silver|bronze|slack|worn"] with [data-viewer-finish="polished|slack|worn"] and the
    background decorations; the shared parts carry the hooks:
      Sticker            [data-surface=<tone>][data-shadow=<md|sm|none>] ("pass" = a dashed note)
      action buttons     .th-btn .th-btn-<tone>
@@ -71,6 +72,28 @@ body:has([data-viewer-theme="silver"]) {
     radial-gradient(ellipse 70% 30% at 50% 100%, rgba(210, 216, 226, 0.6), transparent 70%),
     linear-gradient(#f8f9fb, #eef0f4 60%, #e7eaef);
   background: #eef0f4;
+}
+
+body:has([data-viewer-theme="bronze"]) {
+  --th-line: #a8693a;
+  --th-deep: #6e4220;
+  --th-btn-line: #5a3417;
+  --th-ring: #fff3e6;
+  --th-glow: 140 80 40;
+  --th-av-ring: #efc9a2;
+  --th-card-a: linear-gradient(135deg, #fffaf4 0%, #f1d9c2 42%, #fff7ef 62%, #e6bf9a 100%);
+  --th-card-b: linear-gradient(140deg, #fffaf4 0%, #f4e2d0 40%, #fffaf5 58%, #eacaa9 100%);
+  --th-light: linear-gradient(135deg, #fffcf8, #f5e7d9 60%, #fffaf4);
+  --th-tape: linear-gradient(135deg, #fff6cf, #f5d76e 55%, #fff1b8);
+  --th-mint: linear-gradient(135deg, #d6efe2, #ade0c8 55%, #cdeadb);
+  --th-btn: linear-gradient(180deg, #ffe6cc 0%, #f6c08c 22%, #d9925a 50%, #b96e36 62%, #e7a66c 85%, #ffd9b3 100%);
+  --th-pill: linear-gradient(180deg, #ffe6cc 0%, #f6c08c 25%, #d9925a 55%, #b96e36 70%, #ecb17a 100%);
+  --th-nav: linear-gradient(180deg, #fffaf4, #f0dcc8);
+  --th-pass: linear-gradient(180deg, #fffefb, #fff6ee);
+  --th-dot: radial-gradient(circle at 35% 30%, #ffe6cc, #d39a62 60%, #8f5a2b);
+  --th-rcpt: linear-gradient(180deg, #fffefb, #fff8f1);
+  --th-rcpt-fill: #fffefb;
+  background: #f4e9dd;
 }
 
 body:has([data-viewer-theme="worn"]) {
@@ -167,6 +190,50 @@ body:has([data-viewer-finish="polished"]) [data-surface="red"][data-shadow] {
 body:has([data-viewer-finish="polished"]) [data-surface="alert"][data-shadow] {
   border-color: var(--red);
   background: var(--th-light);
+}
+
+/* Cards: slack (三日坊主) — the usual paper, a little let go: a faint crease across the big cards
+   (behind the text) and a curled-up bottom-right corner (inside the padding). ------------------- */
+
+body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"] {
+  --crease-at: 58%;
+  --crease-angle: 177deg;
+  position: relative;
+  background-image: linear-gradient(
+    var(--crease-angle),
+    transparent calc(var(--crease-at) - 1px),
+    rgb(60 50 30 / 0.07) calc(var(--crease-at) - 1px),
+    rgb(60 50 30 / 0.07) var(--crease-at),
+    rgb(255 255 255 / 0.8) var(--crease-at),
+    rgb(255 255 255 / 0.8) calc(var(--crease-at) + 1px),
+    transparent calc(var(--crease-at) + 1px)
+  );
+}
+body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"]:nth-child(even) {
+  --crease-at: 41%;
+  --crease-angle: 184deg;
+}
+body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"]::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  width: 20px;
+  height: 20px;
+  pointer-events: none;
+  border-bottom-right-radius: 4px;
+  /* The page shows where the corner lifted; the paper's back folds over with an ink edge. */
+  background: linear-gradient(
+    to top left,
+    var(--background) calc(50% - 1.5px),
+    var(--ink) calc(50% - 1.5px),
+    var(--ink) calc(50% + 1.5px),
+    #ece4d3 calc(50% + 1.5px)
+  );
+  filter: drop-shadow(-1px -1px 0 rgb(20 20 22 / 0.12));
+}
+body:has([data-viewer-finish="slack"]) [data-surface="red"][data-shadow="md"]::after {
+  display: none;
 }
 
 /* Cards: worn (どうしようもない) — torn paper with a crack, grubby, slightly crooked, taped down. -- */
@@ -442,7 +509,7 @@ body:has([data-viewer-theme="worn"]) .th-box {
 
 /* Red text: a deeper red on the gold, silver and concrete surfaces (4.5:1); an urgent deadline on
    the yellow concrete tape goes to ink, as red on it can't be read. */
-body:has([data-viewer-theme]) .text-red {
+body:has([data-viewer-theme]:not([data-viewer-theme="slack"])) .text-red {
   color: #b3241d;
 }
 body:has([data-viewer-theme="worn"]) .th-due-urgent {
@@ -573,6 +640,33 @@ body:has([data-viewer-finish="polished"]) .brand-title {
 }
 body:has([data-viewer-theme="silver"]) .brand-title {
   filter: grayscale(1) brightness(1.22) contrast(1.15) drop-shadow(0 4px 8px rgba(90, 100, 115, 0.3));
+}
+body:has([data-viewer-theme="bronze"]) .brand-title {
+  filter: sepia(0.5) saturate(1.25) hue-rotate(-16deg) brightness(0.86) drop-shadow(0 4px 8px rgba(140, 80, 40, 0.3));
+}
+/* Slack: the usual title with a little 「坊」 seal pressed on its corner. */
+body:has([data-viewer-theme="slack"]) .brand-or-treat {
+  position: relative;
+}
+body:has([data-viewer-theme="slack"]) .brand-or-treat::after {
+  content: "坊";
+  position: absolute;
+  top: -0.62em;
+  right: -1.15em;
+  display: grid;
+  place-items: center;
+  width: 1.5em;
+  height: 1.5em;
+  border: 0.1em solid #c8352c;
+  border-radius: 50%;
+  color: #c8352c;
+  font-family: var(--font-heading), serif;
+  font-size: 0.5em;
+  line-height: 1;
+  text-shadow: none;
+  opacity: 0.85;
+  rotate: -14deg;
+  pointer-events: none;
 }
 .brand-sparkles {
   display: none;
