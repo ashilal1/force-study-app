@@ -117,7 +117,7 @@ export function SubmitForm({ goal, passphrase, attemptsLeft, live, goalLabel = "
               aria-pressed={rating === value}
               onClick={() => setRating(value)}
               className={cn(
-                "grid size-12 place-items-center rounded-xl border-[3px] border-ink font-en text-lg shadow-hard-sm",
+                "th-cell grid size-12 place-items-center rounded-xl border-[3px] border-ink font-en text-lg shadow-hard-sm",
                 rating >= value ? "bg-tape" : "bg-card",
               )}
             >

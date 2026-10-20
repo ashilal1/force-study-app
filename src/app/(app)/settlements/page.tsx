@@ -21,7 +21,7 @@ export default function SettlementsPage() {
     <div className="grid gap-6">
       <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">精算</h1>
       <p className="m-0 text-sm font-medium text-sub">
-        毎週土曜 23:59 に、その週のペナルティ（1pt = 1 円）を支払先へまとめて払います。相殺はしません。次の精算までに「送金した」を押さないと
+        毎週土曜 23:59 に、その週のペナルティの金額を支払先へまとめて払います。相殺はしません。次の精算までに「送金した」を押さないと
         500 円が追加されます。
       </p>
       <Suspense fallback={<PageLoading />}>
@@ -127,7 +127,7 @@ async function Settlements() {
       </Receipt>
 
       {myPayee === null ? (
-        <Sticker className="grid gap-1 border-red px-4 py-3">
+        <Sticker tone="alert" className="grid gap-1 px-4 py-3">
           <b className="text-red">あなたの支払先がまだ決まっていません</b>
           <span className="text-sm font-medium">誰に払うかをグループで決めて、管理者に入力してもらってください。</span>
         </Sticker>

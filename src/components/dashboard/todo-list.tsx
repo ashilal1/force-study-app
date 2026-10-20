@@ -26,7 +26,7 @@ export function TodoList({ todos }: { todos: Todo[] }) {
             >
               <b className="text-sm">{todo.label}</b>
               {todo.dueAt ? (
-                <span className={cn("text-right font-en text-sm tabular-nums", todo.urgent && "text-red")}>
+                <span className={cn("text-right font-en text-sm tabular-nums", todo.urgent && "th-due-urgent text-red")}>
                   {formatJstDateTime(todo.dueAt)}
                   <span className="block text-[0.7rem]">
                     あと <Countdown until={todo.dueAt} />

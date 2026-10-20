@@ -2,9 +2,10 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 // Chunky sticker button. Pressing removes the shadow and sinks it by the same amount.
+// th-btn / th-btn-<tone> let the viewer's rank restyle it (rank-themes.css).
 export const actionButtonVariants = cva(
   [
-    "grid w-full place-items-center gap-0.5 rounded-xl border-[3px] border-ink px-4 py-3 text-center text-ink",
+    "th-btn grid w-full place-items-center gap-0.5 rounded-xl border-[3px] border-ink px-4 py-3 text-center text-ink",
     "font-heading text-lg leading-tight shadow-[5px_5px_0_var(--ink)] transition-[transform,box-shadow] duration-75",
     "active:translate-x-[5px] active:translate-y-[5px] active:shadow-none",
     "focus-visible:outline-[3px] focus-visible:outline-offset-4 focus-visible:outline-ink",
@@ -13,11 +14,11 @@ export const actionButtonVariants = cva(
   {
     variants: {
       tone: {
-        mint: "bg-mint",
-        white: "bg-card",
-        orange: "bg-orange text-white",
-        red: "bg-red text-white",
-        tape: "bg-tape",
+        mint: "th-btn-mint bg-mint",
+        white: "th-btn-white bg-card",
+        orange: "th-btn-orange bg-orange text-white",
+        red: "th-btn-red bg-red text-white",
+        tape: "th-btn-tape bg-tape",
       },
     },
     defaultVariants: { tone: "mint" },

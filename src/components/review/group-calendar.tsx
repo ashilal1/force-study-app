@@ -111,7 +111,7 @@ function WeekLink({ href, children }: { href: string | null; children: React.Rea
   const pill = "shrink-0 rounded-full border-2 px-3 py-1 text-xs font-bold";
   if (!href) return <span className={`${pill} border-ink/20 text-sub/50`}>{children}</span>;
   return (
-    <Link href={href} scroll={false} className={`${pill} border-ink bg-card shadow-[2px_2px_0_var(--ink)]`}>
+    <Link href={href} scroll={false} className={`th-chip ${pill} border-ink bg-card shadow-[2px_2px_0_var(--ink)]`}>
       {children}
     </Link>
   );

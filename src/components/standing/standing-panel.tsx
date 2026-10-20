@@ -4,14 +4,15 @@ import { formatJstDay } from "@/lib/time";
 import { Crown } from "./crown";
 import { RankGauge } from "./rank-badge";
 import { TitleBadge } from "./title-badges";
+import { XpTrendChart } from "./xp-trend-chart";
 
-/** A member's rank, XP, titles and the last 28 days of XP (F13, F14), on their retrospective. */
-export function StandingPanel({ standing, pastTitles = [] }: { standing: Standing; pastTitles?: TitleId[] }) {
+/** A member's rank, XP and its last 8 weeks, titles and the last 28 days of XP (F13, F14), on their retrospective. */
+export function StandingPanel({ standing, name, pastTitles = [] }: { standing: Standing; name: string; pastTitles?: TitleId[] }) {
   const earlier = pastTitles.filter((id) => TITLES[id] && !standing.titles.some((title) => title.id === id));
   const window = xpWindowDates(standing);
   const recent = standing.events.filter((event) => window.has(event.date)).reverse();
   return (
-    <Sticker data-rank={standing.rank.id} className="rank-card grid gap-3 px-4 py-4">
+    <Sticker className="grid gap-3 px-4 py-4">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <RankGauge standing={standing} />
         {standing.crown ? (
@@ -24,6 +25,11 @@ export function StandingPanel({ standing, pastTitles = [] }: { standing: Standin
       <p className="m-0 text-xs font-bold text-sub">
         ランクは直近 28 日の XP で決まります（休会の日は数えません）。通算 {standing.totalXp} XP
       </p>
+
+      <section className="grid gap-1.5">
+        <h3 className="m-0 text-sm font-black">XP の推移（直近 8 週）</h3>
+        <XpTrendChart lines={[{ id: standing.memberId, name, color: "var(--ink)", points: standing.trend }]} />
+      </section>
 
       {standing.titles.length > 0 ? (
         <ul className="m-0 grid list-none gap-1.5 p-0">

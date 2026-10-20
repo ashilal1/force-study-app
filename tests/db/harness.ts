@@ -21,8 +21,45 @@ export async function createTestDb(): Promise<Db> {
       throw new Error(`migration ${file} failed: ${(error as Error).message}`);
     }
   }
+  await db.exec(PINNED_DEFAULTS);
   return db;
 }
+
+/**
+ * Rows stamped by a column default (`default now()`) follow the pinned clock too (setNow).
+ * Otherwise they get the real time, and once the real date passes the pinned one they land on a
+ * different day than the rules see. They count up a microsecond at a time from a second before
+ * the pinned time, so they keep their order and never pass it (rules compare `<= private.now()`).
+ * Test-only: in production private.now() is now(). Invites keep the real clock (real expiry).
+ */
+const PINNED_DEFAULTS = `
+  create schema test_clock;
+  create sequence test_clock.tick;
+  create function test_clock.now() returns timestamptz
+  language sql volatile security definer set search_path = '' as $$
+    select case
+      when nullif(pg_catalog.current_setting('app.now', true), '') is null then pg_catalog.now()
+      else least(
+        pg_catalog.current_setting('app.now')::timestamptz,
+        pg_catalog.current_setting('app.now')::timestamptz - interval '1 second'
+          + pg_catalog.nextval('test_clock.tick') * interval '1 microsecond'
+      )
+    end;
+  $$;
+  grant usage on schema test_clock to public;
+  grant execute on function test_clock.now() to public;
+  do $$
+  declare
+    target record;
+  begin
+    for target in
+      select table_name, column_name from information_schema.columns
+      where table_schema = 'public' and column_default = 'now()' and table_name <> 'invites'
+    loop
+      execute format('alter table public.%I alter column %I set default test_clock.now()', target.table_name, target.column_name);
+    end loop;
+  end $$;
+`;
 
 /** Creates an auth user (as Google sign-in would) and returns its id. */
 export async function createAuthUser(db: Queryable, email: string): Promise<string> {

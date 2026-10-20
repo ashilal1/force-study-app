@@ -118,7 +118,7 @@ export default function GuidePage() {
 
       <Section title="ペナルティとお金">
         <p className="m-0 text-sm leading-relaxed font-medium">
-          1pt = 1 円。毎週土曜 23:59 に締めて、決めておいた支払先に PayPay で払います。参加した週は日曜 0:00
+          ペナルティはお金で付きます。毎週土曜 23:59 に締めて、決めておいた支払先に PayPay で払います。参加した週は日曜 0:00
           までお試し期間で、ペナルティは付きません（「本番なら 〇円」と表示だけされます）。
         </p>
         <div className="overflow-hidden rounded-[12px] border-[2.5px] border-ink bg-card">
@@ -188,7 +188,7 @@ function Toggles({ items }: { items: { label: string; note: string; steps: strin
         <details
           key={item.label}
           open={index === 0}
-          className="group rounded-[12px] border-[2.5px] border-ink bg-card open:shadow-hard-sm"
+          className="th-det group rounded-[12px] border-[2.5px] border-ink bg-card open:shadow-hard-sm"
         >
           <summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-2.5 font-bold [&::-webkit-details-marker]:hidden">
             {item.label}

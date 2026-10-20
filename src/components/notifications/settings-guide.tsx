@@ -109,7 +109,7 @@ export function SettingsGuide({ platform, focus }: { platform: Platform; focus: 
           <details
             key={os}
             open={os === platform}
-            className="group rounded-[12px] border-[2.5px] border-ink bg-card open:shadow-hard-sm"
+            className="th-det group rounded-[12px] border-[2.5px] border-ink bg-card open:shadow-hard-sm"
           >
             <summary className="flex cursor-pointer list-none items-center justify-between px-3.5 py-2.5 font-bold [&::-webkit-details-marker]:hidden">
               <span>

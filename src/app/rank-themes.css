@@ -1,0 +1,753 @@
+/* ---------------------------------------------------------------------------------------------
+   Rank themes (F14, ADR-042). The whole screen — every card, button and field — follows the
+   VIEWER's rank: 天才 gold, 優等生 silver, どうしようもない worn concrete; the other ranks keep the
+   plain paper look. Members tell each other's ranks apart by the badge and the crown.
+   ThemeLayer (components/standing/theme-layer.tsx) renders the marker
+   [data-viewer-theme="gold|silver|worn"] with [data-viewer-finish="polished|worn"] and the
+   background decorations; the shared parts carry the hooks:
+     Sticker            [data-surface=<tone>][data-shadow=<md|sm|none>] ("pass" = a dashed note)
+     action buttons     .th-btn .th-btn-<tone>
+     fields             .th-field      chips (tabs)   .th-chip (on: aria-current / aria-pressed)
+     small cells        .th-cell       drop zone      .th-drop       choices  .th-choice
+     disclosures        .th-det        tables         .th-tbl        dashed boxes .th-box
+     receipt            .th-receipt .th-rule          karte          .th-karte[data-karte]
+     timeline           .th-tl .th-tl-dot             avatar         .th-avatar
+     bottom menu        .th-nav .th-nav-link          home title     .brand-title
+   Rules kept from the design: text is always dark ink on a light surface (4.5:1 or more); cracks,
+   stains and confetti sit behind text or in margins; tape and stamps only on corners and edges;
+   buttons keep their shape, shadow and press; decorations never take taps.
+   Unlayered so they win over the utility backgrounds.
+   --------------------------------------------------------------------------------------------- */
+
+/* Palettes ------------------------------------------------------------------------------------ */
+
+body:has([data-viewer-theme="gold"]) {
+  --th-line: #b8912a;
+  --th-deep: #8a6d1d;
+  --th-btn-line: #7a520c;
+  --th-ring: #fff3c8;
+  --th-glow: 184 134 11;
+  --th-av-ring: #f7dd85;
+  --th-card-a: linear-gradient(135deg, #fffaf0 0%, #f6e3a6 42%, #fff8e4 62%, #ecd08a 100%);
+  --th-card-b: linear-gradient(140deg, #fffaf0 0%, #f8ebc4 40%, #fffbf0 58%, #efd89a 100%);
+  --th-light: linear-gradient(135deg, #fffcf4, #f6ecd0 60%, #fffaf0);
+  --th-tape: linear-gradient(135deg, #fff6cf, #f5d76e 55%, #fff1b8);
+  --th-mint: linear-gradient(135deg, #d2efe2, #a9dcc6 55%, #c8ebdb);
+  --th-btn: linear-gradient(180deg, #fff4b8 0%, #ffe079 22%, #f2c13c 50%, #d9a020 62%, #f4cc4e 85%, #ffe68c 100%);
+  --th-pill: linear-gradient(180deg, #fff4b8 0%, #ffe079 25%, #f2c13c 55%, #d9a020 70%, #f6d35a 100%);
+  --th-nav: linear-gradient(180deg, #fffaf0, #f3e3b4);
+  --th-pass: linear-gradient(180deg, #fffef8, #fff9e8);
+  --th-dot: radial-gradient(circle at 35% 30%, #fff6c4, #f2c94c 60%, #b8860b);
+  --th-rcpt: linear-gradient(180deg, #fffefa, #fffaf0);
+  --th-rcpt-fill: #fffefa;
+  --th-frame:
+    radial-gradient(ellipse 90% 30% at 50% 0%, rgba(255, 232, 160, 0.75), transparent 70%),
+    radial-gradient(ellipse 70% 30% at 50% 100%, rgba(240, 214, 140, 0.5), transparent 70%),
+    linear-gradient(#fcf8ee, #f5ecd4 60%, #f2e6c6);
+  background: #f5ecd4;
+}
+
+body:has([data-viewer-theme="silver"]) {
+  --th-line: #8a929c;
+  --th-deep: #5d646e;
+  --th-btn-line: #4f565f;
+  --th-ring: #ffffff;
+  --th-glow: 90 100 115;
+  --th-av-ring: #e7eaee;
+  --th-card-a: linear-gradient(135deg, #ffffff 0%, #e9ecf0 42%, #fbfcfd 62%, #d3d8df 100%);
+  --th-card-b: linear-gradient(140deg, #ffffff 0%, #eef0f3 40%, #ffffff 58%, #dce0e6 100%);
+  --th-light: linear-gradient(135deg, #ffffff, #eef0f3 60%, #ffffff);
+  --th-tape: linear-gradient(135deg, #fffbe6, #f3e6a2 55%, #fffaf0);
+  --th-mint: linear-gradient(135deg, #dff3ea, #b6e1cf 55%, #d6efe4);
+  --th-btn: linear-gradient(180deg, #ffffff 0%, #f1f3f6 22%, #cfd5dc 50%, #aeb6c0 62%, #d9dee4 85%, #f4f6f8 100%);
+  --th-pill: linear-gradient(180deg, #ffffff 0%, #eef1f4 25%, #cdd3da 55%, #aab2bc 70%, #e2e6eb 100%);
+  --th-nav: linear-gradient(180deg, #ffffff, #e3e7ec);
+  --th-pass: linear-gradient(180deg, #ffffff, #f7f8fa);
+  --th-dot: radial-gradient(circle at 35% 30%, #ffffff, #c9cfd6 60%, #7d8590);
+  --th-rcpt: linear-gradient(180deg, #ffffff, #f7f8fa);
+  --th-rcpt-fill: #ffffff;
+  --th-frame:
+    radial-gradient(ellipse 90% 30% at 50% 0%, rgba(225, 232, 242, 0.95), transparent 70%),
+    radial-gradient(ellipse 70% 30% at 50% 100%, rgba(210, 216, 226, 0.6), transparent 70%),
+    linear-gradient(#f8f9fb, #eef0f4 60%, #e7eaef);
+  background: #eef0f4;
+}
+
+body:has([data-viewer-theme="worn"]) {
+  --grain: url("/theme/grain.png") 0 0 / 180px 180px;
+  --grain-light: url("/theme/grain-light.png") 0 0 / 180px 180px;
+  --blotch: url("/theme/blotch.png") 0 0 / 360px 360px;
+  /* Sub text goes near-black: grey on concrete would fall under 4.5:1. */
+  --sub: #24221f;
+  --muted-foreground: #24221f;
+  /* Each card gets its own tear, crack and tilt (variants below). */
+  --torn: var(--torn-0);
+  --crack: url("/theme/crack-0.svg");
+  --tilt: -0.5deg;
+  --th-tape-img: url("/theme/tape-a.svg") right 4px bottom 2px / 84px 60px no-repeat;
+  --torn-0: polygon(0% 1.8px,5% 1.9px,10% 2.1px,15% 2.1px,20% 3px,25% 1.9px,30% 0.3px,35% 1.9px,40% 2.1px,45% 1.6px,50% 1.7px,55% 3px,60% 1.5px,65% 2.3px,70% 2.4px,75% 0.6px,80% 0.6px,85% 1px,calc(100% - 26px) 2px,calc(100% - 14px) 9px,100% 20px,calc(100% - 1px) 10%,calc(100% - 0.9px) 30%,calc(100% - 1.5px) 50%,calc(100% - 0.3px) 70%,calc(100% - 1.5px) 90%,100% calc(100% - 2.3px),95% calc(100% - 1.7px),90% calc(100% - 3.4px),85% calc(100% - 3.2px),80% calc(100% - 3.1px),75% calc(100% - 1.3px),70% calc(100% - 2.5px),65% calc(100% - 1px),60% calc(100% - 0.2px),55% calc(100% - 3px),50% calc(100% - 3.9px),45% calc(100% - 1.2px),40% calc(100% - 0.6px),35% calc(100% - 3px),30% calc(100% - 1.4px),25% calc(100% - 2.2px),20% calc(100% - 2.3px),15% calc(100% - 3.4px),10% calc(100% - 0.6px),5% calc(100% - 3.4px),0% calc(100% - 3.3px),1px 90%,0.1px 70%,0.2px 50%,2.1px 30%,1.2px 10%);
+  --torn-1: polygon(0% 1.4px,5% 2.1px,10% 1.8px,15% 0.7px,20% 2.8px,25% 1.9px,30% 2.5px,35% 0.7px,40% 0.5px,45% 1.9px,50% 1.4px,55% 1.8px,60% 0.7px,65% 1.6px,70% 2.2px,75% 0.3px,80% 3.3px,85% 2.4px,90% 3.1px,95% 1.7px,100% 0.4px,calc(100% - 1.9px) 10%,calc(100% - 0.6px) 30%,calc(100% - 2.2px) 50%,calc(100% - 0.5px) 70%,calc(100% - 1.5px) 90%,100% calc(100% - 0.8px),95% calc(100% - 0.8px),90% calc(100% - 3.2px),85% calc(100% - 1.1px),80% calc(100% - 1.2px),75% calc(100% - 1.6px),70% calc(100% - 3.8px),65% calc(100% - 1px),60% calc(100% - 3.3px),55% calc(100% - 3.4px),50% calc(100% - 2.4px),45% calc(100% - 3.6px),40% calc(100% - 1.5px),35% calc(100% - 3.4px),30% calc(100% - 2.1px),25% calc(100% - 0.4px),20% calc(100% - 2px),15% calc(100% - 3px),10% calc(100% - 2.2px),5% calc(100% - 1.6px),0% calc(100% - 1.2px),2.1px 90%,2.4px 70%,0.3px 50%,2.4px 30%,1.6px 10%);
+  --torn-2: polygon(0% 2.1px,5% 2.9px,10% 2px,15% 2.6px,20% 1px,25% 0.4px,30% 1.5px,35% 1.6px,40% 1.2px,45% 0.9px,50% 0.9px,55% 0.2px,60% 1.8px,65% 0.6px,70% 2.6px,75% 1px,80% 0.8px,85% 1.4px,calc(100% - 26px) 2px,calc(100% - 14px) 9px,100% 20px,calc(100% - 1.1px) 10%,calc(100% - 2.3px) 30%,calc(100% - 2.2px) 50%,calc(100% - 2.3px) 70%,calc(100% - 2px) 90%,100% calc(100% - 3.7px),95% calc(100% - 0.2px),90% calc(100% - 0.6px),85% calc(100% - 1.2px),80% calc(100% - 2.2px),75% calc(100% - 0.5px),70% calc(100% - 0.8px),65% calc(100% - 2.7px),60% calc(100% - 0.4px),55% calc(100% - 3.9px),50% calc(100% - 1.5px),45% calc(100% - 3.3px),40% calc(100% - 1.7px),35% calc(100% - 1px),30% calc(100% - 1.4px),25% calc(100% - 3.6px),20% calc(100% - 0.7px),15% calc(100% - 1.8px),10% calc(100% - 2.3px),5% calc(100% - 3.1px),0% calc(100% - 3.6px),0.8px 90%,2.3px 70%,1.5px 50%,1.5px 30%,2px 10%);
+  --torn-3: polygon(0% 1.4px,5% 2.8px,10% 0.9px,15% 3px,20% 2px,25% 1.6px,30% 0,35% 2px,40% 2.7px,45% 3px,50% 1px,55% 0.4px,60% 0.7px,65% 2.5px,70% 1.8px,75% 1.1px,80% 0.9px,85% 1px,90% 2.3px,95% 2.1px,100% 1.3px,calc(100% - 1.3px) 10%,calc(100% - 0.5px) 30%,calc(100% - 2.3px) 50%,calc(100% - 2.2px) 70%,calc(100% - 0.6px) 90%,100% calc(100% - 1px),95% calc(100% - 1.9px),90% calc(100% - 3.9px),85% calc(100% - 3.1px),80% calc(100% - 3.3px),75% calc(100% - 0.5px),70% calc(100% - 1.8px),65% calc(100% - 3.6px),60% calc(100% - 3.6px),55% calc(100% - 2.6px),50% calc(100% - 3.3px),45% calc(100% - 3.1px),40% calc(100% - 0.2px),35% calc(100% - 0.1px),30% calc(100% - 0.9px),25% calc(100% - 1.8px),20% calc(100% - 3px),15% calc(100% - 2.7px),10% calc(100% - 0.3px),5% calc(100% - 2.8px),0% calc(100% - 2.9px),2.3px 90%,1.6px 70%,1.7px 50%,1.3px 30%,0.6px 10%);
+  /* Concrete wall: grain, a long crack down the page and soft blotches. Scrolls with the page. */
+  background-color: #9c978c;
+  background-image:
+    url("/theme/grain.png"),
+    url("/theme/big-crack.svg"),
+    url("/theme/blotch.png"),
+    radial-gradient(circle at 30% 40%, rgba(0, 0, 0, 0.1), transparent 55%),
+    radial-gradient(circle at 70% 75%, rgba(255, 255, 255, 0.08), transparent 50%);
+  background-size: 180px 180px, 390px 900px, 360px 360px, 420px 420px, 560px 560px;
+  background-repeat: repeat, repeat-y, repeat, repeat, repeat;
+}
+
+/* Variants so neighbouring cards don't tear the same way. Set on the card or on its list item. */
+body:has([data-viewer-theme="worn"]) :is([data-surface], li):nth-child(4n + 2) {
+  --torn: var(--torn-1);
+  --crack: url("/theme/crack-1.svg");
+  --tilt: 0.4deg;
+  --th-tape-img: url("/theme/tape-b.svg") right 2px top 0 / 84px 60px no-repeat;
+}
+body:has([data-viewer-theme="worn"]) :is([data-surface], li):nth-child(4n + 3) {
+  --torn: var(--torn-2);
+  --crack: url("/theme/crack-2.svg");
+  --tilt: -0.3deg;
+  --th-tape-img: url("/theme/tape-b.svg") left 2px bottom 2px / 84px 60px no-repeat;
+}
+body:has([data-viewer-theme="worn"]) :is([data-surface], li):nth-child(4n + 4) {
+  --torn: var(--torn-3);
+  --crack: url("/theme/crack-3.svg");
+  --tilt: 0.6deg;
+  --th-tape-img: url("/theme/tape-a.svg") right 4px bottom 2px / 84px 60px no-repeat;
+}
+
+/* Cards: polished (gold / silver) ------------------------------------------------------------- */
+
+body:has([data-viewer-finish="polished"]) [data-surface] {
+  border-color: var(--th-line);
+  background: var(--th-card-a);
+  box-shadow:
+    inset 0 0 0 2px var(--th-ring),
+    6px 6px 0 var(--th-deep),
+    0 10px 22px rgb(var(--th-glow) / 0.16);
+}
+body:has([data-viewer-finish="polished"]) [data-surface]:nth-child(even) {
+  background: var(--th-card-b);
+}
+body:has([data-viewer-finish="polished"]) [data-surface][data-shadow="sm"] {
+  background: var(--th-light);
+  box-shadow:
+    inset 0 0 0 2px var(--th-ring),
+    4px 4px 0 var(--th-deep),
+    0 8px 18px rgb(var(--th-glow) / 0.14);
+}
+body:has([data-viewer-finish="polished"]) [data-surface][data-shadow="none"] {
+  box-shadow: inset 0 0 0 2px var(--th-ring);
+}
+body:has([data-viewer-finish="polished"]) [data-surface="mint"][data-shadow] {
+  background: var(--th-mint);
+}
+body:has([data-viewer-finish="polished"]) [data-surface="tape"][data-shadow] {
+  background: var(--th-tape);
+}
+body:has([data-viewer-finish="polished"]) :is([data-surface="note"], [data-surface="pass"])[data-shadow] {
+  background: var(--th-pass);
+}
+body:has([data-viewer-finish="polished"]) [data-surface="pass"][data-shadow] {
+  border-color: var(--th-deep);
+  box-shadow: inset 0 1px 0 #fff;
+}
+body:has([data-viewer-finish="polished"]) [data-surface="red"][data-shadow] {
+  border-color: var(--th-btn-line);
+  background: linear-gradient(135deg, #ec6a62, #e5534b 55%, #d8443c);
+  box-shadow:
+    inset 0 0 0 2px rgba(255, 255, 255, 0.25),
+    6px 6px 0 var(--th-deep);
+}
+body:has([data-viewer-finish="polished"]) [data-surface="alert"][data-shadow] {
+  border-color: var(--red);
+  background: var(--th-light);
+}
+
+/* Cards: worn (どうしようもない) — torn paper with a crack, grubby, slightly crooked, taped down. -- */
+
+body:has([data-viewer-theme="worn"]) [data-surface] {
+  --fill: linear-gradient(165deg, #ece8e0, #dfdad0);
+  --stain: radial-gradient(ellipse 34% 26% at 86% 24%, rgba(95, 72, 40, 0.15), transparent 70%);
+  --edge: var(--ink);
+  --drop: 5px;
+  position: relative;
+  isolation: isolate;
+  border-color: transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  rotate: var(--tilt);
+  /* The outline and the hard shadow follow the torn edge (a border would be cut off by it). */
+  filter: drop-shadow(1.5px 0 0 var(--edge)) drop-shadow(-1.5px 0 0 var(--edge)) drop-shadow(0 1.5px 0 var(--edge))
+    drop-shadow(0 -1.5px 0 var(--edge)) drop-shadow(var(--drop) var(--drop) 0 rgb(20 20 22 / 0.88));
+}
+body:has([data-viewer-theme="worn"]) [data-surface]::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  z-index: -1;
+  pointer-events: none;
+  clip-path: var(--torn);
+  background: var(--grain), var(--crack) 0 0 / 100% 100% no-repeat, var(--stain), var(--blotch), var(--fill);
+}
+/* Big cards are taped down at one corner (never where the crown sits, top-left). */
+body:has([data-viewer-theme="worn"]) [data-surface][data-shadow="md"]::after {
+  content: "";
+  position: absolute;
+  /* Room for the tape to stick out past the corner (backgrounds are cut at the box). */
+  inset: -24px;
+  z-index: 3;
+  pointer-events: none;
+  background: var(--th-tape-img);
+}
+body:has([data-viewer-theme="worn"]) [data-surface][data-shadow="sm"] {
+  --drop: 4px;
+}
+body:has([data-viewer-theme="worn"]) [data-surface="tape"][data-shadow] {
+  --fill: linear-gradient(170deg, #efdd8e, #e0ca6e);
+  --stain: radial-gradient(ellipse 30% 60% at 92% 40%, rgba(110, 80, 30, 0.16), transparent 70%);
+}
+body:has([data-viewer-theme="worn"]) [data-surface="mint"][data-shadow] {
+  --fill: linear-gradient(170deg, #bfe1d2, #a6d2be);
+  --stain: linear-gradient(transparent, transparent);
+}
+body:has([data-viewer-theme="worn"]) [data-surface="red"][data-shadow] {
+  --fill: linear-gradient(170deg, #d9473f, #c23a33);
+  --stain: linear-gradient(transparent, transparent);
+}
+body:has([data-viewer-theme="worn"]) [data-surface="alert"][data-shadow] {
+  --edge: #d3241b;
+}
+body:has([data-viewer-theme="worn"]) [data-surface="note"][data-shadow] {
+  --fill: #f6f4ef;
+  --crack: linear-gradient(transparent, transparent);
+}
+/* The passphrase and other dashed notes stay a dashed slip of paper, not a torn card. */
+body:has([data-viewer-theme="worn"]) [data-surface="pass"][data-shadow] {
+  filter: none;
+  rotate: -0.4deg;
+  border-color: var(--ink);
+  border-radius: 6px;
+  background:
+    var(--grain),
+    repeating-linear-gradient(118deg, rgba(0, 0, 0, 0.035) 0 2px, transparent 2px 30px),
+    repeating-linear-gradient(24deg, rgba(255, 255, 255, 0.6) 0 1px, transparent 1px 44px),
+    #f6f4ef;
+}
+body:has([data-viewer-theme="worn"]) [data-surface="pass"][data-shadow]::before {
+  content: none;
+}
+
+/* Buttons ------------------------------------------------------------------------------------- */
+
+body:has([data-viewer-finish="polished"]) .th-btn {
+  border-color: var(--th-line);
+  background: linear-gradient(180deg, #ffffff, #f7f5f0);
+  box-shadow:
+    inset 0 0 0 2px var(--th-ring),
+    5px 5px 0 var(--th-deep);
+}
+body:has([data-viewer-finish="polished"]) .th-btn-mint {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  border-color: var(--th-btn-line);
+  background: var(--th-btn);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.75),
+    inset 0 -3px 0 rgb(var(--th-glow) / 0.35),
+    5px 5px 0 var(--th-btn-line),
+    0 8px 18px rgb(var(--th-glow) / 0.3);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+/* A glint that sweeps across the main button now and then (behind the label). */
+body:has([data-viewer-finish="polished"]) .th-btn-mint::before {
+  content: "";
+  position: absolute;
+  top: -20%;
+  bottom: -20%;
+  left: 0;
+  z-index: -1;
+  width: 45%;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 0%, rgba(255, 255, 255, 0) 20%, rgba(255, 255, 255, 0.65) 50%, rgba(255, 255, 255, 0) 80%, transparent 100%);
+  transform: translateX(-130%);
+  animation: th-shine 4.2s ease-in-out 0.6s infinite;
+}
+body:has([data-viewer-finish="polished"]) .th-btn-red {
+  border-color: var(--th-btn-line);
+  background: linear-gradient(180deg, #f07a72, #e5534b 50%, #d4433b);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    5px 5px 0 var(--th-btn-line);
+}
+body:has([data-viewer-finish="polished"]) .th-btn-orange {
+  border-color: var(--th-btn-line);
+  background: linear-gradient(180deg, #ff8a3a, #ff6a00 50%, #ec5f00);
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.35),
+    5px 5px 0 var(--th-btn-line);
+}
+body:has([data-viewer-finish="polished"]) .th-btn-tape {
+  border-color: var(--th-line);
+  background: var(--th-tape);
+  box-shadow:
+    inset 0 0 0 2px var(--th-ring),
+    4px 4px 0 var(--th-deep);
+}
+
+body:has([data-viewer-theme="worn"]) .th-btn {
+  border-color: var(--ink);
+  border-radius: 16px 19px 14px 20px;
+  background: var(--grain), #e9e5dc;
+  box-shadow: 5px 5px 0 var(--ink);
+}
+/* The main button is cracked asphalt. */
+body:has([data-viewer-theme="worn"]) .th-btn-mint {
+  color: #fff;
+  background:
+    url("/theme/crack-button.svg") 0 0 / 100% 100% no-repeat,
+    var(--grain-light),
+    var(--grain),
+    linear-gradient(180deg, #504d48, #33312d);
+  text-shadow:
+    0 1px 0 #000,
+    0 0 6px rgba(0, 0, 0, 0.6);
+}
+body:has([data-viewer-theme="worn"]) .th-btn-red {
+  background: var(--grain), #e5534b;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+body:has([data-viewer-theme="worn"]) .th-btn-orange {
+  background: var(--grain), #ff6a00;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.45);
+}
+body:has([data-viewer-theme="worn"]) .th-btn-tape {
+  background: var(--grain), #e3cf6a;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+/* Keep the press: the shadow goes away while the button sinks. */
+body:has([data-viewer-theme]) .th-btn:active {
+  box-shadow: none;
+}
+
+/* Fields, chips, cells, choices, disclosures, tables, dashed boxes ------------------------------ */
+
+body:has([data-viewer-finish="polished"]) .th-field {
+  border-color: var(--th-line);
+  background: #fff;
+  box-shadow: 4px 4px 0 var(--th-deep);
+}
+body:has([data-viewer-theme="worn"]) .th-field {
+  border-color: var(--ink);
+  border-radius: 12px 15px 13px 16px;
+  background: var(--grain), #f7f4ee;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+body:has([data-viewer-finish="polished"]) .th-chip {
+  border-color: var(--th-line);
+  background: #fff;
+  box-shadow: none;
+}
+body:has([data-viewer-finish="polished"]) .th-chip:is([aria-current], [aria-pressed="true"]) {
+  border-color: var(--th-btn-line);
+  background: var(--th-pill);
+  color: var(--ink);
+  box-shadow: inset 0 1.5px 0 rgba(255, 255, 255, 0.8);
+}
+body:has([data-viewer-theme="worn"]) .th-chip {
+  border-color: var(--ink);
+  background: var(--grain), #ece8e0;
+  box-shadow: none;
+}
+body:has([data-viewer-theme="worn"]) .th-chip:is([aria-current], [aria-pressed="true"]) {
+  border-radius: 10px 13px 9px 12px;
+  background: var(--grain), linear-gradient(180deg, #7a3a22, #4e2516);
+  color: #fff;
+}
+
+/* Small square cells (self rating, rest days). Their state colors stay; only the frame changes. */
+body:has([data-viewer-finish="polished"]) .th-cell {
+  border-color: var(--th-line);
+}
+body:has([data-viewer-finish="polished"]) .th-cell.shadow-hard-sm {
+  box-shadow: 4px 4px 0 var(--th-deep);
+}
+body:has([data-viewer-theme="worn"]) .th-cell.bg-card {
+  background: var(--grain), #ece8e0;
+}
+
+body:has([data-viewer-finish="polished"]) .th-drop {
+  border-color: var(--th-line);
+}
+body:has([data-viewer-theme="worn"]) .th-drop {
+  background: var(--grain), #f1eee8;
+}
+
+body:has([data-viewer-finish="polished"]) .th-choice {
+  border-color: var(--th-line);
+  box-shadow: 6px 6px 0 var(--th-deep);
+}
+body:has([data-viewer-finish="polished"]) .th-choice.shadow-hard-sm {
+  box-shadow: 4px 4px 0 var(--th-deep);
+}
+body:has([data-viewer-finish="polished"]) .th-choice:not(:has(:checked)) {
+  background: var(--th-light);
+}
+body:has([data-viewer-finish="polished"]) .th-choice:has(:checked) {
+  background: var(--th-mint);
+}
+body:has([data-viewer-theme="worn"]) .th-choice {
+  border-radius: 16px 19px 14px 20px;
+  background: var(--grain), var(--blotch), #e9e5dc;
+}
+body:has([data-viewer-theme="worn"]) .th-choice:has(:checked) {
+  background: var(--grain), var(--blotch), #a9d4c0;
+}
+
+body:has([data-viewer-finish="polished"]) .th-det {
+  border-color: var(--th-line);
+  background: var(--th-light);
+}
+body:has([data-viewer-finish="polished"]) .th-det[open] {
+  box-shadow: 4px 4px 0 var(--th-deep);
+}
+body:has([data-viewer-theme="worn"]) .th-det {
+  border-radius: 11px 13px 10px 14px;
+  background: var(--grain), #ece8e0;
+}
+
+body:has([data-viewer-finish="polished"]) .th-tbl {
+  border-color: var(--th-line);
+}
+body:has([data-viewer-theme="worn"]) .th-tbl {
+  background: var(--grain), #f0ece5;
+}
+
+body:has([data-viewer-finish="polished"]) .th-box {
+  border-color: var(--th-deep);
+  background: rgba(255, 255, 255, 0.5);
+}
+body:has([data-viewer-theme="worn"]) .th-box {
+  background: var(--grain), rgba(255, 255, 255, 0.55);
+}
+
+/* Red text: a deeper red on the gold, silver and concrete surfaces (4.5:1); an urgent deadline on
+   the yellow concrete tape goes to ink, as red on it can't be read. */
+body:has([data-viewer-theme]) .text-red {
+  color: #b3241d;
+}
+body:has([data-viewer-theme="worn"]) .th-due-urgent {
+  color: var(--ink);
+}
+
+/* Receipt ------------------------------------------------------------------------------------- */
+
+body:has([data-viewer-finish="polished"]) .th-receipt {
+  --receipt-line: var(--th-line);
+  --receipt-fill: var(--th-rcpt-fill);
+  border-color: var(--th-line);
+  background: var(--th-rcpt);
+  box-shadow:
+    6px 6px 0 var(--th-deep),
+    0 12px 26px rgb(var(--th-glow) / 0.18);
+}
+body:has([data-viewer-finish="polished"]) .th-receipt .th-rule {
+  border-color: var(--th-line);
+}
+/* Worn: dog-eared paper with a coffee ring, taped at both top corners. */
+body:has([data-viewer-theme="worn"]) .th-receipt {
+  --receipt-fill: #efebe3;
+  rotate: 0.6deg;
+  background:
+    var(--grain),
+    repeating-linear-gradient(114deg, rgba(0, 0, 0, 0.04) 0 2px, transparent 2px 36px),
+    repeating-linear-gradient(26deg, rgba(255, 255, 255, 0.55) 0 1px, transparent 1px 50px),
+    radial-gradient(circle at 84% 93%, transparent 0 24px, rgba(110, 78, 36, 0.28) 25px 29px, transparent 31px),
+    radial-gradient(ellipse 24% 10% at 84% 93%, rgba(110, 78, 36, 0.12), transparent 70%),
+    #efebe3;
+}
+body:has([data-viewer-theme="worn"]) .th-receipt::after {
+  content: "";
+  position: absolute;
+  inset: -30px -30px auto;
+  height: 76px;
+  z-index: 3;
+  pointer-events: none;
+  background:
+    url("/theme/tape-a.svg") left 4px top 0 / 84px 60px no-repeat,
+    url("/theme/tape-b.svg") right 4px top 0 / 84px 60px no-repeat;
+}
+
+/* Karte (AI review) ---------------------------------------------------------------------------- */
+
+body:has([data-viewer-finish="polished"]) .th-karte {
+  border-color: var(--th-line);
+  box-shadow:
+    6px 6px 0 var(--th-deep),
+    0 10px 22px rgb(var(--th-glow) / 0.16);
+}
+body:has([data-viewer-theme="worn"]) .th-karte {
+  border-radius: 15px 18px 14px 17px;
+  background: var(--grain), var(--blotch), #a9dcc6;
+}
+body:has([data-viewer-theme="worn"]) .th-karte[data-karte="red"] {
+  background: var(--grain), var(--blotch), #f2c2bd;
+}
+
+/* Timeline, avatars --------------------------------------------------------------------------- */
+
+body:has([data-viewer-finish="polished"]) .th-tl {
+  border-color: var(--th-line);
+}
+body:has([data-viewer-finish="polished"]) .th-tl-dot {
+  border-color: var(--th-deep);
+  background: var(--th-dot);
+}
+body:has([data-viewer-theme="worn"]) .th-tl-dot {
+  background: #b8b2a6;
+}
+
+body:has([data-viewer-finish="polished"]) .th-avatar {
+  border-color: var(--th-deep);
+  box-shadow: 0 0 0 2px var(--th-av-ring);
+}
+body:has([data-viewer-theme="worn"]) .th-avatar {
+  filter: saturate(0.55) contrast(0.95);
+}
+
+/* Bottom menu --------------------------------------------------------------------------------- */
+
+body:has([data-viewer-finish="polished"]) .th-nav {
+  border-color: var(--th-line);
+  background: var(--th-nav);
+  box-shadow: 0 -6px 18px rgb(var(--th-glow) / 0.16);
+}
+body:has([data-viewer-finish="polished"]) .th-nav-link[aria-current] {
+  padding-block: 0.25rem;
+  border: 2px solid var(--th-btn-line);
+  background: var(--th-pill);
+  color: var(--ink);
+  font-weight: 900;
+  box-shadow:
+    inset 0 1.5px 0 rgba(255, 255, 255, 0.8),
+    2px 2px 0 var(--th-btn-line);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+body:has([data-viewer-theme="worn"]) .th-nav {
+  background: var(--grain), var(--blotch), #d6d1c7;
+}
+body:has([data-viewer-theme="worn"]) .th-nav-link[aria-current] {
+  padding-block: 0.25rem;
+  border: 2px solid var(--ink);
+  border-radius: 12px 16px 11px 15px;
+  background:
+    var(--grain),
+    radial-gradient(ellipse 40% 60% at 25% 35%, rgba(196, 98, 40, 0.55), transparent 70%),
+    linear-gradient(180deg, #7a3a22, #4e2516);
+  font-weight: 900;
+  box-shadow: 2px 2px 0 var(--ink);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  rotate: -2deg;
+}
+
+/* Home title ---------------------------------------------------------------------------------- */
+
+/* Gold / silver: the polished logo image; the text stays for screen readers. */
+body:has([data-viewer-finish="polished"]) .brand-title {
+  width: min(292px, 72vw);
+  aspect-ratio: 900 / 113;
+  overflow: hidden;
+  color: transparent;
+  text-shadow: none;
+  background: url("/theme/title-gold.webp") center / contain no-repeat;
+  filter: drop-shadow(0 4px 8px rgba(184, 134, 11, 0.3));
+}
+body:has([data-viewer-theme="silver"]) .brand-title {
+  filter: grayscale(1) brightness(1.22) contrast(1.15) drop-shadow(0 4px 8px rgba(90, 100, 115, 0.3));
+}
+.brand-sparkles {
+  display: none;
+}
+body:has([data-viewer-theme="gold"]) .brand-sparkles {
+  display: block;
+}
+.brand-sparkles > span {
+  position: absolute;
+  z-index: 3;
+  pointer-events: none;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  background: radial-gradient(circle, #fffbe0 0 25%, #f2c94c 60%, #c99a22 100%);
+  animation: th-twinkle 2.6s ease-in-out infinite;
+}
+
+/* Worn: the title struck out in red, with "OR PENALTY" sprayed under it. */
+body:has([data-viewer-theme="worn"]) .brand-title {
+  margin-bottom: 1.1em;
+  color: #2a2926;
+  opacity: 0.92;
+  text-shadow:
+    3px 3px 0 #cfcac0,
+    5px 5px 0 #141416;
+}
+body:has([data-viewer-theme="worn"]) .brand-title::before,
+body:has([data-viewer-theme="worn"]) .brand-title::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  background: #d3241b;
+}
+body:has([data-viewer-theme="worn"]) .brand-title::before {
+  left: -6px;
+  right: -8px;
+  top: 42%;
+  height: 6px;
+  border-radius: 3px 6px 2px 5px;
+  box-shadow: 0 0 1.5px #d3241b;
+  rotate: -3deg;
+}
+body:has([data-viewer-theme="worn"]) .brand-title::after {
+  left: 0;
+  right: 30px;
+  top: 62%;
+  height: 3px;
+  border-radius: 3px;
+  opacity: 0.75;
+  rotate: 1.5deg;
+}
+body:has([data-viewer-theme="worn"]) .brand-or-treat {
+  position: relative;
+}
+body:has([data-viewer-theme="worn"]) .brand-or-treat::after {
+  content: "OR PENALTY";
+  position: absolute;
+  right: -0.5em;
+  top: 0.65em;
+  z-index: 1;
+  color: #e0261b;
+  font-family: "Rubik Wet Paint", var(--font-en);
+  font-size: 1.25em;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
+  rotate: -7deg;
+}
+
+/* Decorations (ThemeLayer) -------------------------------------------------------------------- */
+
+.th-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.th-confetti {
+  position: absolute;
+  top: 0;
+  animation: th-fall var(--dur) linear var(--delay) infinite;
+}
+.th-confetti > span {
+  display: block;
+  box-shadow: 0 0 3px rgba(255, 220, 120, 0.6);
+  animation: th-spin var(--spin) ease-in-out var(--delay) infinite;
+}
+.th-star {
+  position: absolute;
+  clip-path: polygon(50% 0, 61% 39%, 100% 50%, 61% 61%, 50% 100%, 39% 61%, 0 50%, 39% 39%);
+  background: radial-gradient(circle, #ffffff 0 30%, #c9cfd6 70%, #8a929c 100%);
+  opacity: 0.8;
+  animation: th-twinkle var(--dur) ease-in-out var(--delay) infinite;
+}
+.th-siren-glow {
+  position: absolute;
+  left: 50%;
+  top: 40%;
+  width: 90px;
+  height: 90px;
+  margin: -45px 0 0 -45px;
+  border-radius: 9999px;
+  background: radial-gradient(circle, rgba(255, 60, 40, 0.75), rgba(255, 40, 20, 0) 65%);
+  animation: th-siren 1.1s ease-in-out infinite;
+}
+
+@keyframes th-fall {
+  from {
+    transform: translateY(-40px);
+  }
+  to {
+    transform: translateY(calc(100vh + 40px));
+  }
+}
+@keyframes th-spin {
+  0% {
+    transform: translateX(0) rotate3d(1, 0.6, 0.2, 0deg);
+  }
+  50% {
+    transform: translateX(16px) rotate3d(1, 0.6, 0.2, 180deg);
+  }
+  100% {
+    transform: translateX(0) rotate3d(1, 0.6, 0.2, 360deg);
+  }
+}
+@keyframes th-twinkle {
+  0%,
+  100% {
+    transform: scale(0.35) rotate(0deg);
+    opacity: 0.25;
+  }
+  50% {
+    transform: scale(1) rotate(20deg);
+    opacity: 1;
+  }
+}
+@keyframes th-shine {
+  0% {
+    transform: translateX(-130%);
+  }
+  40%,
+  100% {
+    transform: translateX(230%);
+  }
+}
+@keyframes th-siren {
+  0%,
+  100% {
+    opacity: 0.15;
+    transform: scale(0.7);
+  }
+  50% {
+    opacity: 0.85;
+    transform: scale(1.2);
+  }
+}
+
+/* "Reduce motion": confetti rests where it is, nothing twinkles, sweeps or flashes. */
+@media (prefers-reduced-motion: reduce) {
+  .th-confetti {
+    top: var(--rest-y);
+    animation: none;
+  }
+  .th-confetti > span,
+  .th-star,
+  .brand-sparkles > span,
+  .th-siren-glow,
+  body .th-btn-mint::before {
+    animation: none;
+  }
+  .th-star,
+  .brand-sparkles > span {
+    transform: scale(0.8);
+  }
+  .th-siren-glow {
+    opacity: 0.5;
+  }
+}

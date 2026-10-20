@@ -5,7 +5,7 @@ export function Receipt({ className, children }: { className?: string; children:
   return (
     <div
       className={cn(
-        "receipt-edge mt-3.5 grid gap-2.5 border-[3px] border-ink bg-card px-4.5 pt-6 pb-4 font-receipt text-ink shadow-hard",
+        "th-receipt receipt-edge relative mt-3.5 grid gap-2.5 border-[3px] border-ink bg-card px-4.5 pt-6 pb-4 font-receipt text-ink shadow-hard",
         className,
       )}
     >
@@ -15,7 +15,7 @@ export function Receipt({ className, children }: { className?: string; children:
 }
 
 export function ReceiptRule() {
-  return <hr className="m-0 border-0 border-t-[3px] border-dashed border-ink" />;
+  return <hr className="th-rule m-0 border-0 border-t-[3px] border-dashed border-ink" />;
 }
 
 export function Barcode({ className }: { className?: string }) {

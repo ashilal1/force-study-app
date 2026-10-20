@@ -20,7 +20,7 @@ export function RankingSwitch({ rows }: { rows: { name: string; week: number; mo
             type="button"
             aria-pressed={period === key}
             onClick={() => setPeriod(key)}
-            className={cn("rounded-full border-2 border-ink px-3 py-0.5 text-xs font-bold", period === key ? "bg-ink text-white" : "bg-card")}
+            className={cn("th-chip rounded-full border-2 border-ink px-3 py-0.5 text-xs font-bold", period === key ? "bg-ink text-white" : "bg-card")}
           >
             {LABEL[key]}
           </button>

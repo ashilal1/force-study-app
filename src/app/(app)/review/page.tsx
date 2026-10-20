@@ -7,8 +7,10 @@ import { GroupCalendar, pickWeek } from "@/components/review/group-calendar";
 import { MemberRateChart } from "@/components/review/charts";
 import { RangeTabs } from "@/components/review/range-tabs";
 import { RankingSwitch } from "@/components/review/ranking-switch";
-import { FAILURE_CATEGORY } from "@/lib/chart-colors";
+import { XpTrendChart } from "@/components/standing/xp-trend-chart";
+import { FAILURE_CATEGORY, MEMBER_COLORS } from "@/lib/chart-colors";
 import { getGroupHistory } from "@/lib/history";
+import { getStandings } from "@/lib/standing/load";
 import { parseRange, periodKey, ratesByPeriod, summarize } from "@/lib/stats";
 
 export const metadata: Metadata = { title: "振り返り | Commit or Treat" };
@@ -32,7 +34,7 @@ export default function ReviewPage({ searchParams }: PageProps<"/review">) {
 async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams">) {
   const query = await searchParams;
   const range = parseRange(query.range);
-  const { today, members } = await getGroupHistory(range);
+  const [{ today, members }, standings] = await Promise.all([getGroupHistory(range), getStandings()]);
   const weekStart = (() => {
     const at = new Date(`${today}T00:00:00Z`);
     at.setUTCDate(at.getUTCDate() - at.getUTCDay());
@@ -61,7 +63,7 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
 
       <section className="grid gap-2.5">
         <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">メンバー比較</h2>
-        <div className="overflow-x-auto rounded-[12px] border-[2.5px] border-ink bg-card">
+        <div className="th-tbl overflow-x-auto rounded-[12px] border-[2.5px] border-ink bg-card">
           <table className="w-full min-w-[560px] border-collapse text-xs">
             <thead>
               <tr className="border-b-2 border-ink text-left">
@@ -104,6 +106,18 @@ async function Review({ searchParams }: Pick<PageProps<"/review">, "searchParams
             </tbody>
           </table>
         </div>
+      </section>
+
+      <section className="grid gap-2.5">
+        <h2 className="m-0 font-heading text-[1.15rem] leading-tight font-normal">XP レース（直近 8 週）</h2>
+        <p className="m-0 text-xs text-sub">毎日の「直近 28 日の XP」です。期間の切り替えに関係なく、いつも直近 8 週を出します。</p>
+        <XpTrendChart
+          race
+          lines={members.flatMap((member, index) => {
+            const standing = standings.get(member.id);
+            return standing ? [{ id: member.id, name: member.name, color: MEMBER_COLORS[index % MEMBER_COLORS.length], points: standing.trend }] : [];
+          })}
+        />
       </section>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 lg:gap-x-10">

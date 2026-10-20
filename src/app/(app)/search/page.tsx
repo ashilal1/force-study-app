@@ -49,7 +49,7 @@ async function Search({ searchParams }: Pick<PageProps<"/search">, "searchParams
   const form = (
     <form action="/search" className="flex gap-2">
       <TextInput name="q" defaultValue={q} placeholder="例: 線形代数" aria-label="検索する言葉" className="flex-1" />
-      <button type="submit" className="rounded-[12px] border-[3px] border-ink bg-tape px-4 font-bold shadow-hard-sm">
+      <button type="submit" className="th-btn th-btn-tape rounded-[12px] border-[3px] border-ink bg-tape px-4 font-bold shadow-hard-sm">
         探す
       </button>
     </form>

@@ -31,7 +31,7 @@ export function DeclareForm({ cutoff, submitBy, nextPlan }: Props) {
       </Sticker>
 
       {nextPlan ? (
-        <Sticker shadow="none" className="grid gap-1 border-dashed px-3.5 py-2.5">
+        <Sticker shadow="none" data-surface="pass" className="grid gap-1 border-dashed px-3.5 py-2.5">
           <small className="text-xs text-sub">前回書いた「次の計画」</small>
           <p className="m-0 text-sm font-medium whitespace-pre-wrap">{nextPlan}</p>
         </Sticker>
@@ -53,7 +53,7 @@ export function DeclareForm({ cutoff, submitBy, nextPlan }: Props) {
         <FieldError id="declaration-error" message={errors.declaration} />
       </div>
 
-      <p className="m-0 rounded-[10px] border-2 border-dashed border-ink px-3 py-2 text-sm leading-relaxed font-medium">
+      <p className="th-box m-0 rounded-[10px] border-2 border-dashed border-ink px-3 py-2 text-sm leading-relaxed font-medium">
         提出は <b>{formatJstDateTime(submitBy)}</b> まで（明日の宣言をする前）。夜中でも出せます。合格するか「できなかった」を押すまで、明日の宣言はできません。
       </p>
 

@@ -43,7 +43,7 @@ export function RankingReceipt({ rows, iOwe }: { rows: RankingRow[]; iOwe: boole
       </ol>
       <ReceiptRule />
       <div className="flex justify-between text-[0.8rem]">
-        <span>1pt = 1 円</span>
+        <span>PayPay でまとめて払う</span>
         <span>土曜 23:59 締め</span>
       </div>
       {iOwe ? (

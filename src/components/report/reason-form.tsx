@@ -106,7 +106,7 @@ export function ReasonForm({ deadline, goal, minChars, unrealisticStreak, amount
           <label
             key={option.value}
             className={cn(
-              "grid cursor-pointer grid-cols-[1fr_auto] items-center gap-x-2.5 gap-y-0.5 rounded-[14px] border-[3px] border-ink px-3.5 py-3 shadow-hard has-focus-visible:outline-[3px] has-focus-visible:outline-offset-2",
+              "th-choice grid cursor-pointer grid-cols-[1fr_auto] items-center gap-x-2.5 gap-y-0.5 rounded-[14px] border-[3px] border-ink px-3.5 py-3 shadow-hard has-focus-visible:outline-[3px] has-focus-visible:outline-offset-2",
               category === option.value ? "bg-mint" : "bg-card",
             )}
           >

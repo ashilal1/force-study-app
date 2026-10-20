@@ -11,6 +11,7 @@ import { PassphraseCard } from "@/components/declare/passphrase-card";
 import { DisputeReview, WithdrawFlagButton } from "@/components/dispute/dispute-actions";
 import { ResendForm } from "@/components/dispute/resend-form";
 import { PageTip } from "@/components/onboarding/page-tip";
+import { TermHelp } from "@/components/onboarding/term-help";
 import { JudgeKarte } from "@/components/submit/judge-karte";
 import { FlagForm } from "@/components/today/flag-form";
 import { Timeline } from "@/components/dashboard/timeline";
@@ -69,9 +70,12 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
           <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">
             {owner.name} さんの{log.isMakeup ? "補習" : "記録"}
           </h1>
-          <Pill variant={log.status === "completed" ? "ink" : "outline"}>
-            {(log.isMakeup ? MAKEUP_STATUS[log.status] : undefined) ?? STATUS[log.status] ?? log.status}
-          </Pill>
+          <span className="flex items-center gap-1.5">
+            <Pill variant={log.status === "completed" ? "ink" : "outline"}>
+              {(log.isMakeup ? MAKEUP_STATUS[log.status] : undefined) ?? STATUS[log.status] ?? log.status}
+            </Pill>
+            {log.status === "passed" && !log.isMakeup ? <TermHelp term="awaiting" /> : null}
+          </span>
         </div>
       </header>
 
@@ -173,7 +177,7 @@ function DisputeSection({ detail }: { detail: LogDetail }) {
   const { dispute, submissionFlags, reviews, can, log } = detail;
   if (!dispute && submissionFlags.length === 0) return null;
   return (
-    <Sticker className="grid gap-3 border-red px-4 py-4">
+    <Sticker tone="alert" className="grid gap-3 px-4 py-4">
       <div className="flex items-center justify-between gap-2">
         <Stamp tone="red" label="怪しい" className="text-lg" />
         {dispute ? <Pill variant="outline">{DISPUTE[dispute.status] ?? dispute.status}</Pill> : null}

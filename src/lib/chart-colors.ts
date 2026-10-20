@@ -34,6 +34,9 @@ export const PENALTY_REASON: Record<string, { label: string; color: string }> = 
   late_payment: { label: "未払い", color: "var(--orange)" },
 };
 
+/** One line color per member, in the group's member order (G13, the XP race). */
+export const MEMBER_COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "#7b5ea7", "var(--orange)"];
+
 export const FAILURE_CATEGORY: Record<string, string> = {
   unrealistic: "宣言が妥当でなかった",
   slacked: "サボった",

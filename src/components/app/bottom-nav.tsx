@@ -37,7 +37,7 @@ function Nav({ basePath = "", live = false, pathname }: Props & { pathname: stri
   return (
     <nav
       aria-label="メインメニュー"
-      className="fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-ink bg-paper pb-[env(safe-area-inset-bottom,0px)]"
+      className="th-nav fixed inset-x-0 bottom-0 z-20 border-t-[3px] border-ink bg-paper pb-[env(safe-area-inset-bottom,0px)]"
     >
       <ul className="mx-auto flex max-w-[440px] list-none md:max-w-[720px] justify-around p-0 py-2">
         {TABS.map((tab) => {
@@ -49,7 +49,7 @@ function Nav({ basePath = "", live = false, pathname }: Props & { pathname: stri
                 href={href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "relative block rounded-full px-3 py-1.5 text-xs font-bold md:px-4 md:py-2 md:text-sm",
+                  "th-nav-link relative block rounded-full px-3 py-1.5 text-xs font-bold md:px-4 md:py-2 md:text-sm",
                   active ? "bg-ink text-white" : "text-ink",
                 )}
               >

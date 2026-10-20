@@ -144,6 +144,36 @@ export function xpWindow(days: StandingDay[], today: string): Set<string> {
   return window;
 }
 
+export type XpTrendPoint = {
+  date: string;
+  /** The 28-day XP as seen from this day. */
+  xp: number;
+  leave: boolean;
+  /** What changed the XP on this day. */
+  events: XpEvent[];
+  /** The change from XP leaving the window on this day (older than 28 days by then): minus when a gain left. */
+  dropped: number;
+};
+
+/**
+ * Each day's 28-day XP for the last `length` days up to today (from the day they joined), for the
+ * trend chart (F14). `events` are the member's xpEvents.
+ */
+export function xpTrend(input: StandingInput, events: XpEvent[], today: string, length = 56): XpTrendPoint[] {
+  const leave = new Set(input.days.filter((day) => day.kind === "leave").map((day) => day.date));
+  const earliest = addDays(today, -(length - 1));
+  const points: XpTrendPoint[] = [];
+  for (let date = input.joinedOn > earliest ? input.joinedOn : earliest; date <= today; date = addDays(date, 1)) {
+    const window = xpWindow(input.days, date);
+    const xp = events.filter((event) => window.has(event.date)).reduce((sum, event) => sum + event.points, 0);
+    const happened = events.filter((event) => event.date === date);
+    const gained = window.has(date) ? happened.reduce((sum, event) => sum + event.points, 0) : 0;
+    const previous = points.at(-1);
+    points.push({ date, xp, leave: leave.has(date), events: happened, dropped: previous ? xp - previous.xp - gained : 0 });
+  }
+  return points;
+}
+
 export type RankId = "tensai" | "yuutousei" | "yareba-dekiru" | "mikka-bouzu" | "doushiyou-mo-nai";
 
 export const RANKS: { id: RankId; name: string; min: number }[] = [
@@ -413,13 +443,15 @@ export type Standing = {
   rank: (typeof RANKS)[number];
   next: ReturnType<typeof nextRank>;
   titles: Title[];
-  /** Group's XP leader (3+ members, not everyone equal, 1 XP or more). */
+  /** Group's XP leader (2+ members, not everyone equal, 1 XP or more). */
   crown: boolean;
-  /** Group's lowest XP (3+ members, not everyone equal). */
+  /** Group's lowest XP (2+ members, not everyone equal). */
   last: boolean;
   events: XpEvent[];
   /** The dates in the 28-day window (leave days skipped). */
   window: string[];
+  /** The last 8 weeks of 28-day XP, day by day. */
+  trend: XpTrendPoint[];
 };
 
 /** The 28-day window of a computed standing, as a set. */
@@ -444,12 +476,13 @@ export function computeStandings(inputs: StandingInput[], ctx: StandingContext):
       last: false,
       events,
       window: [...window],
+      trend: xpTrend(input, events, ctx.today),
     };
   });
   const values = rows.map((row) => row.xp);
   const top = Math.max(...values);
   const bottom = Math.min(...values);
-  if (rows.length >= 3 && top !== bottom) {
+  if (rows.length >= 2 && top !== bottom) {
     for (const row of rows) {
       row.crown = row.xp === top && top >= 1;
       row.last = row.xp === bottom;
