@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 @import "./rank-themes.css";
+@import "./ui-themes.css";
 
 
 @theme inline {
