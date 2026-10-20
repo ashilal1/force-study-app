@@ -474,15 +474,25 @@ const RULES: Record<string, Rule> = {
       "/settlements",
     ),
 
+  // No payee yet: the week's amount carries over to the next settlement (F8). Admins set it; the
+  // member is told too (an admin who is the member gets the admin's notice).
   payee_missing: (event, members) => {
     const admins = Array.isArray(event.payload.admin_ids) ? event.payload.admin_ids : [];
-    return draft(
-      members.filter((member) => admins.includes(member.id)),
-      `${nameOf(members, event.actor_id)} さんの支払先が未設定です`,
-      "今週の精算を作れませんでした。支払先を入力してください",
-      "/settlements",
-      true,
-    );
+    return [
+      ...draft(
+        members.filter((member) => admins.includes(member.id)),
+        `${nameOf(members, event.actor_id)} さんの支払先が未設定です`,
+        "今週の分は次の精算に持ち越します。支払先を入力してください",
+        "/settlements",
+        true,
+      ),
+      ...draft(
+        members.filter((member) => member.id === event.actor_id && !admins.includes(member.id)),
+        "あなたの支払先がまだ決まっていません",
+        "今週の分は次の精算に持ち越します。管理者に支払先を決めてもらってください",
+        "/settlements",
+      ),
+    ];
   },
 
   settlement_created: (event, members) => {
