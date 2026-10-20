@@ -13,7 +13,6 @@ import { LeaveGroup } from "@/components/settings/leave-group";
 import { TrialNotice } from "@/components/profile/trial-notice";
 import { getSessionUser, requireMember } from "@/lib/auth";
 import { isInTrial, listMembers } from "@/lib/members";
-import { PICKABLE_THEMES } from "@/lib/theme/themes";
 import { createClient } from "@/lib/supabase/server";
 
 export const metadata: Metadata = { title: "設定 | Commit or Treat" };
@@ -24,9 +23,6 @@ export default function SettingsPage() {
       <h1 className="m-0 font-heading text-[1.55rem] leading-tight font-normal">プロフィール</h1>
       <Suspense fallback={<PageLoading />}>
         <Profile />
-      </Suspense>
-      <Suspense fallback={null}>
-        <ThemeLink />
       </Suspense>
       <section className="grid gap-2.5">
         <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">通知</h2>
@@ -92,28 +88,6 @@ async function Profile() {
         />
       </Sticker>
     </>
-  );
-}
-
-/** 「見た目のテーマ」 (F16): what is picked now, and the way to the picker. */
-async function ThemeLink() {
-  const me = await requireMember();
-  const picked = PICKABLE_THEMES.find((theme) => theme.id === me.ui_theme);
-  return (
-    <Link href="/settings/theme" className="no-underline">
-      <Sticker shadow="sm" className="grid grid-cols-[1fr_auto] items-center gap-x-3 px-4 py-3">
-        <span className="grid gap-0.5">
-          <b className="font-heading text-[1.05rem] leading-tight font-normal">見た目のテーマ</b>
-          <span className="text-xs font-bold text-sub">
-            {picked?.name ?? "標準"}
-            {me.season_themes ? "・期間限定テーマに切り替える" : ""}
-          </span>
-        </span>
-        <span aria-hidden className="text-lg">
-          →
-        </span>
-      </Sticker>
-    </Link>
   );
 }
 

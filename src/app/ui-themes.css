@@ -1,12 +1,12 @@
 /* ---------------------------------------------------------------------------------------------
-   Look themes (F16, ADR-045): 森・海・雪・桜・夕焼け・宇宙, which a member picks for their own
-   screens, and ハロウィン・クリスマス・お正月, which take over during their season. Ported from the
-   Claude Design file "Theme Picker v4" (docs/visual-assets.md). 標準 is the rank look
-   (rank-themes.css); a look theme replaces it entirely.
+   Seasonal themes (F16, ADR-046): ハロウィン・クリスマス・お正月 take over everyone's screens during
+   their season. Still being finished: shown in development and on the staging deploy only, never in
+   production (ViewerTheme). Ported from the Claude Design file "Theme Picker v4"
+   (docs/visual-assets.md). Outside a season the rank look (rank-themes.css) applies; a seasonal
+   theme replaces it entirely.
    UiThemeLayer (components/theme/ui-theme-layer.tsx) renders the marker [data-ui-theme=<id>] and the
    scene behind the page. Each theme is a set of --ui-* tokens; the rules after them put the tokens
    on the same hooks the rank looks use ([data-surface], .th-btn, .th-field, .th-nav, …).
-   The settings screen draws each theme's swatch inside [data-ui-preview=<id>].
    Rules kept from the rank looks: text keeps 4.5:1 on its surface; trims sit on edges and corners
    and scenes behind the page; decorations never take taps and rest under "reduce motion".
    Unlayered so they win over the utility backgrounds.
@@ -18,319 +18,15 @@
   --ui-svg-pumpkins: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 96 16'%3E%3Cg transform='translate(4 1) scale(.75)'%3E%3Crect x='10.5' y='0' width='3' height='5' rx='1' fill='%233f6a2a'/%3E%3Cellipse cx='7' cy='12' rx='6' ry='7' fill='%23e06a10' stroke='%233a1a08'/%3E%3Cellipse cx='17' cy='12' rx='6' ry='7' fill='%23e06a10' stroke='%233a1a08'/%3E%3Cellipse cx='12' cy='12' rx='6' ry='7.5' fill='%23ff9a2a' stroke='%233a1a08'/%3E%3Cpath d='M7.5 9.5l2.5 2.5h-3.5zM16.5 9.5l-2.5 2.5h3.5z' fill='%233a1a08'/%3E%3C/g%3E%3C/svg%3E");
   --ui-svg-holly: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 34 24'%3E%3Cpath d='M2 10Q9 0 18 8Q10 16 2 10z' fill='%232f7a3a' stroke='%231a4a24'/%3E%3Cpath d='M32 8Q25-1 16 7Q24 15 32 8z' fill='%232f7a3a' stroke='%231a4a24'/%3E%3Ccircle cx='14' cy='13' r='3.5' fill='%23c8141e'/%3E%3Ccircle cx='19.5' cy='14' r='3.5' fill='%23d4141e'/%3E%3Ccircle cx='16.5' cy='18.5' r='3.5' fill='%23b8101a'/%3E%3Ccircle cx='13' cy='12' r='1' fill='%23ff9a9a'/%3E%3C/svg%3E");
   --ui-svg-snowcap: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 17' preserveAspectRatio='none'%3E%3Cpath d='M0 13Q1 3 10 4Q28 1 50 3Q74 0 92 4Q100 5 100 13Q91 16 80 12Q70 17 60 12Q45 16 30 12Q15 16 0 13z' fill='%23fff' stroke='%23c9dceb' stroke-width='.8'/%3E%3C/svg%3E");
-  --ui-svg-snowdrip: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 10'%3E%3Cpath d='M0 0h8v6a4 4 0 0 1-8 0z' fill='%23f4f9fd'/%3E%3C/svg%3E");
   --ui-svg-mizuhiki: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 22'%3E%3Cellipse cx='12' cy='10' rx='10' ry='6' transform='rotate(-18 12 10)' fill='none' stroke='%23c8232c' stroke-width='3'/%3E%3Cellipse cx='34' cy='10' rx='10' ry='6' transform='rotate(18 34 10)' fill='none' stroke='%23c8232c' stroke-width='3'/%3E%3Cellipse cx='13' cy='10' rx='6.5' ry='3.6' transform='rotate(-18 13 10)' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Cellipse cx='33' cy='10' rx='6.5' ry='3.6' transform='rotate(18 33 10)' fill='none' stroke='%23fff' stroke-width='2'/%3E%3Ccircle cx='23' cy='11' r='4.5' fill='%23e8b030' stroke='%238a5a10'/%3E%3C/svg%3E");
   --ui-svg-plum: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cg fill='%23f8c6cc' stroke='%23d88a96' stroke-width='.5'%3E%3Ccircle cx='10' cy='4.6' r='3.9'/%3E%3Ccircle cx='15.1' cy='8.3' r='3.9'/%3E%3Ccircle cx='13.2' cy='14.4' r='3.9'/%3E%3Ccircle cx='6.8' cy='14.4' r='3.9'/%3E%3Ccircle cx='4.9' cy='8.3' r='3.9'/%3E%3C/g%3E%3Ccircle cx='10' cy='10' r='2.6' fill='%23e8b030'/%3E%3C/svg%3E");
-  --ui-svg-leaves-l: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 34'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a6d26a'/%3E%3Cstop offset='1' stop-color='%235f9a3a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='url(%23g)' stroke='%23234a16' stroke-width='1.2'%3E%3Cpath d='M0 7 Q10 -3 22 7 Q10 15 0 7z' transform='translate(2 12) rotate(-30)'/%3E%3Cpath d='M0 7 Q10 -3 22 7 Q10 15 0 7z' transform='translate(16 4) rotate(15) scale(.82)'/%3E%3Cpath d='M0 7 Q10 -3 22 7 Q10 15 0 7z' transform='translate(6 26) rotate(-70) scale(.72)'/%3E%3C/g%3E%3C/svg%3E");
-  --ui-svg-leaves-r: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 42 34'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' y1='0' x2='1' y2='1'%3E%3Cstop offset='0' stop-color='%23a6d26a'/%3E%3Cstop offset='1' stop-color='%235f9a3a'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cg fill='url(%23g)' stroke='%23234a16' stroke-width='1.2'%3E%3Cpath d='M0 7 Q10 -3 22 7 Q10 15 0 7z' transform='translate(40 14) rotate(200)'/%3E%3Cpath d='M0 7 Q10 -3 22 7 Q10 15 0 7z' transform='translate(24 10) rotate(160) scale(.82)'/%3E%3C/g%3E%3C/svg%3E");
-  --ui-svg-navleaves: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 14'%3E%3Cg stroke='rgba(0,0,0,.25)' stroke-width='.6'%3E%3Cpath d='M0 5Q6 -1 12 5Q6 9 0 5z' fill='%238cb85a' transform='translate(4 2) rotate(20 6 5)'/%3E%3Cpath d='M0 5Q6 -1 12 5Q6 9 0 5z' fill='%23c59a3a' transform='translate(48 4) rotate(-40 6 5)'/%3E%3C/g%3E%3C/svg%3E");
-  --ui-svg-navpetals: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 14'%3E%3Cg fill='%23f7b9ca' stroke='rgba(90,42,58,.25)' stroke-width='.6'%3E%3Cpath d='M0 5Q6 -1 12 5Q6 9 0 5z' transform='translate(4 3) rotate(30 6 5)'/%3E%3Cpath d='M0 5Q6 -1 12 5Q6 9 0 5z' transform='translate(46 5) rotate(-50 6 5)'/%3E%3C/g%3E%3C/svg%3E");
-  --ui-svg-petals: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 46 30'%3E%3Cdefs%3E%3CradialGradient id='p' cx='.7' cy='.7' r='.8'%3E%3Cstop offset='0' stop-color='%23fff'/%3E%3Cstop offset='.4' stop-color='%23fbd3de'/%3E%3Cstop offset='1' stop-color='%23f39ab3'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg fill='url(%23p)' stroke='rgba(90,42,58,.3)' stroke-width='.6'%3E%3Cpath d='M0 5Q6 -1 13 5Q6 11 0 5z' transform='translate(22 0) rotate(30 6 5)'/%3E%3Cpath d='M0 5Q6 -1 13 5Q6 11 0 5z' transform='translate(4 7) rotate(-20 6 5)'/%3E%3Cpath d='M0 5Q6 -1 13 5Q6 11 0 5z' transform='translate(30 16) rotate(60 6 5)'/%3E%3C/g%3E%3C/svg%3E");
-  --ui-svg-bubbles: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 22 46'%3E%3Cdefs%3E%3CradialGradient id='b' cx='.3' cy='.3' r='.6'%3E%3Cstop offset='0' stop-color='rgba(255,255,255,.85)'/%3E%3Cstop offset='.4' stop-color='rgba(255,255,255,0)'/%3E%3C/radialGradient%3E%3C/defs%3E%3Cg fill='url(%23b)' stroke='rgba(220,245,255,.85)' stroke-width='1.5'%3E%3Ccircle cx='9' cy='9' r='7'/%3E%3Ccircle cx='16' cy='30' r='4'/%3E%3Ccircle cx='8' cy='42' r='2.5'/%3E%3C/g%3E%3C/svg%3E");
-  --ui-svg-flake: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cg stroke='rgba(255,255,255,.75)' stroke-width='3' stroke-linecap='round' fill='none'%3E%3Cg transform='rotate(0 50 50)'%3E%3Cpath d='M50 4V96'/%3E%3Cpath d='M50 20l-9-9M50 20l9-9M50 80l-9 9M50 80l9 9'/%3E%3C/g%3E%3Cg transform='rotate(60 50 50)'%3E%3Cpath d='M50 4V96'/%3E%3Cpath d='M50 20l-9-9M50 20l9-9M50 80l-9 9M50 80l9 9'/%3E%3C/g%3E%3Cg transform='rotate(120 50 50)'%3E%3Cpath d='M50 4V96'/%3E%3Cpath d='M50 20l-9-9M50 20l9-9M50 80l-9 9M50 80l9 9'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
-  --ui-svg-bird: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 18 8'%3E%3Cpath d='M1 6Q5 0 9 5Q13 0 17 6' stroke='%231a1024' stroke-width='2.2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
-  --tx-frost: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.7 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
-  --tx-caustic: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='420' height='420'%3E%3Cfilter id='c'%3E%3CfeTurbulence type='turbulence' baseFrequency='.012 .02' numOctaves='2' seed='4'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 -3.2 0 0 0 1.15'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23c)'/%3E%3C/svg%3E");
-  --tx-nebula: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006' numOctaves='4' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 0.7 0 0 0 0 0.35 0 0 0 0 1 0.6 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
   --tx-moss: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.6' numOctaves='3' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.25 0 0 0 0 0.05 0.9 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
-  --tx-fiber: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 0.3 0 0 0 0 0.22 0 0 0 0 0.15 0.16 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
-  --tx-ice: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 0.85 0 0 0 0 0.92 0 0 0 0 1 0.35 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
-  --tx-leafy: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.018' numOctaves='3' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 0.12 0 0 0 0 0.3 0 0 0 0 0.1 0.4 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
   --tx-washi: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.035 .7' numOctaves='3' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 0.55 0 0 0 0 0.25 0 0 0 0 0.35 0.18 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
-  --tx-wood: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.006 .22' numOctaves='4' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.24 0 0 0 0 0.08 0.5 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
-  --tx-sparkle: url("data:image/svg+xml;utf8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.1' numOctaves='2' stitchTiles='stitch'%3E%3C/feTurbulence%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0.22 0 0 0 0'/%3E%3C/filter%3E%3Crect width='100%' height='100%' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* Palettes ------------------------------------------------------------------------------------ */
 
-:is(body:has([data-ui-theme="forest"]), [data-ui-preview="forest"]) {
-  --ui-base: #7cae6f;
-  --ui-bg: radial-gradient(ellipse 45% 25% at 90% 6%, rgba(25,60,25,.35), transparent 70%), radial-gradient(ellipse 35% 30% at 0% 45%, rgba(25,60,25,.3), transparent 70%), var(--tx-leafy), linear-gradient(#94c487,#7cae6f);
-  --ui-ink: #1f1208;
-  --ui-sub: #4a3018;
-  --ui-onbg: #0f1f0b;
-  --ui-onbg-sub: #1c3615;
-  --ui-card: var(--tx-wood), linear-gradient(180deg,#f7e6bf,#ecd3a0);
-  --ui-card-me: var(--tx-wood), linear-gradient(180deg,#d2a87a,#c39566);
-  --ui-note: #fffaf0;
-  --ui-note-line: var(--ui-line);
-  --ui-field: var(--tx-fiber), #fffaf0;
-  --ui-line: #2a1a0c;
-  --ui-bw: 3px;
-  --ui-r: 14px;
-  --ui-rb: 12px;
-  --ui-sh: 0 6px 0 #4a2e14, 0 10px 16px rgba(20,40,10,.25);
-  --ui-shs: 0 5px 0 #4a2e14;
-  --ui-btn-sh: 0 5px 0 #2a4a1a;
-  --ui-pri: linear-gradient(#93c35e,#6f9f45);
-  --ui-pri-ink: #0f1f0b;
-  --ui-tape: var(--tx-wood), linear-gradient(#f4c862,#e3a83e);
-  --ui-tape-ink: #1f1208;
-  --ui-tape-bad: #7a1f10;
-  --ui-good: #2f6a2a;
-  --ui-bad: #a8321f;
-  --ui-stamp-bg: rgba(255,250,235,.45);
-  --ui-nav: var(--tx-leafy), #2f4a33;
-  --ui-nav-ink: #f2ead6;
-  --ui-nav-on: #4a2e14;
-  --ui-nav-on-ink: #f7e6bf;
-  --ui-title-sh: 3px 3px 0 #d8eac8, 5px 5px 0 #0f1f0b;
-  --ui-title-ink: #0f1f0b;
-  --ui-pill: #2f4a33;
-  --ui-pill-ink: #f2ead6;
-  --ui-dot: #93c35e;
-  --ui-karte: linear-gradient(180deg,#cfe6b3,#b5d692);
-  --ui-clip: #a07a4c;
-  --ui-rcpt: var(--tx-fiber), #fbf5e4;
-  --ui-rcpt-fill: #fbf5e4;
-  --ui-av-img: none;
-  --ui-av-sh: inset 0 0 0 2px #93c35e;
-  --ui-av-line: #2f4a33;
-  --ui-av-ink: #141416;
-  --ui-bf: none;
-}
-
-:is(body:has([data-ui-theme="ocean"]), [data-ui-preview="ocean"]) {
-  --ui-base: #0a2e55;
-  --ui-bg: radial-gradient(ellipse 70% 35% at 50% -5%, rgba(120,210,255,.45), transparent 70%), linear-gradient(180deg,#0f4a78 0%,#0a2e55 45%,#061a36 100%);
-  --ui-ink: #e8f7ff;
-  --ui-sub: #a9cde3;
-  --ui-onbg: #bff3ff;
-  --ui-onbg-sub: #a9cde3;
-  --ui-card: linear-gradient(160deg, rgba(40,110,160,.5), rgba(10,40,80,.6));
-  --ui-card-me: var(--ui-card);
-  --ui-note: rgba(255,255,255,.05);
-  --ui-note-line: var(--ui-line);
-  --ui-field: rgba(255,255,255,.07);
-  --ui-line: #4fd6f0;
-  --ui-bw: 2px;
-  --ui-r: 22px;
-  --ui-rb: 999px;
-  --ui-sh: 0 0 0 1px rgba(79,214,240,.3), 0 0 18px rgba(79,214,240,.35), inset 0 1px 0 rgba(255,255,255,.25);
-  --ui-shs: 0 0 12px rgba(79,214,240,.3), inset 0 1px 0 rgba(255,255,255,.2);
-  --ui-btn-sh: 0 0 18px rgba(60,220,230,.55), inset 0 2px 0 rgba(255,255,255,.5);
-  --ui-pri: linear-gradient(90deg,#2fe0d0,#2aa8f0);
-  --ui-pri-ink: #04203a;
-  --ui-tape: linear-gradient(90deg, rgba(160,55,55,.9), rgba(160,100,35,.9));
-  --ui-tape-ink: #fff1dc;
-  --ui-tape-bad: #ffe08a;
-  --ui-good: #5fe0b0;
-  --ui-bad: #ff8a7a;
-  --ui-stamp-bg: rgba(6,26,54,.4);
-  --ui-nav: rgba(6,26,54,.94);
-  --ui-nav-ink: #bfe6f5;
-  --ui-nav-on: rgba(79,214,240,.22);
-  --ui-nav-on-ink: #e8f7ff;
-  --ui-title-sh: 0 0 2px #fff, 0 0 10px rgba(79,214,240,.9), 0 0 24px rgba(79,214,240,.6);
-  --ui-title-ink: #c8f7ff;
-  --ui-pill: #04101f;
-  --ui-pill-ink: #e8f7ff;
-  --ui-dot: #4fd6f0;
-  --ui-karte: linear-gradient(160deg, rgba(40,160,170,.55), rgba(10,60,90,.7));
-  --ui-clip: #4fd6f0;
-  --ui-rcpt: #0c2c4e;
-  --ui-rcpt-fill: #0c2c4e;
-  --ui-av-img: radial-gradient(circle at 30% 25%, rgba(255,255,255,.9) 0 10%, rgba(255,255,255,0) 32%), radial-gradient(circle, transparent 58%, rgba(255,255,255,.45) 78%);
-  --ui-av-sh: 0 0 10px rgba(79,214,240,.6);
-  --ui-av-line: #4fd6f0;
-  --ui-av-ink: #141416;
-  --ui-bf: blur(8px);
-}
-
-:is(body:has([data-ui-theme="snow"]), [data-ui-preview="snow"]) {
-  --ui-base: #2a64a8;
-  --ui-bg: radial-gradient(ellipse 80% 40% at 50% 0%, rgba(170,210,255,.45), transparent 70%), linear-gradient(180deg,#14407e 0%,#2a64a8 55%,#4a8bc8 100%);
-  --ui-ink: #0f2648;
-  --ui-sub: #3c5878;
-  --ui-onbg: #eef6ff;
-  --ui-onbg-sub: #cfe0f4;
-  --ui-card: var(--tx-ice), linear-gradient(160deg, rgba(242,247,253,.96), rgba(214,228,244,.96));
-  --ui-card-me: var(--ui-card);
-  --ui-note: rgba(255,255,255,.6);
-  --ui-note-line: var(--ui-line);
-  --ui-field: var(--tx-ice), #f4f8fc;
-  --ui-line: #ffffff;
-  --ui-bw: 2px;
-  --ui-r: 18px;
-  --ui-rb: 12px;
-  --ui-sh: 0 8px 18px rgba(5,25,60,.35), inset 0 0 0 1px rgba(150,185,225,.7);
-  --ui-shs: 0 5px 12px rgba(5,25,60,.3), inset 0 0 0 1px rgba(150,185,225,.7);
-  --ui-btn-sh: 0 4px 0 #0a2654, 0 8px 14px rgba(5,25,60,.35), inset 0 1px 0 rgba(255,255,255,.5);
-  --ui-pri: var(--tx-sparkle), linear-gradient(180deg,#2a6cc8,#14408a);
-  --ui-pri-ink: #ffffff;
-  --ui-tape: linear-gradient(100deg,#eebc4e,#ffe08f 45%,#e3ac3c);
-  --ui-tape-ink: #2a1a00;
-  --ui-tape-bad: #2a1a00;
-  --ui-good: #0f7a6a;
-  --ui-bad: #b8322a;
-  --ui-stamp-bg: rgba(255,255,255,.6);
-  --ui-nav: linear-gradient(#eef5fc,#d3e3f3);
-  --ui-nav-ink: #0f2648;
-  --ui-nav-on: #14408a;
-  --ui-nav-on-ink: #ffffff;
-  --ui-title-sh: 0 1px 0 #fff, 0 3px 0 #6f9fd8, 0 6px 12px rgba(5,25,60,.5);
-  --ui-title-ink: #dcecff;
-  --ui-pill: #14408a;
-  --ui-pill-ink: #ffffff;
-  --ui-dot: #ffffff;
-  --ui-karte: var(--tx-ice), linear-gradient(160deg,#dcf4ef,#bfe6df);
-  --ui-clip: #9ccfe0;
-  --ui-rcpt: #f4f8fc;
-  --ui-rcpt-fill: #f4f8fc;
-  --ui-av-img: radial-gradient(circle at 30% 25%, rgba(255,255,255,.9) 0 10%, rgba(255,255,255,0) 32%), radial-gradient(circle, transparent 58%, rgba(255,255,255,.45) 78%);
-  --ui-av-sh: 0 3px 8px rgba(5,25,60,.4);
-  --ui-av-line: #ffffff;
-  --ui-av-ink: #141416;
-  --ui-bf: none;
-  --ui-fhd: "M PLUS Rounded 1c";
-  --ui-hw: 800;
-}
-
-:is(body:has([data-ui-theme="sakura"]), [data-ui-preview="sakura"]) {
-  --ui-base: #f6cbd8;
-  --ui-bg: var(--tx-washi), linear-gradient(180deg,#fdebf0,#f6cbd8);
-  --ui-ink: #3a1a24;
-  --ui-sub: #77525d;
-  --ui-onbg: #3a1a24;
-  --ui-onbg-sub: #77525d;
-  --ui-card: var(--tx-washi), #fffafb;
-  --ui-card-me: var(--ui-card);
-  --ui-note: var(--tx-washi), #fff4f6;
-  --ui-note-line: var(--ui-line);
-  --ui-field: var(--tx-washi), #ffffff;
-  --ui-line: #5a2a3a;
-  --ui-bw: 2.5px;
-  --ui-r: 18px;
-  --ui-rb: 18px;
-  --ui-sh: 5px 5px 0 #e79bb0;
-  --ui-shs: 3px 3px 0 #e79bb0;
-  --ui-btn-sh: 4px 4px 0 #5a2a3a;
-  --ui-pri: #f7b9ca;
-  --ui-pri-ink: #3a1a24;
-  --ui-tape: #ffe6ad;
-  --ui-tape-ink: #3a1a24;
-  --ui-tape-bad: #c8323f;
-  --ui-good: #3f7a4a;
-  --ui-bad: #c8323f;
-  --ui-stamp-bg: rgba(255,255,255,.55);
-  --ui-nav: #fff3f6;
-  --ui-nav-ink: #3a1a24;
-  --ui-nav-on: #5a2a3a;
-  --ui-nav-on-ink: #fff;
-  --ui-title-sh: 3px 3px 0 #fff, 5px 5px 0 #e79bb0;
-  --ui-title-ink: #5a2a3a;
-  --ui-pill: #5a2a3a;
-  --ui-pill-ink: #fff;
-  --ui-dot: #f7b9ca;
-  --ui-karte: #fbd3de;
-  --ui-clip: #e79bb0;
-  --ui-rcpt: var(--tx-washi), #fffafb;
-  --ui-rcpt-fill: #fffafb;
-  --ui-av-img: radial-gradient(circle at 30% 25%, rgba(255,255,255,.6), transparent 40%);
-  --ui-av-sh: none;
-  --ui-av-line: var(--ui-line);
-  --ui-av-ink: #141416;
-  --ui-bf: none;
-  --ui-fhd: "Zen Maru Gothic";
-  --ui-fen: "Zen Maru Gothic";
-  --ui-hw: 900;
-}
-
-:is(body:has([data-ui-theme="sunset"]), [data-ui-preview="sunset"]) {
-  --ui-base: #3d2448;
-  --ui-bg: radial-gradient(ellipse 90% 22% at 50% 60%, rgba(255,120,50,.6), transparent 70%), linear-gradient(180deg,#2a1d3e 0%,#3d2448 38%,#8a3c3a 60%,#3a2440 78%,#22182e 100%);
-  --ui-ink: #fbe9dc;
-  --ui-sub: #dcc0b6;
-  --ui-onbg: #ffd27a;
-  --ui-onbg-sub: #f3cdb0;
-  --ui-card: linear-gradient(180deg, rgba(64,44,74,.96), rgba(48,32,58,.96));
-  --ui-card-me: var(--ui-card);
-  --ui-note: rgba(190,100,40,.5);
-  --ui-note-line: var(--ui-line);
-  --ui-field: rgba(255,255,255,.07);
-  --ui-line: #160c1c;
-  --ui-bw: 3px;
-  --ui-r: 16px;
-  --ui-rb: 12px;
-  --ui-sh: 0 6px 0 #160c1c, 0 12px 22px rgba(0,0,0,.35);
-  --ui-shs: 0 4px 0 #160c1c;
-  --ui-btn-sh: 0 5px 0 #160c1c;
-  --ui-pri: #ff5a1f;
-  --ui-pri-ink: #1a0c10;
-  --ui-tape: #ffc531;
-  --ui-tape-ink: #1a0c10;
-  --ui-tape-bad: #a8180c;
-  --ui-good: #ffa94d;
-  --ui-bad: #ff7a5a;
-  --ui-stamp-bg: rgba(22,12,28,.3);
-  --ui-nav: #1e1426;
-  --ui-nav-ink: #f3dccb;
-  --ui-nav-on: rgba(255,120,60,.28);
-  --ui-nav-on-ink: #ffb46a;
-  --ui-title-sh: 3px 3px 0 #7a2a10, 0 0 16px rgba(255,140,40,.6);
-  --ui-title-ink: #ffb02e;
-  --ui-pill: #160c1c;
-  --ui-pill-ink: #fbe9dc;
-  --ui-dot: #ffb02e;
-  --ui-karte: linear-gradient(160deg,#5a3a4a,#3e2a48);
-  --ui-clip: #ff8a3a;
-  --ui-rcpt: #2e2038;
-  --ui-rcpt-fill: #2e2038;
-  --ui-av-img: radial-gradient(circle at 30% 30%, rgba(255,220,180,.45), transparent 50%);
-  --ui-av-sh: 0 0 12px rgba(255,120,50,.6);
-  --ui-av-line: var(--ui-line);
-  --ui-av-ink: #141416;
-  --ui-bf: none;
-}
-
-:is(body:has([data-ui-theme="space"]), [data-ui-preview="space"]) {
-  --ui-base: #050816;
-  --ui-bg: radial-gradient(ellipse at 70% 30%, rgba(60,80,180,.35), transparent 50%), radial-gradient(ellipse at 10% 80%, rgba(40,120,160,.25), transparent 50%), #050816;
-  --ui-ink: #eaf4ff;
-  --ui-sub: #a8bcd6;
-  --ui-onbg: #eaf4ff;
-  --ui-onbg-sub: #a8bcd6;
-  --ui-card: repeating-linear-gradient(0deg, rgba(255,255,255,.03) 0 1px, transparent 1px 3px), linear-gradient(160deg, rgba(20,34,60,.86), rgba(10,16,34,.92));
-  --ui-card-me: var(--ui-card);
-  --ui-note: rgba(255,255,255,.06);
-  --ui-note-line: var(--ui-line);
-  --ui-field: rgba(255,255,255,.06);
-  --ui-line: #5fd8ff;
-  --ui-bw: 1.5px;
-  --ui-r: 6px;
-  --ui-rb: 6px;
-  --ui-sh: 0 0 0 1px rgba(95,216,255,.25), 0 0 16px rgba(95,216,255,.35), inset 0 0 20px rgba(95,216,255,.08);
-  --ui-shs: 0 0 12px rgba(95,216,255,.3);
-  --ui-btn-sh: 0 0 0 1px #5fd8ff, 0 0 18px rgba(60,140,255,.7);
-  --ui-pri: linear-gradient(90deg,#1a4fd0,#2a6fe0);
-  --ui-pri-ink: #eaf6ff;
-  --ui-tape: linear-gradient(90deg, rgba(25,85,105,.85), rgba(18,55,88,.85));
-  --ui-tape-ink: #dff8ff;
-  --ui-tape-bad: #8fe8ff;
-  --ui-good: #5dffa0;
-  --ui-bad: #ff8a5a;
-  --ui-stamp-bg: rgba(5,8,22,.5);
-  --ui-nav: rgba(5,8,22,.95);
-  --ui-nav-ink: #c8d8ec;
-  --ui-nav-on: rgba(95,216,255,.18);
-  --ui-nav-on-ink: #8fe8ff;
-  --ui-title-sh: 0 0 8px rgba(95,216,255,.5);
-  --ui-title-ink: #e6f4ff;
-  --ui-pill: rgba(255,106,213,.15);
-  --ui-pill-ink: #ffd6f3;
-  --ui-dot: #8fe8ff;
-  --ui-karte: linear-gradient(160deg,#1f4560,#1a2c4f);
-  --ui-clip: #8fe8ff;
-  --ui-rcpt: #14163a;
-  --ui-rcpt-fill: #14163a;
-  --ui-av-img: radial-gradient(circle at 35% 30%, rgba(255,255,255,.4), transparent 40%), radial-gradient(circle at 65% 70%, rgba(190,90,255,.6), transparent 60%), radial-gradient(circle, #3a2a8a, #120a30);
-  --ui-av-sh: 0 0 0 2px rgba(255,106,213,.55), 0 0 14px rgba(160,120,255,.6);
-  --ui-av-line: #5fd8ff;
-  --ui-av-ink: #ffffff;
-  --ui-bf: blur(6px);
-}
-
-:is(body:has([data-ui-theme="halloween"]), [data-ui-preview="halloween"]) {
+body:has([data-ui-theme="halloween"]) {
   --ui-base: #2a1640;
   --ui-bg: radial-gradient(ellipse 60% 25% at 50% 100%, rgba(255,110,30,.35), transparent 70%), linear-gradient(180deg,#1c1030 0%,#2a1640 50%,#341830 85%,#4a2018 100%);
   --ui-ink: #f4e8ff;
@@ -379,7 +75,7 @@
   --ui-title-size: clamp(1.6rem, 8.6vw, 2.15rem);
 }
 
-:is(body:has([data-ui-theme="christmas"]), [data-ui-preview="christmas"]) {
+body:has([data-ui-theme="christmas"]) {
   --ui-base: #0f2a3e;
   --ui-bg: radial-gradient(ellipse 60% 30% at 50% 0%, rgba(255,220,140,.18), transparent 70%), linear-gradient(180deg,#123a2e 0%,#0f2a3e 50%,#0c1c34 100%);
   --ui-ink: #2a1410;
@@ -426,7 +122,7 @@
   --ui-bf: none;
 }
 
-:is(body:has([data-ui-theme="newyear"]), [data-ui-preview="newyear"]) {
+body:has([data-ui-theme="newyear"]) {
   --ui-base: #6e0c14;
   --ui-bg: radial-gradient(circle at 50% 100%, transparent 0 7px, rgba(232,190,90,.22) 7px 8.5px, transparent 8.5px 13px, rgba(232,190,90,.22) 13px 14.5px, transparent 14.5px 19px, rgba(232,190,90,.22) 19px 20.5px, transparent 20.5px) 0 0/44px 22px, radial-gradient(circle at 50% 100%, transparent 0 7px, rgba(232,190,90,.22) 7px 8.5px, transparent 8.5px 13px, rgba(232,190,90,.22) 13px 14.5px, transparent 14.5px 19px, rgba(232,190,90,.22) 19px 20.5px, transparent 20.5px) 22px 11px/44px 22px, radial-gradient(ellipse 80% 40% at 50% 0%, #b02028, transparent 70%), linear-gradient(#94161e,#6e0c14);
   --ui-ink: #2a1410;
@@ -491,9 +187,6 @@ body:has([data-ui-theme]) {
   --ring: var(--ui-onbg);
   --font-dela: var(--ui-fhd, "Dela Gothic One");
   background: var(--ui-base);
-}
-body:has([data-ui-theme="sakura"]) {
-  --font-archivo: var(--ui-fen);
 }
 body:has([data-ui-theme]) .font-heading {
   font-weight: var(--ui-hw, 400);
@@ -816,82 +509,6 @@ body:has([data-ui-theme="newyear"]) [data-surface][data-shadow="md"]:not([data-s
     var(--ui-svg-mizuhiki) center top / 46px 22px no-repeat,
     var(--ui-svg-plum) left 0 top 4px / 20px 20px no-repeat;
 }
-/* 森: leaves on both top corners. */
-body:has([data-ui-theme="forest"]) [data-surface][data-shadow="md"]:not([data-surface="pass"])::before {
-  content: "";
-  top: -14px;
-  left: -10px;
-  width: 42px;
-  height: 34px;
-  background: var(--ui-svg-leaves-l) center / contain no-repeat;
-  filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.25));
-}
-body:has([data-ui-theme="forest"]) [data-surface][data-shadow="md"]:not([data-surface="pass"])::after {
-  content: "";
-  top: -14px;
-  right: -10px;
-  width: 42px;
-  height: 34px;
-  background: var(--ui-svg-leaves-r) center / contain no-repeat;
-  filter: drop-shadow(1px 2px 1px rgba(0, 0, 0, 0.25));
-}
-/* 雪: snow piled on the top edge, dripping a little. */
-body:has([data-ui-theme="snow"]) [data-surface][data-shadow="md"]:not([data-surface="pass"])::after {
-  content: "";
-  top: -10px;
-  left: -4px;
-  right: -4px;
-  height: 22px;
-  background:
-    var(--ui-svg-snowdrip) left 22% top 7px / 8px 10px no-repeat,
-    var(--ui-svg-snowdrip) left 68% top 7px / 6px 8px no-repeat,
-    var(--ui-svg-snowcap) 0 0 / 100% 17px no-repeat;
-  filter: drop-shadow(0 2px 2px rgba(40, 80, 140, 0.35));
-}
-/* 桜: petals resting on the top-right corner. */
-body:has([data-ui-theme="sakura"]) [data-surface][data-shadow="md"]:not([data-surface="pass"])::after {
-  content: "";
-  top: -7px;
-  right: 6px;
-  width: 46px;
-  height: 30px;
-  background: var(--ui-svg-petals) center / contain no-repeat;
-}
-/* 海: bubbles rising off the right edge. */
-body:has([data-ui-theme="ocean"]) [data-surface][data-shadow="md"]:not([data-surface="pass"])::after {
-  content: "";
-  top: 16px;
-  right: -14px;
-  width: 22px;
-  height: 46px;
-  background: var(--ui-svg-bubbles) center / contain no-repeat;
-}
-/* 宇宙: instrument-panel brackets on the corners and a lit bar on the top edge. */
-body:has([data-ui-theme="space"]) [data-surface][data-shadow="md"]:not([data-surface="pass"])::before {
-  content: "";
-  inset: -3px;
-  --c: #8fe8ff;
-  background:
-    linear-gradient(var(--c), var(--c)) left top / 14px 2px no-repeat,
-    linear-gradient(var(--c), var(--c)) left top / 2px 14px no-repeat,
-    linear-gradient(var(--c), var(--c)) right top / 14px 2px no-repeat,
-    linear-gradient(var(--c), var(--c)) right top / 2px 14px no-repeat,
-    linear-gradient(var(--c), var(--c)) left bottom / 14px 2px no-repeat,
-    linear-gradient(var(--c), var(--c)) left bottom / 2px 14px no-repeat,
-    linear-gradient(var(--c), var(--c)) right bottom / 14px 2px no-repeat,
-    linear-gradient(var(--c), var(--c)) right bottom / 2px 14px no-repeat;
-  filter: drop-shadow(0 0 3px #8fe8ff);
-}
-body:has([data-ui-theme="space"]) [data-surface][data-shadow="md"]:not([data-surface="pass"])::after {
-  content: "";
-  top: -3px;
-  left: 32%;
-  right: 32%;
-  height: 4px;
-  border-radius: 2px;
-  background: #5fd8ff;
-  box-shadow: 0 0 8px #5fd8ff;
-}
 
 /* Bottom menu trims ---------------------------------------------------------------------------- */
 
@@ -948,28 +565,6 @@ body:has([data-ui-theme="newyear"]) .th-nav::after {
   width: 46px;
   height: 22px;
   background: var(--ui-svg-mizuhiki) center / contain no-repeat;
-}
-body:has([data-ui-theme="snow"]) .th-nav::before {
-  content: "";
-  left: -6px;
-  right: -6px;
-  top: -14px;
-  height: 18px;
-  border-radius: 20px 30px 0 0 / 14px 16px 0 0;
-  background: linear-gradient(#fff, #f1f7fc);
-  box-shadow: inset 0 -3px 4px rgba(160, 190, 215, 0.5);
-}
-body:has([data-ui-theme="forest"]) .th-nav::before,
-body:has([data-ui-theme="sakura"]) .th-nav::before {
-  content: "";
-  left: 0;
-  right: 0;
-  top: -7px;
-  height: 14px;
-  background: var(--ui-svg-navleaves) 20px 0 / 80px 14px repeat-x;
-}
-body:has([data-ui-theme="sakura"]) .th-nav::before {
-  background-image: var(--ui-svg-navpetals);
 }
 
 /* The scene behind the page (UiThemeLayer) ------------------------------------------------------ */
@@ -1051,144 +646,16 @@ body:has([data-ui-theme="sakura"]) .th-nav::before {
     radial-gradient(circle at 33% 73%, var(--petal) 0 21%, transparent 22%),
     radial-gradient(circle at 23% 41%, var(--petal) 0 21%, transparent 22%);
 }
-.ui-ray {
-  top: -120px;
-  width: 70px;
-  height: 1000px;
-  rotate: 18deg;
-  background: linear-gradient(rgba(255, 248, 200, 0.4), transparent 65%);
-  filter: blur(8px);
-  animation: ui-ray 6s ease-in-out infinite alternate;
-}
-.ui-ray-sea {
-  top: -80px;
-  height: 760px;
-  transform-origin: top;
-  background: linear-gradient(rgba(150, 225, 255, 0.35), transparent 70%);
-  filter: blur(10px);
-}
-.ui-vine {
-  border-radius: 50%;
-  border: 6px solid #3f6a2a;
-  border-left-color: transparent;
-  border-bottom-color: transparent;
-  opacity: 0.8;
-}
-.ui-vine-b {
-  border: 5px solid #4a7a32;
-  border-right-color: transparent;
-  border-top-color: transparent;
-  opacity: 0.75;
-}
-.ui-leaf {
-  width: 30px;
-  height: 19px;
-  border-radius: 0 100% 0 100%;
-  background: linear-gradient(135deg, #6fa04a, #3c6a28);
-  opacity: 0.85;
-}
-.ui-caustic {
-  background: var(--tx-caustic) 0 0 / 420px 420px;
-  opacity: 0.18;
-  mix-blend-mode: screen;
-  -webkit-mask-image: linear-gradient(#000 10%, transparent 70%);
-  mask-image: linear-gradient(#000 10%, transparent 70%);
-}
-.ui-frost {
-  background: var(--tx-frost) 0 0 / 160px 160px;
-  opacity: 0.55;
-  -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, transparent 60%, #000 100%);
-  mask-image: radial-gradient(ellipse 80% 70% at 50% 45%, transparent 60%, #000 100%);
-}
-.ui-flake {
-  opacity: 0.7;
-  background: var(--ui-svg-flake) center / contain no-repeat;
-  filter: drop-shadow(0 0 4px rgba(255, 255, 255, 0.6));
-}
-.ui-big-petal {
-  top: -40px;
-  border-radius: 100% 0 100% 0;
-  background: #f39ab3;
-  filter: blur(5px);
-  opacity: 0.55;
-  animation-name: ui-fall, ui-sway;
-  animation-timing-function: linear, ease-in-out;
-  animation-iteration-count: infinite;
-}
-.ui-lantern {
-  border-radius: 30% 30% 40% 40%;
-  background: linear-gradient(#ffe2a0, #ff9a3a 70%, #c85a1a);
-  animation: ui-drift 8s ease-in-out infinite;
-}
-.ui-bird {
-  width: 18px;
-  height: 8px;
-  background: var(--ui-svg-bird) center / contain no-repeat;
-}
-.ui-nebula {
-  background: var(--tx-nebula) 0 0 / 400px 400px;
-  opacity: 0.3;
-  mix-blend-mode: screen;
-  filter: blur(6px);
-}
-.ui-shooting {
-  width: 120px;
-  height: 2px;
-  border-radius: 2px;
-  background: linear-gradient(90deg, transparent, #fff);
-  opacity: 0;
-  animation: ui-shoot 7s ease-in 2s infinite;
-}
 
 /* Things drifting through the scene. */
-.ui-p-leaf,
-.ui-p-petal,
 .ui-p-snow {
   top: -30px;
-  animation:
-    ui-fall var(--dur) linear var(--delay) infinite,
-    ui-sway var(--sway) ease-in-out var(--delay) infinite;
-}
-.ui-p-leaf {
-  border-radius: 0 100% 0 100%;
-  background: #6f9f45;
-  opacity: 0.75;
-}
-.ui-p-leaf[data-tint="1"] {
-  background: #8cb85a;
-}
-.ui-p-leaf[data-tint="2"] {
-  background: #c59a3a;
-}
-.ui-p-petal {
-  border-radius: 100% 0 100% 0;
-  background: #f7b9ca;
-  opacity: 0.75;
-}
-.ui-p-petal[data-tint="1"] {
-  background: #fbd3de;
-}
-.ui-p-petal[data-tint="2"] {
-  background: #f39ab3;
-}
-.ui-p-snow {
   border-radius: 999px;
   background: #fff;
   box-shadow: 0 0 4px rgba(120, 160, 200, 0.6);
-}
-.ui-p-bubble {
-  top: calc(100% + 30px);
-  border-radius: 999px;
-  border: 1.5px solid rgba(255, 255, 255, 0.85);
-  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.7), transparent 50%);
-  animation: ui-rise var(--dur) linear var(--delay) infinite;
-}
-.ui-p-star {
-  top: var(--top);
-  border-radius: 999px;
-  background: #fff;
-  box-shadow: 0 0 6px #fff;
-  animation: ui-twinkle var(--dur) ease-in-out var(--delay) infinite;
+  animation:
+    ui-fall var(--dur) linear var(--delay) infinite,
+    ui-sway var(--sway) ease-in-out var(--delay) infinite;
 }
 .ui-p-dust {
   top: var(--top);
@@ -1215,22 +682,6 @@ body:has([data-ui-theme="sakura"]) .th-nav::before {
     translate: 22px;
   }
 }
-@keyframes ui-rise {
-  to {
-    transform: translateY(calc(-100vh - 80px));
-  }
-}
-@keyframes ui-twinkle {
-  0%,
-  100% {
-    opacity: 0.2;
-    transform: scale(0.5);
-  }
-  50% {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
 @keyframes ui-twinkle2 {
   0%,
   100% {
@@ -1247,14 +698,6 @@ body:has([data-ui-theme="sakura"]) .th-nav::before {
   }
   50% {
     transform: translate(18px, -26px);
-  }
-}
-@keyframes ui-ray {
-  from {
-    opacity: 0.35;
-  }
-  to {
-    opacity: 1;
   }
 }
 @keyframes ui-bat {
@@ -1286,22 +729,6 @@ body:has([data-ui-theme="sakura"]) .th-nav::before {
     transform: translateY(-10px);
   }
 }
-@keyframes ui-shoot {
-  0% {
-    transform: translate(0, 0) rotate(20deg);
-    opacity: 0;
-  }
-  5% {
-    opacity: 1;
-  }
-  18% {
-    transform: translate(560px, 200px) rotate(20deg);
-    opacity: 0;
-  }
-  100% {
-    opacity: 0;
-  }
-}
 
 /* "Reduce motion": everything rests where it is; nothing falls, flaps, flies or twinkles. */
 @media (prefers-reduced-motion: reduce) {
@@ -1309,10 +736,7 @@ body:has([data-ui-theme="sakura"]) .th-nav::before {
   body .th-nav::after {
     animation: none !important;
   }
-  .ui-p-leaf,
-  .ui-p-petal,
-  .ui-p-snow,
-  .ui-p-bubble {
+  .ui-p-snow {
     top: var(--top);
   }
   .ui-bat-path {
