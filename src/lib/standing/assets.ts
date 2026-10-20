@@ -2,7 +2,34 @@
 // stand-in; when it does, add its id here so the real image is used.
 
 /** Title and rank badges in public/badges/<id>.png (rank badges are "rank-<rank id>"). */
-export const BADGE_IMAGES = new Set<string>([]);
+export const BADGE_IMAGES = new Set<string>([
+  "rank-doushiyou-mo-nai",
+  "rank-mikka-bouzu",
+  "rank-tensai",
+  "rank-yareba-dekiru",
+  "rank-yuutousei",
+  "asagata",
+  "binbounin",
+  "densetsu",
+  "girigiri",
+  "high-scorer",
+  "iiwake-master",
+  "ippatsuya",
+  "kaikin",
+  "kakin-king",
+  "kansai",
+  "keikaku-daore",
+  "keizoku",
+  "keppaku",
+  "mitatsu-king",
+  "mukakin",
+  "mvp",
+  "nebosuke",
+  "saborer",
+  "sagishi-giwaku",
+  "shukan-oni",
+  "tousousha",
+]);
 
 /**
  * Rank theme images in public/theme/ that replace a drawn stand-in. The textures, cracks, tape,
@@ -11,6 +38,6 @@ export const BADGE_IMAGES = new Set<string>([]);
  */
 export const THEME_IMAGES = {
   crown: true,
-  siren: false,
-  bars: false,
+  siren: true,
+  bars: true,
 } as const satisfies Record<string, boolean>;

@@ -1,8 +1,10 @@
 import { Sticker } from "@/components/brand/sticker";
 import { CrownConfetti } from "@/components/standing/crown-confetti";
+import { RankBadge } from "@/components/standing/rank-badge";
+import { TitleBadge } from "@/components/standing/title-badges";
 import { XpTrendChart, type XpTrendLine } from "@/components/standing/xp-trend-chart";
 import { MEMBER_COLORS } from "@/lib/chart-colors";
-import type { XpTrendPoint } from "@/lib/standing/rules";
+import { RANKS, TITLES, type Standing, type TitleId, type XpTrendPoint } from "@/lib/standing/rules";
 import { addDays } from "@/lib/time";
 
 // Sample XP trends (F14): one member climbing through the ranks, and a race where the lead changes.
@@ -37,6 +39,24 @@ const race: XpTrendLine[] = [
 export default function PreviewXpPage() {
   return (
     <div className="grid gap-6">
+      {/* Every rank and title badge (F13, F14), small as on cards and large as on the retrospective. */}
+      <Sticker className="grid gap-3 px-4 py-4">
+        <div className="flex flex-wrap gap-2">
+          {RANKS.map((rank) => (
+            <RankBadge key={rank.id} standing={{ rank, xp: rank.min } as Standing} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(TITLES) as TitleId[]).map((id) => (
+            <TitleBadge key={id} title={{ id, trial: false }} />
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(Object.keys(TITLES) as TitleId[]).map((id) => (
+            <TitleBadge key={id} title={{ id, trial: false }} size="lg" />
+          ))}
+        </div>
+      </Sticker>
       {/* The crown moved: once per browser (clear localStorage "crown-confetti-seen" to see it again). */}
       <section className="relative isolate grid gap-3">
         <CrownConfetti eventId="preview-crown" name="ちょう" />

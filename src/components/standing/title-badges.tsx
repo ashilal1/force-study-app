@@ -36,7 +36,7 @@ export function TitleBadge({ title, size = "sm" }: { title: Title; size?: "sm" |
     >
       {image ? (
         // eslint-disable-next-line @next/next/no-img-element -- small static badge from public/
-        <img src={`/badges/${title.id}.png`} alt="" className={size === "sm" ? "size-4" : "size-6"} />
+        <img src={`/badges/${title.id}.png`} alt="" className={size === "sm" ? "-my-1 size-5" : "-my-1.5 size-7"} />
       ) : null}
       {title.trial ? "本番なら " : ""}
       {def.name}
