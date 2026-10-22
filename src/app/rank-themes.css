@@ -1,7 +1,7 @@
 /* ---------------------------------------------------------------------------------------------
    Rank themes (F14, ADR-042). The whole screen — every card, button and field — follows the
    VIEWER's rank: 天才 gold, 優等生 silver, やればできる bronze (ADR-044), 三日坊主 slack paper (the
-   usual paper with a crease and a curled corner, ADR-044), どうしようもない worn concrete. Members
+   usual paper with a crease, ADR-044), どうしようもない worn concrete. Members
    tell each other's ranks apart by the badge and the crown.
    ThemeLayer (components/standing/theme-layer.tsx) renders the marker
    [data-viewer-theme="gold|silver|bronze|slack|worn"] with [data-viewer-finish="polished|slack|worn"] and the
@@ -193,7 +193,8 @@ body:has([data-viewer-finish="polished"]) [data-surface="alert"][data-shadow] {
 }
 
 /* Cards: slack (三日坊主) — the usual paper, a little let go: a faint crease across the big cards
-   (behind the text) and a curled-up bottom-right corner (inside the padding). ------------------- */
+   (behind the text). The curled corner was dropped (2026-10-23, ADR-044); position stays relative so
+   parts placed inside keep the card as their reference. ------------------------------------- */
 
 body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"] {
   --crease-at: 58%;
@@ -212,28 +213,6 @@ body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"] {
 body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"]:nth-child(even) {
   --crease-at: 41%;
   --crease-angle: 184deg;
-}
-body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"]::after {
-  content: "";
-  position: absolute;
-  right: -3px;
-  bottom: -3px;
-  width: 20px;
-  height: 20px;
-  pointer-events: none;
-  border-bottom-right-radius: 4px;
-  /* The page shows where the corner lifted; the paper's back folds over with an ink edge. */
-  background: linear-gradient(
-    to top left,
-    var(--background) calc(50% - 1.5px),
-    var(--ink) calc(50% - 1.5px),
-    var(--ink) calc(50% + 1.5px),
-    #ece4d3 calc(50% + 1.5px)
-  );
-  filter: drop-shadow(-1px -1px 0 rgb(20 20 22 / 0.12));
-}
-body:has([data-viewer-finish="slack"]) [data-surface="red"][data-shadow="md"]::after {
-  display: none;
 }
 
 /* Cards: worn (どうしようもない) — torn paper with a crack, grubby, slightly crooked, taped down. -- */
