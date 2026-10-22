@@ -38,7 +38,7 @@ export function MemberTodayCard({
     // The crown and the stamp sit outside the card so its (themed) edge doesn't trace them.
     <div className="relative">
       <Sticker className={cn("grid gap-2.5 px-3.5 py-3", standing?.last && "-rotate-1")}>
-        <div className="grid grid-cols-[44px_1fr_auto] items-center gap-x-3">
+        <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
           <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
           <div className="min-w-0">
             <p className="m-0 truncate font-heading text-[1.2rem] leading-tight">

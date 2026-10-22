@@ -3,11 +3,13 @@ import { seeded } from "@/components/standing/theme-layer";
 import type { UiThemeId } from "@/lib/theme/themes";
 
 /**
- * The seasonal theme (F16, ADR-046): the marker ui-themes.css keys on, and the scene behind the
- * page (moon and bats, string lights, clouds and plum blossoms) with snow or gold dust drifting
- * through it. Purely decorative: fixed behind the content, never takes a tap, and still under
- * "reduce motion". Positions follow the design's phone frame; on a wide screen the scene stays at
- * the edges.
+ * The seasonal theme (F16, ADR-046): the marker ui-themes.css keys on, and the scene around the
+ * page. Two layers, both behind the content, never taking a tap and still under "reduce motion":
+ * - `.ui-backdrop` stays put while the page scrolls: the sky, snow or gold dust, and pieces that sit
+ *   where text rarely goes (the bottom corners, the page's far edges on a wide screen).
+ * - `.ui-top` belongs to the top of the page and scrolls away with it (the moon and bats, the string
+ *   of lights, the shimenawa), so nothing busy stays behind the text further down.
+ * The pictures are the owner's images in public/theme/<theme>/ (docs/visual-assets.md).
  */
 export function UiThemeLayer({ theme }: { theme: UiThemeId }) {
   return (
@@ -16,6 +18,9 @@ export function UiThemeLayer({ theme }: { theme: UiThemeId }) {
       <div aria-hidden className="ui-backdrop">
         {SCENES[theme]}
         <Particles kind={PARTICLES[theme]} />
+      </div>
+      <div aria-hidden className="ui-top">
+        {TOPS[theme]}
       </div>
     </>
   );
@@ -78,42 +83,26 @@ function S({ className, style }: { className?: string; style: CSSProperties }) {
   return <span className={className ? `ui-s ${className}` : "ui-s"} style={style} />;
 }
 
+/** Bats crossing the top of the page: [index, top in px, seconds per crossing]. */
 const BATS: [number, number, number][] = [
-  [0, 18, 9],
-  [1, 26, 12],
-  [2, 40, 10],
-  [3, 62, 14],
+  [0, 44, 9],
+  [1, 86, 12],
+  [2, 132, 10],
+  [3, 178, 14],
 ];
-
-const LIGHTS = Array.from({ length: 15 }, (_, i) => {
-  const t = (i - 7) / 7;
-  return { left: `${1.5 + i * 6.9}%`, top: 14 + 30 * (1 - t * t), color: ["#ffd27a", "#fff2c8", "#ffb0a0"][i % 3], dur: 1.4 + (i % 4) * 0.4, delay: -i * 0.3 };
-});
 
 const SCENES: Record<UiThemeId, React.ReactNode> = {
   halloween: (
     <>
-      <S className="ui-moon" style={{ right: 24, top: 96 }} />
-      {BATS.map(([i, top, dur]) => (
-        <span key={i} className="ui-s ui-bat-path" style={{ top: `${top}%`, animationDuration: `${dur}s`, animationDelay: `${-i * 3}s` }}>
-          <span className="ui-bat" style={{ width: 20 + i * 4, height: (20 + i * 4) * 0.45 }} />
-        </span>
-      ))}
-      <S className="ui-ghost" style={{ left: 4, bottom: "22%", width: 26, height: 30 }} />
-      <S className="ui-ghost" style={{ right: 6, top: "36%", width: 22, height: 25, animationDuration: "4.2s", animationDelay: "-1s" }} />
       <S style={{ inset: "auto 0 0", height: 220, background: "linear-gradient(transparent, rgba(150,90,200,.18))" }} />
+      <S className="ui-trees" style={{ left: -34, bottom: 56 }} />
+      <S className="ui-trees ui-flip" style={{ right: -34, bottom: 56 }} />
+      <S className="ui-ghost ui-wide" style={{ left: "3vw", top: "38%", width: 44 }} />
+      <S className="ui-ghost ui-wide" style={{ right: "3vw", top: "64%", width: 36, animationDuration: "4.2s", animationDelay: "-1s" }} />
     </>
   ),
   christmas: (
     <>
-      {LIGHTS.map((light, i) => (
-        <S
-          key={i}
-          className="ui-bulb"
-          style={{ left: light.left, top: light.top, background: light.color, animationDuration: `${light.dur}s`, animationDelay: `${light.delay}s` }}
-        />
-      ))}
-      <S className="ui-ribbon" style={{ right: -50, top: 40 }} />
       {[
         [12, 18, 30],
         [78, 30, 44],
@@ -123,16 +112,17 @@ const SCENES: Record<UiThemeId, React.ReactNode> = {
       ].map(([left, top, size], i) => (
         <S key={i} style={{ left: `${left}%`, top: `${top}%`, width: size, height: size, borderRadius: 999, background: "rgba(255,210,120,.25)", filter: "blur(4px)" }} />
       ))}
+      <S className="ui-ribbon ui-wide" style={{ right: 0, top: 0 }} />
     </>
   ),
   newyear: (
     <>
       {[
-        { right: -20, top: 70 },
-        { left: -30, top: "36%" },
-        { right: -40, top: "62%" },
+        { right: -30, top: 70 },
+        { left: -40, top: "36%" },
+        { right: -50, top: "62%" },
       ].map((at, i) => (
-        <S key={i} className="ui-cloud" style={at} />
+        <S key={i} className={i === 1 ? "ui-cloud ui-flip" : "ui-cloud"} style={at} />
       ))}
       {[
         { right: 14, top: 40, size: 16, white: false },
@@ -142,8 +132,23 @@ const SCENES: Record<UiThemeId, React.ReactNode> = {
         { right: 30, top: "77%", size: 20, white: false },
         { left: 40, top: "85%", size: 24, white: true },
       ].map(({ size, white, ...at }, i) => (
-        <S key={i} className="ui-plum" style={{ ...at, width: size, height: size, ["--petal" as string]: white ? "#ffffff" : "#f8c6cc" }} />
+        <S key={i} className={white ? "ui-plum ui-plum-white" : "ui-plum"} style={{ ...at, width: size, height: size }} />
       ))}
     </>
   ),
+};
+
+const TOPS: Record<UiThemeId, React.ReactNode> = {
+  halloween: (
+    <>
+      <S className="ui-moon" style={{ right: 20, top: 84 }} />
+      {BATS.map(([i, top, dur]) => (
+        <span key={i} className="ui-s ui-bat-path" style={{ top, animationDuration: `${dur}s`, animationDelay: `${-i * 3}s` }}>
+          <span className="ui-bat" style={{ width: 22 + i * 4 }} />
+        </span>
+      ))}
+    </>
+  ),
+  christmas: <S className="ui-lights" style={{ inset: "0 0 auto", height: 26 }} />,
+  newyear: <S className="ui-rope" style={{ inset: "0 0 auto", height: 16 }} />,
 };

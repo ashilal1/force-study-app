@@ -28,12 +28,14 @@ async function declare(db: Db, userId: string, end = "15:00") {
 }
 
 describe("declaration reminders and P1", () => {
-  it("reminds undeclared members at 0:00 and 11:00, once each", async () => {
+  it("reminds undeclared members at 7:00 and 11:00, not at 0:00, once each", async () => {
     const { db, aki, ben, cho } = await setup();
     await db.query("insert into public.rest_days (user_id, date) values ($1, '2026-10-20')", [cho]);
     await setNow(db, "2026-10-20 00:03");
-    const midnight = await run(db, "run_declaration_reminders");
-    expect(midnight.map((e) => [e.type, e.actor_id]).sort()).toEqual(
+    expect(await run(db, "run_declaration_reminders")).toHaveLength(0);
+    await setNow(db, "2026-10-20 07:02");
+    const morning = await run(db, "run_declaration_reminders");
+    expect(morning.map((e) => [e.type, e.actor_id]).sort()).toEqual(
       [
         ["reminder_declare_midnight", aki],
         ["reminder_declare_midnight", ben],
@@ -46,8 +48,16 @@ describe("declaration reminders and P1", () => {
     await setNow(db, "2026-10-20 11:02");
     const last = await run(db, "run_declaration_reminders");
     expect(last.map((e) => [e.type, e.actor_id])).toEqual([["reminder_declare_last_call", ben]]);
+    expect(await run(db, "run_declaration_reminders")).toHaveLength(0);
     await setNow(db, "2026-10-20 12:00");
     expect(await run(db, "run_declaration_reminders")).toHaveLength(0);
+  });
+
+  it("sends only the last call when the morning one was missed", async () => {
+    const { db, aki } = await setup();
+    await setNow(db, "2026-10-20 11:03");
+    const rows = await run(db, "run_declaration_reminders");
+    expect(rows.filter((e) => e.actor_id === aki).map((e) => e.type)).toEqual(["reminder_declare_last_call"]);
   });
 
   it("closes the day at 12:00 with P1 for whoever didn't declare, once", async () => {
@@ -140,11 +150,11 @@ describe("submission deadlines (ADR-032: until the next day's 12:00)", () => {
     const { db, aki } = await setup();
     await setNow(db, "2026-10-20 09:00");
     await declare(db, aki);
-    await setNow(db, "2026-10-21 00:05");
-    const midnight = await run(db, "run_declaration_reminders");
-    const mine = midnight.find((e) => e.actor_id === aki)!;
+    await setNow(db, "2026-10-21 07:05");
+    const morning = await run(db, "run_declaration_reminders");
+    const mine = morning.find((e) => e.actor_id === aki)!;
     expect(mine.payload.previous_open).toBe("pending");
-    expect(midnight.filter((e) => e.actor_id !== aki).every((e) => e.payload.previous_open === null)).toBe(true);
+    expect(morning.filter((e) => e.actor_id !== aki).every((e) => e.payload.previous_open === null)).toBe(true);
   });
 
   it("waives a trial-week day decided after the trial ended", async () => {

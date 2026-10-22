@@ -113,6 +113,12 @@ describe("paying", () => {
     expect((await db.query<Event>("select * from public.late_payment_reminders()")).rows.map((e) => e.type)).toEqual([
       "reminder_late_payment",
     ]);
+    expect((await db.query<Event>("select * from public.late_payment_reminders()")).rows).toEqual([]);
+    await setNow(db, "2026-10-31 23:00"); // an hour before the next run
+    expect((await db.query<Event>("select * from public.late_payment_reminders()")).rows.map((e) => e.type)).toEqual([
+      "reminder_late_payment",
+    ]);
+    expect((await db.query<Event>("select * from public.late_payment_reminders()")).rows).toEqual([]);
 
     const week2 = await settle(db, "2026-11-01 00:02");
     expect(week2.filter((e) => e.type === "late_payment").map((e) => [e.actor_id, e.settlement_id])).toEqual([

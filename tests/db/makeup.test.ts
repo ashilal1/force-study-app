@@ -266,6 +266,30 @@ describe("makeup sessions", () => {
   });
 });
 
+describe("due_makeup_reminders", () => {
+  it("reminds 24 hours and 1 hour before the due time, once each", async () => {
+    const { db, aki } = await setup();
+    await owesOne(db); // due 10-31 23:59
+    const remind = async (when: string) => {
+      await setNow(db, when);
+      return (await db.query<Event>("select * from public.due_makeup_reminders()")).rows.filter((e) => e.actor_id === aki);
+    };
+    expect(await remind("2026-10-30 23:58")).toEqual([]);
+    expect((await remind("2026-10-31 00:02")).map((e) => e.payload.hours_left)).toEqual([24]);
+    expect(await remind("2026-10-31 12:00")).toEqual([]);
+    expect((await remind("2026-10-31 23:00")).map((e) => e.payload.hours_left)).toEqual([1]);
+    expect(await remind("2026-10-31 23:05")).toEqual([]);
+  });
+
+  it("sends only the 1-hour one when the 24-hour one was missed", async () => {
+    const { db, aki } = await setup();
+    await owesOne(db);
+    await setNow(db, "2026-10-31 23:10");
+    const rows = (await db.query<Event>("select * from public.due_makeup_reminders()")).rows.filter((e) => e.actor_id === aki);
+    expect(rows.map((e) => e.payload.hours_left)).toEqual([1]);
+  });
+});
+
 describe("close_makeup_week (P10)", () => {
   it("adds one more each week while something due is unpaid", async () => {
     const { db, aki } = await setup();

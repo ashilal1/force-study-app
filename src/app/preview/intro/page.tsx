@@ -5,6 +5,7 @@ import { buildIntro } from "@/lib/intro";
 const SAMPLE = buildIntro(
   {
     declaration_cutoff: "12:00:00",
+    first_declaration_reminder: "07:00:00",
     last_declaration_reminder: "11:00:00",
     penalty_no_declaration: 500,
     penalty_slacked: 700,

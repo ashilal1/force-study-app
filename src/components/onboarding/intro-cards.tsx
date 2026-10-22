@@ -136,8 +136,8 @@ function buildCards(d: IntroData, again: boolean): { title: string; body: React.
         <>
           <ol className="m-0 grid list-none gap-0 border-l-[3px] border-ink p-0 pl-4">
             {[
-              ["0:00", "宣言の通知が届く"],
-              [`〜${d.declarationCutoff}`, `今日やることを宣言する（${d.reminderTime} にまだならもう一度通知）`],
+              ["0:00", "1 日が始まる。宣言できるようになる"],
+              [`〜${d.declarationCutoff}`, `今日やることを宣言する（${d.reminderTime} にまだなら通知が届く）`],
               [`翌日 ${d.declarationCutoff}`, "までに成果物を提出する。夜中でもいい"],
               ["提出したら", `AI がすぐ判定。${d.passingScore} 点以上で合格。1 日 ${d.maxAttempts} 回まで出し直せる`],
             ].map(([time, what]) => (
@@ -237,7 +237,7 @@ function buildCards(d: IntroData, again: boolean): { title: string; body: React.
           <p className={text}>
             {d.canDeclareToday
               ? `今日の宣言は ${d.declarationCutoff} まで。通知の設定が終わったら、さっそく宣言できます。`
-              : "今日の宣言は締め切りました。明日 0:00 に宣言の通知が届きます。"}
+              : `今日の宣言は締め切りました。明日は 0:00 から宣言できます（${d.reminderTime} にまだなら通知が届きます）。`}
           </p>
           {again ? null : (
             <p className={cn(text, "text-sub")}>

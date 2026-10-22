@@ -31,7 +31,7 @@ export function XpRanking({ rows, crownMoved = null }: { rows: XpRow[]; crownMov
               <Sticker
                 shadow="sm"
                 className={cn(
-                  "grid grid-cols-[1.6rem_36px_1fr_auto] items-center gap-2.5 px-3 py-2",
+                  "grid grid-cols-[1.6rem_auto_1fr_auto] items-center gap-2.5 px-3 py-2",
                   row.standing.crown && "py-3",
                   row.standing.last && "-rotate-1",
                 )}
