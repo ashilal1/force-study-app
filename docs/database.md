@@ -55,6 +55,7 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 |---|---|---|---|
 | group_id | uuid PK → groups | | どのグループの設定か（M10 で 1 行固定の `id` から変更） |
 | declaration_cutoff | time | `12:00` | 宣言締切 (JST) |
+| first_declaration_reminder | time | `07:00` | 1 回目の宣言リマインド（ADR-047。`first < last < declaration_cutoff`） |
 | last_declaration_reminder | time | `11:00` | 2 回目の宣言リマインド |
 | submit_deadline_max | time | `21:00` | （使わない。ADR-032 で提出締切は翌日の `declaration_cutoff` になった） |
 | dispute_cutoff | time | `22:00` | （使わない。ADR-032） |
@@ -337,9 +338,9 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 - 振り返り: `weekly_review_created`
 - 精算: `payee_assigned` / `settlement_created` / `weekly_summary` / `settlement_sent` / `settlement_completed` / `settlement_not_received` / `late_payment`
 - 称号・ランク（M11・ADR-041）: `title_awarded` / `title_removed`（payload に `title`）/ `rank_changed`（`from`・`to`・`up`）/ `crown_moved`（`from`）。`standing_snapshot`（actor なし。その時点の全員のランク・称号・王冠。通知もタイムラインもない、比べるための記録）
-- 補習（M11）: `makeup_warning`（サボりが P9 の 1 回手前。直近の日だけ）/ `makeup_assigned`（P9。payload に `count`・`streak`・`waived`・`due_at`）/ `makeup_declared` / `makeup_failed`（payload の `cause` は `gave_up` / `deadline` / `unrevised`）/ `makeup_completed` / `makeup_overdue`（P10）/ `makeup_due`（週の締めで、残りがある人へ）/ `reminder_makeup_due`（期限の 24 時間前）。補習の提出・判定・「軽すぎる」・「怪しい」は学習日と同じ type（`study_log_id` の行の `is_makeup` で見分ける）
+- 補習（M11）: `makeup_warning`（サボりが P9 の 1 回手前。直近の日だけ）/ `makeup_assigned`（P9。payload に `count`・`streak`・`waived`・`due_at`）/ `makeup_declared` / `makeup_failed`（payload の `cause` は `gave_up` / `deadline` / `unrevised`）/ `makeup_completed` / `makeup_overdue`（P10）/ `makeup_due`（週の締めで、残りがある人へ）/ `reminder_makeup_due`（期限の 24 時間前・1 時間前。payload の `hours_left` が 24 / 1）。補習の提出・判定・「軽すぎる」・「怪しい」は学習日と同じ type（`study_log_id` の行の `is_makeup` で見分ける）
 - その他: `penalized` / `trial_ending` / `member_joined`（payload に `invited_by`）
-- リマインド: `reminder_declare_midnight` / `reminder_declare_last_call` / `reminder_submit` / `reminder_revision_due` / `reminder_resend_due` / `reminder_report_due` / `reminder_review_due` / `reminder_late_payment`
+- リマインド: `reminder_declare_midnight`（朝の宣言リマインド。ADR-047 で 0:00 から `first_declaration_reminder`（7:00）に移したが、公開中のコードで表示できるよう type 名はそのまま）/ `reminder_declare_last_call` / `reminder_submit` / `reminder_revision_due` / `reminder_resend_due` / `reminder_report_due` / `reminder_review_due` / `reminder_late_payment`
 
 `reminder_*` と `review_vote_cast` は本人（または未回答者）にだけ届けるので、タイムラインには出さない。誰に届けるかは `lib/notify` の受信者ルール（requirements N1 の表）で決める。
 
@@ -457,7 +458,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `assign_payee(admin_id, user_id, payee_id)` | 管理者だけ（`not_admin`）。自分自身・抜けた人は不可（`invalid_payee`）、同じなら `unchanged`。`payee_assigned` で全員に通知 |
 | `mark_settlement_sent(debtor_id, settlement_id)` / `confirm_settlement(payee_id, settlement_id)` / `report_not_received(payee_id, settlement_id)` | 本人確認つきで `open` → `sent` → `completed`、「届いていない」は `sent` → `open` |
 | `run_weekly_settlement()`（定期実行。tick の最後） | `current_period_end()`（設定の曜日・時刻を過ぎた直近の締め日）について 1 回だけ。① 前の週までの `open` の精算に P7（`late:{settlement}:{締め日}`）② 人ごとに、締め日までの学習日（P7 は作成時刻）の未精算・`waived` でないペナルティを束ねて支払先への精算を作る（支払先が未設定なら作らずに持ち越して `payee_missing` を管理者と本人へ）③ その週に記録があれば `weekly_summary` |
-| `late_payment_reminders()`（定期実行） | 次の締めの 24 時間前に、`open` の精算の本人へ |
+| `late_payment_reminders()`（定期実行） | 次の締めの 24 時間前と 1 時間前に、`open` の精算の本人へ |
 
 ### 補習（M11・F8b）
 | 関数 | 処理 |
@@ -507,7 +508,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 定期実行（tick から呼ぶ。すべて冪等）
 | 関数 | 処理 |
 |---|---|
-| `run_declaration_reminders()` | 0:00 と 11:00 を過ぎていて未宣言・休息日でも休会中でもない人に、`dedupe_key` つきでリマインドを作る。前の日が終わっていなければ `previous_open`（`pending` / `missed`）を付ける |
+| `run_declaration_reminders()` | `first_declaration_reminder`（7:00）と `last_declaration_reminder`（11:00）を過ぎていて締切前、未宣言・休息日でも休会中でもない人に、`dedupe_key` つきでリマインドを作る。前の日が終わっていなければ `previous_open`（`pending` / `missed`）を付ける |
 | `close_declarations()` | 12:00 を過ぎた今日、レコードも休息日も休会もないメンバー → `no_declaration` + penalty (P1) |
 | `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す（M5 で追加）。残り 15 分のリマインドも作る。**M4 で実装済み、定期実行は M6** |
 | `due_submit_reminders()` | 提出締切の 1 時間前で、まだ合格していない人にリマインドを作る |
@@ -526,7 +527,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
 | `award_makeups()` | P9（M11）。`makeup_since` が入っているグループの有効なメンバーごとに、その日以降の学習日を日付順に見て、サボり（`no_declaration`、または `missed` で理由が `slacked` / `not_reported` に決まった日）の連続を数え、`slack_streak_threshold` 回目から 1 日ごとに `makeup_per_streak` 回の借りを作る（`streak:{log}` で 1 日 1 回）。達成した日と、**まだ決着していない日**（`pending`・`passed`・理由申告や審査の途中）で 0 に戻す。決着したら次の tick で数え直すので、決着の順が日付と前後しても、あとの日に P9 が付く。P3・P4・P8・承認された理由の日は数えず、戻しもしない。お試し期間の日はお試しの日だけで数え（本番の日と続けない）、借りは `waived = 'trial'` |
 | `close_makeup_week()` | P10（M11）。`run_weekly_settlement` のあと、締めごとに 1 回。締めの時刻の時点で期限が来ていて返していない借り（`overdue > 0`）があれば、`makeup_per_overdue` 回の借りを足す（期限は 1 週後。`overdue:{user}:{締め日}`）。締めの日に休会中ならその週は足さない（期限を延ばす）。そのあと残りがある人に `makeup_due` |
-| `due_makeup_reminders()` | 返していない借りのいちばん早い期限の 24 時間前に、本人へ `reminder_makeup_due`（期限ごとに 1 回） |
+| `due_makeup_reminders()` | 返していない借りのいちばん早い期限の 24 時間前と 1 時間前に、本人へ `reminder_makeup_due`（期限ごとにそれぞれ 1 回。最後の 1 時間に入っていたら 1 時間前のほうだけ） |
 
 **P3 の連続回数**: 対象の学習日より前の `study_logs` を `status in ('completed','missed','invalidated')` に絞って日付の新しい順に見て、`missed` かつ `failure_reports.category = 'unrealistic'` が続く数 + 1。`completed`（達成）かほかの理由の未達成で止まる。理由申告待ち・審査中・確定待ちの日があればそこでも止める（確定していないため）。
 
@@ -595,7 +596,7 @@ tick の DB 側（すべて `service_role` だけが呼べる）:
 | 関数 | 処理 |
 |---|---|
 | `tick()` | 下の手順と、M4・M5 の `expire_revisions` / `advance_disputes` / `expire_reviews` を順に呼ぶ。`pg_try_advisory_xact_lock` で同時実行を防ぐ |
-| `run_declaration_reminders()` | 締切前、まだ宣言していない人（休息日・休会・締切後に参加した人を除く）に 0:00 と 11:00 のリマインド |
+| `run_declaration_reminders()` | 締切前、まだ宣言していない人（休息日・休会・締切後に参加した人を除く）に 7:00 と 11:00 のリマインド |
 | `close_declarations()` | 締切を過ぎたら、宣言していない人に `no_declaration` の log + P1 |
 | `due_submit_reminders()` | 提出締切の 1 時間前、まだ合格していない人に |
 | `close_overdue_logs()` | 提出締切（翌日 12:00）を過ぎた `pending` を `missed` にして `failure_reports(awaiting_report, 期限 = 学習日の翌日の report_deadline)` を作る。締切前に出した提出が判定待ち・エラーなら `judge_grace_minutes` 待つ |

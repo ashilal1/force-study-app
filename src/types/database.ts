@@ -307,6 +307,7 @@ export type Database = {
           declaration_cutoff: string
           dispute_cutoff: string
           dispute_window_hours: number
+          first_declaration_reminder: string
           flag_window_hours: number
           group_id: string
           image_retention_days: number
@@ -350,6 +351,7 @@ export type Database = {
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
+          first_declaration_reminder?: string
           flag_window_hours?: number
           group_id: string
           image_retention_days?: number
@@ -393,6 +395,7 @@ export type Database = {
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
+          first_declaration_reminder?: string
           flag_window_hours?: number
           group_id?: string
           image_retention_days?: number
@@ -2104,8 +2107,10 @@ export type Database = {
           paypay_link: string | null
           removed_by: string | null
           rules_accepted_at: string | null
+          season_themes: boolean
           seen_tips: string[]
           trial_ends_at: string
+          ui_theme: string | null
         }
         SetofOptions: {
           from: "*"
@@ -2522,8 +2527,10 @@ export type Database = {
           paypay_link: string | null
           removed_by: string | null
           rules_accepted_at: string | null
+          season_themes: boolean
           seen_tips: string[]
           trial_ends_at: string
+          ui_theme: string | null
         }
         SetofOptions: {
           from: "*"

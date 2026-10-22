@@ -10,7 +10,8 @@ export type SettingField = {
 };
 
 export const SETTING_FIELDS: SettingField[] = [
-  { key: "last_declaration_reminder", label: "宣言のリマインド", type: "time", section: "時刻" },
+  { key: "first_declaration_reminder", label: "宣言のリマインド（1 回目）", type: "time", section: "時刻" },
+  { key: "last_declaration_reminder", label: "宣言のリマインド（2 回目）", type: "time", section: "時刻" },
   { key: "declaration_cutoff", label: "宣言の締切（前の日の提出締切）", type: "time", section: "時刻" },
   { key: "report_deadline", label: "理由申告の期限（学習日の翌日）", type: "time", section: "時刻" },
   { key: "review_deadline", label: "休会の審査の期限（申請した日）", type: "time", section: "時刻" },

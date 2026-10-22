@@ -53,7 +53,7 @@ function Badge({ status }: { status: MemberStatus }) {
 
 export function MemberCard({ member }: { member: MemberToday }) {
   return (
-    <Sticker className="relative grid min-h-[88px] grid-cols-[44px_1fr_auto] items-center gap-x-3 px-3.5 py-3">
+    <Sticker className="relative grid min-h-[88px] grid-cols-[auto_1fr_auto] items-center gap-x-3 px-3.5 py-3">
       <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
       <div className="min-w-0">
         <p className="m-0 font-heading text-[1.3rem] leading-tight">{member.name}</p>

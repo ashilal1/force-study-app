@@ -351,6 +351,8 @@ const RULES: Record<string, Rule> = {
 
   // --- Scheduled (F9): reminders and the day's outcomes -----------------------------------
   // previous_open: yesterday still has to be finished before declaring (ADR-032).
+  // reminder_declare_midnight is the morning one (first_declaration_reminder, 7:00); it was sent
+  // at 0:00 until ADR-047 and keeps its name so the deployed code renders it.
   reminder_declare_midnight: (event, members) =>
     draft(
       self(members, event),
@@ -550,7 +552,7 @@ const RULES: Record<string, Rule> = {
     draft(
       self(members, event),
       "精算がまだです",
-      `${formatJstTime(text(event.payload.due_at))} までに「送金した」を押さないと ${yen(event.payload)} 追加されます`,
+      `${formatJstDateTime(text(event.payload.due_at))} までに「送金した」を押さないと ${yen(event.payload)} 追加されます`,
       "/settlements",
       true,
     ),
@@ -644,7 +646,7 @@ const RULES: Record<string, Rule> = {
   reminder_makeup_due: (event, members) =>
     draft(
       self(members, event),
-      "補習の期限まであと 24 時間",
+      `補習の期限まであと ${Number(event.payload.hours_left ?? 24)} 時間`,
       `残り ${event.payload.remaining} 回。${formatJstDateTime(text(event.payload.due_at))} を過ぎると +1 回`,
       MAKEUP_URL,
       true,
