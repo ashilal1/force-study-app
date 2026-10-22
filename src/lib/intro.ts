@@ -5,11 +5,12 @@ import { formatJstDateTime, jstDateString } from "@/lib/time";
 import type { Tables } from "@/types/database";
 
 export const INTRO_SETTINGS =
-  "declaration_cutoff, last_declaration_reminder, penalty_no_declaration, penalty_slacked, passing_score, max_attempts, flag_window_hours, dispute_window_hours, settlement_weekday, settlement_time, rest_days_per_week, slack_streak_threshold, makeup_per_streak" as const;
+  "declaration_cutoff, first_declaration_reminder, last_declaration_reminder, penalty_no_declaration, penalty_slacked, passing_score, max_attempts, flag_window_hours, dispute_window_hours, settlement_weekday, settlement_time, rest_days_per_week, slack_streak_threshold, makeup_per_streak" as const;
 
 export type IntroSettings = Pick<
   Tables<"group_settings">,
   | "declaration_cutoff"
+  | "first_declaration_reminder"
   | "last_declaration_reminder"
   | "penalty_no_declaration"
   | "penalty_slacked"
@@ -26,6 +27,7 @@ export type IntroSettings = Pick<
 
 export type IntroData = {
   declarationCutoff: string;
+  /** When the declaration reminders go out to whoever hasn't declared ("07:00 と 11:00"). */
   reminderTime: string;
   noDeclarationYen: number;
   slackedYen: number;
@@ -50,7 +52,7 @@ export function buildIntro(settings: IntroSettings, trialEndsAt: string, now: Da
   const cutoff = new Date(`${jstDateString(now)}T${settings.declaration_cutoff}+09:00`);
   return {
     declarationCutoff: hhmm(settings.declaration_cutoff),
-    reminderTime: hhmm(settings.last_declaration_reminder),
+    reminderTime: `${hhmm(settings.first_declaration_reminder)} と ${hhmm(settings.last_declaration_reminder)}`,
     noDeclarationYen: settings.penalty_no_declaration,
     slackedYen: settings.penalty_slacked,
     passingScore: settings.passing_score,
