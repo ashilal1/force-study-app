@@ -304,6 +304,7 @@ export type Database = {
       group_settings: {
         Row: {
           ai_fallback_minutes: number
+          appeals_per_week: number
           declaration_cutoff: string
           dispute_cutoff: string
           dispute_window_hours: number
@@ -315,7 +316,6 @@ export type Database = {
           judge_grace_minutes: number
           last_declaration_reminder: string
           makeup_hours: number
-          appeals_per_week: number
           makeup_per_overdue: number
           makeup_per_streak: number
           makeup_since: string | null
@@ -349,6 +349,7 @@ export type Database = {
         }
         Insert: {
           ai_fallback_minutes?: number
+          appeals_per_week?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -360,7 +361,6 @@ export type Database = {
           judge_grace_minutes?: number
           last_declaration_reminder?: string
           makeup_hours?: number
-          appeals_per_week?: number
           makeup_per_overdue?: number
           makeup_per_streak?: number
           makeup_since?: string | null
@@ -394,6 +394,7 @@ export type Database = {
         }
         Update: {
           ai_fallback_minutes?: number
+          appeals_per_week?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -405,7 +406,6 @@ export type Database = {
           judge_grace_minutes?: number
           last_declaration_reminder?: string
           makeup_hours?: number
-          appeals_per_week?: number
           makeup_per_overdue?: number
           makeup_per_streak?: number
           makeup_since?: string | null
@@ -467,61 +467,6 @@ export type Database = {
           name?: string
         }
         Relationships: []
-      }
-      judge_appeals: {
-        Row: {
-          created_at: string
-          reason: string
-          resolved_at: string | null
-          review_due_at: string
-          status: string
-          study_log_id: string
-          submission_id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          reason: string
-          resolved_at?: string | null
-          review_due_at: string
-          status?: string
-          study_log_id: string
-          submission_id: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          reason?: string
-          resolved_at?: string | null
-          review_due_at?: string
-          status?: string
-          study_log_id?: string
-          submission_id?: string
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "judge_appeals_study_log_id_fkey"
-            columns: ["study_log_id"]
-            isOneToOne: true
-            referencedRelation: "study_logs"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "judge_appeals_submission_id_fkey"
-            columns: ["submission_id"]
-            isOneToOne: false
-            referencedRelation: "submissions"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "judge_appeals_user_id_fkey"
-            columns: ["user_id"]
-            isOneToOne: false
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       invites: {
         Row: {
@@ -629,6 +574,96 @@ export type Database = {
             foreignKeyName: "invites_used_by_fkey"
             columns: ["used_by"]
             isOneToOne: true
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      judge_appeals: {
+        Row: {
+          created_at: string
+          reason: string
+          resolved_at: string | null
+          review_due_at: string
+          status: string
+          study_log_id: string
+          submission_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reason: string
+          resolved_at?: string | null
+          review_due_at: string
+          status?: string
+          study_log_id: string
+          submission_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reason?: string
+          resolved_at?: string | null
+          review_due_at?: string
+          status?: string
+          study_log_id?: string
+          submission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judge_appeals_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: true
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: true
+            referencedRelation: "study_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "weekly_stats"
             referencedColumns: ["user_id"]
           },
@@ -1875,8 +1910,8 @@ export type Database = {
     }
     Functions: {
       accept_rules: { Args: { p_user_id: string }; Returns: string }
-      appeal_judgement: {
-        Args: { p_reason: string; p_study_log_id: string; p_user_id: string }
+      advance_disputes: {
+        Args: never
         Returns: {
           actor_id: string | null
           created_at: string
@@ -1897,8 +1932,8 @@ export type Database = {
           isSetofReturn: true
         }
       }
-      advance_disputes: {
-        Args: never
+      appeal_judgement: {
+        Args: { p_reason: string; p_study_log_id: string; p_user_id: string }
         Returns: {
           actor_id: string | null
           created_at: string
