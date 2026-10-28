@@ -1,6 +1,9 @@
+import { Avatar } from "@/components/brand/avatar";
+import { PassphraseCard } from "@/components/declare/passphrase-card";
 import { Sticker } from "@/components/brand/sticker";
 import { CrownConfetti } from "@/components/standing/crown-confetti";
 import { RankBadge } from "@/components/standing/rank-badge";
+import { cardTheme } from "@/components/standing/theme-layer";
 import { TitleBadge } from "@/components/standing/title-badges";
 import { XpTrendChart, type XpTrendLine } from "@/components/standing/xp-trend-chart";
 import { MEMBER_COLORS } from "@/lib/chart-colors";
@@ -57,6 +60,27 @@ export default function PreviewXpPage() {
           ))}
         </div>
       </Sticker>
+      {/* Member cards wear the member's rank look, whatever the viewer's (ADR-049): try the bar. */}
+      <section className="grid gap-3">
+        <h2 className="m-0 font-en text-[1.4rem] leading-none">MEMBER CARDS</h2>
+        {RANKS.map((rank, index) => (
+          <Sticker key={rank.id} className="grid gap-2.5 px-3.5 py-3" {...cardTheme(rank.id)}>
+            <div className="grid grid-cols-[auto_1fr] items-center gap-x-3">
+              <Avatar name={rank.name} colorIndex={index} />
+              <div className="min-w-0">
+                <p className="m-0 truncate font-heading text-[1.2rem] leading-tight">{rank.name}の人</p>
+                <p className="m-0 truncate text-sm font-bold">締切 10/20（月）21:00</p>
+              </div>
+            </div>
+            <span>
+              <RankBadge standing={{ rank, xp: rank.min } as Standing} />
+            </span>
+            <p className="m-0 text-sm leading-snug font-medium">英単語 300 語を 2 周して、間違えた 40 語をノートにまとめる</p>
+            <PassphraseCard value="さくら 42" compact />
+            <p className="m-0 text-xs font-bold text-sub">1 回目は不合格（62 点）</p>
+          </Sticker>
+        ))}
+      </section>
       {/* The crown moved: once per browser (clear localStorage "crown-confetti-seen" to see it again). */}
       <section className="relative isolate grid gap-3">
         <CrownConfetti eventId="preview-crown" name="ちょう" />

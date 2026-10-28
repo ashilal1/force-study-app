@@ -22,6 +22,15 @@ function finishOf(theme: ViewerThemeId): string {
 }
 
 /**
+ * Put on a member's own card (home) and rank panel so it wears THAT member's look whoever is
+ * looking (ADR-049); everything else on the screen follows the viewer.
+ */
+export function cardTheme(rank: RankId) {
+  const theme = themeOf(rank);
+  return { "data-card-theme": theme, "data-card-finish": finishOf(theme) };
+}
+
+/**
  * The marker rank-themes.css keys on, and the decorations behind the page: gold confetti for
  * 天才, a few silver glints for 優等生, a vignette with a siren and bars above the bottom menu for
  * どうしようもない (銅 and 三日坊主 have none). Purely decorative: behind the content or clear of it, never takes a tap,

@@ -5,6 +5,7 @@ import { Sticker } from "@/components/brand/sticker";
 import { FlagList } from "@/components/declare/flag-list";
 import { Crown } from "@/components/standing/crown";
 import { RankBadge } from "@/components/standing/rank-badge";
+import { cardTheme } from "@/components/standing/theme-layer";
 import { TitleBadges } from "@/components/standing/title-badges";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import Link from "next/link";
@@ -17,8 +18,8 @@ import { FlagForm } from "./flag-form";
 
 /**
  * One member's day on the home board: declaration, deadline, passphrase and flags, the makeup
- * sessions (補習) they still owe, and their rank, titles and crown (F13, F14). Like every card,
- * it follows the viewer's rank (ViewerTheme, ADR-042); ranks show as the badge and the crown.
+ * sessions (補習) they still owe, and their rank, titles and crown (F13, F14). The card itself wears
+ * the member's rank look (ADR-049); what sits inside follows the viewer's (ADR-042).
  */
 export function MemberTodayCard({
   member,
@@ -37,7 +38,7 @@ export function MemberTodayCard({
   return (
     // The crown and the stamp sit outside the card so its (themed) edge doesn't trace them.
     <div className="relative">
-      <Sticker className={cn("grid gap-2.5 px-3.5 py-3", standing?.last && "-rotate-1")}>
+      <Sticker className={cn("grid gap-2.5 px-3.5 py-3", standing?.last && "-rotate-1")} {...(standing ? cardTheme(standing.rank.id) : {})}>
         <div className="grid grid-cols-[auto_1fr_auto] items-center gap-x-3">
           <Avatar name={member.name} src={member.avatarUrl} colorIndex={member.colorIndex} />
           <div className="min-w-0">

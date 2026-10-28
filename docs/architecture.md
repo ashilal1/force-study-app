@@ -261,7 +261,7 @@ flowchart LR
     ├── proxy.ts                   # セッション更新・認証ガード
     ├── app/
     │   ├── manifest.ts            # PWA manifest
-    │   ├── rank-themes.css        # 見ている本人のランクで画面全体を着せ替える（F14・ADR-042）
+    │   ├── rank-themes.css        # 見ている本人のランクで画面全体を着せ替える（F14・ADR-042）。メンバーのカードはその人のランク（ADR-049）
     │   ├── ui-themes.css          # 期間限定のテーマ（F16・ADR-046。本番ではまだ出さない）
     │   ├── (auth)/                # 未ログイン・未参加向け（下部メニューなし）
     │   │   ├── login/             # 「Google でログイン」
