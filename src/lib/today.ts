@@ -47,6 +47,8 @@ export type TodayLog = Pick<
   dispute: string | null;
   /** Reason report status for a missed day. */
   report: string | null;
+  /** Asked the members to judge it after the AI rejected every attempt (F5c). */
+  appeal: string | null;
 };
 
 export type TodayState =
@@ -136,6 +138,7 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
     { data: submissions, error: submissionsError },
     { data: disputes, error: disputesError },
     { data: reports, error: reportsError },
+    { data: appeals, error: appealsError },
   ] = logIds.length
     ? await Promise.all([
         supabase
@@ -151,8 +154,10 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
           .order("submitted_at"),
         supabase.from("submission_disputes").select("study_log_id, status").in("study_log_id", logIds),
         supabase.from("failure_reports").select("study_log_id, status").in("study_log_id", logIds),
+        supabase.from("judge_appeals").select("study_log_id, status").in("study_log_id", logIds),
       ])
     : [
+        { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
         { data: [], error: null },
@@ -162,6 +167,7 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
   if (submissionsError) throw submissionsError;
   if (disputesError) throw disputesError;
   if (reportsError) throw reportsError;
+  if (appealsError) throw appealsError;
 
   const names = new Map(profiles.data!.map((profile) => [profile.id, profile.display_name]));
   const now = Date.now();
@@ -178,6 +184,7 @@ export const getTodayBoard = cache(async (): Promise<TodayBoard> => {
       unverified: mine.some((submission) => submission.status === "passed" && submission.unverified_at !== null),
       dispute: disputes!.find((dispute) => dispute.study_log_id === row.id)?.status ?? null,
       report: reports!.find((report) => report.study_log_id === row.id)?.status ?? null,
+      appeal: appeals!.find((appeal) => appeal.study_log_id === row.id)?.status ?? null,
       flags: flags!
         .filter((flag) => flag.study_log_id === row.id)
         .map((flag) => ({

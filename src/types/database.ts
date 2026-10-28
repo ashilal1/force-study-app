@@ -315,6 +315,7 @@ export type Database = {
           judge_grace_minutes: number
           last_declaration_reminder: string
           makeup_hours: number
+          appeals_per_week: number
           makeup_per_overdue: number
           makeup_per_streak: number
           makeup_since: string | null
@@ -359,6 +360,7 @@ export type Database = {
           judge_grace_minutes?: number
           last_declaration_reminder?: string
           makeup_hours?: number
+          appeals_per_week?: number
           makeup_per_overdue?: number
           makeup_per_streak?: number
           makeup_since?: string | null
@@ -403,6 +405,7 @@ export type Database = {
           judge_grace_minutes?: number
           last_declaration_reminder?: string
           makeup_hours?: number
+          appeals_per_week?: number
           makeup_per_overdue?: number
           makeup_per_streak?: number
           makeup_since?: string | null
@@ -464,6 +467,61 @@ export type Database = {
           name?: string
         }
         Relationships: []
+      }
+      judge_appeals: {
+        Row: {
+          created_at: string
+          reason: string
+          resolved_at: string | null
+          review_due_at: string
+          status: string
+          study_log_id: string
+          submission_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reason: string
+          resolved_at?: string | null
+          review_due_at: string
+          status?: string
+          study_log_id: string
+          submission_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reason?: string
+          resolved_at?: string | null
+          review_due_at?: string
+          status?: string
+          study_log_id?: string
+          submission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judge_appeals_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: true
+            referencedRelation: "study_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       invites: {
         Row: {
@@ -1817,6 +1875,28 @@ export type Database = {
     }
     Functions: {
       accept_rules: { Args: { p_user_id: string }; Returns: string }
+      appeal_judgement: {
+        Args: { p_reason: string; p_study_log_id: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       advance_disputes: {
         Args: never
         Returns: {
@@ -2264,6 +2344,28 @@ export type Database = {
         Args: { p_endpoint: string; p_user_id?: string }
         Returns: undefined
       }
+      due_appeal_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       due_deadline_reminders: {
         Args: never
         Returns: {
@@ -2316,6 +2418,28 @@ export type Database = {
         }
       }
       due_submit_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      expire_appeals: {
         Args: never
         Returns: {
           actor_id: string | null

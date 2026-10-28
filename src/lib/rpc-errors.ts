@@ -53,6 +53,13 @@ const MESSAGES: Record<string, string> = {
   invalid_images: "写真を 1〜3 枚選んでください",
   invalid_reflection: "学んだこと・できなかったことを書いてください",
   invalid_rating: "自己評価を選んでください",
+  // Asking the members to judge (F5c)
+  already_appealed: "この日はもうメンバーに判定を頼んでいます",
+  appeal_not_rejected: "AI の判定で不合格になった提出のあとに頼めます",
+  attempts_remaining: "まだ提出し直せます。提出回数を使い切ってから頼めます",
+  appeal_limit: "今週はもう、メンバーに判定を頼める回数を使い切りました",
+  appeal_open: "メンバーが判定しているあいだは「できなかった」を押せません",
+  revision_pending: "先に宣言の書き直しを済ませてください",
   // Disputes (怪しい)
   own_submission: "自分の提出には指摘できません",
   resend_closed: "証拠を送り直せる時間は過ぎています",

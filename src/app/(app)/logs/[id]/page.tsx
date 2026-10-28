@@ -8,6 +8,7 @@ import { Pill } from "@/components/brand/pill";
 import { Stamp } from "@/components/brand/stamp";
 import { Sticker } from "@/components/brand/sticker";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
+import { AppealReview } from "@/components/appeal/appeal-actions";
 import { DisputeReview, WithdrawFlagButton } from "@/components/dispute/dispute-actions";
 import { ResendForm } from "@/components/dispute/resend-form";
 import { PageTip } from "@/components/onboarding/page-tip";
@@ -36,6 +37,13 @@ const STATUS: Record<string, string> = {
 const MAKEUP_STATUS: Record<string, string> = {
   completed: "返した",
   missed: "数えない",
+};
+
+const APPEAL: Record<string, string> = {
+  under_review: "判定中",
+  accepted: "認められた",
+  rejected: "認められなかった",
+  cancelled: "取りやめ",
 };
 
 const DISPUTE: Record<string, string> = {
@@ -105,6 +113,8 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
         </Link>
       ) : null}
 
+      <AppealSection detail={detail} />
+
       <DisputeSection detail={detail} />
 
       {log.status === "passed" && detail.submissions.some((submission) => submission.unverified) ? (
@@ -170,6 +180,41 @@ async function LogTip({ detail }: { detail: LogDetail }) {
         can.flag && ["peer_buttons", TIPS.peer_buttons],
       ]}
     />
+  );
+}
+
+/** The owner asked everyone else to judge a day the AI rejected every time (F5c). */
+function AppealSection({ detail }: { detail: LogDetail }) {
+  const { appeal, can, log, owner } = detail;
+  if (!appeal) return null;
+  return (
+    <Sticker tone="tape" className="grid gap-3 px-4 py-4">
+      <div className="flex items-center justify-between gap-2">
+        <b>メンバーに判定を頼みました</b>
+        <Pill variant="outline">{APPEAL[appeal.status] ?? appeal.status}</Pill>
+      </div>
+      <p className="m-0 text-sm whitespace-pre-wrap">
+        <b>{owner.name} さんの理由:</b> {appeal.reason}
+      </p>
+      {appeal.status === "under_review" ? (
+        <p className="m-0 text-xs font-bold">
+          AI は不合格にしましたが、本人はやったと言っています。下の写真と振り返りを見てください。
+          {formatJstDateTime(appeal.reviewDueAt)} までに全員が「認める」を押したら
+          {log.isMakeup ? "補習を 1 回返したことに" : "達成に"}なります。1 人でも認めないか、そろわなければ
+          {log.isMakeup ? "数えません" : "未達成"}です。
+        </p>
+      ) : null}
+      {appeal.reviews.length > 0 ? (
+        <ul className="m-0 grid list-none gap-1 p-0 text-xs">
+          {appeal.reviews.map((review) => (
+            <li key={review.reviewerId}>
+              {review.name}: {review.verdict === "accept" ? "認める" : review.verdict === "reject" ? `認めない（${review.comment}）` : "まだ"}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {can.reviewAppeal ? <AppealReview logId={log.id} /> : null}
+    </Sticker>
   );
 }
 

@@ -26,6 +26,7 @@ erDiagram
     profiles ||--o{ invites : "発行 / 使用"
     profiles ||--o{ makeup_debts : "補習の借り（P9・P10）"
     study_logs ||--o| makeup_debts : "P9 が付いた日"
+    study_logs ||--o| judge_appeals : "メンバーに判定を頼んだ日（F5c）"
 ```
 
 補習（M11・F8b）の 1 回分は `study_logs` の `is_makeup = true` の行。宣言・合言葉・提出・AI 判定・「怪しい」の仕組みをそのまま使う。
@@ -67,6 +68,7 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 | rest_days_per_week | int | 1 | 週あたりの休息日上限（週は日曜〜土曜） |
 | passing_score | int | 70 | 合格点 |
 | max_attempts | int | 3 | 1 学習日の最大提出回数（送り直しは数えない） |
+| appeals_per_week | int | 2 | メンバーに判定を頼める回数（週。日〜土。0 なら使わない。F5c・ADR-048） |
 | judge_grace_minutes | int | 60 | 締切後、判定待ちの提出を待つ時間 |
 | flag_window_hours | int | 3 | 宣言から何時間「軽すぎる」を押せるか |
 | revision_minutes | int | 60 | 「軽すぎる」から書き直すまでの期限 |
@@ -258,19 +260,33 @@ Gemini がエラーのときは同じ提出を `error` → 再判定するので
 
 `check` で category と必須テキストの組み合わせ、文字数を検査する。申告後は書き換えない。
 
-### peer_reviews（審査。理由申告・休会・疑義の最終審査で共通）
+### judge_appeals（メンバーに判定を頼む。F5c・ADR-048）
+| 列 | 型 | 説明 |
+|---|---|---|
+| study_log_id | uuid PK → study_logs | 頼んだ日（補習の行も可）。**1 日 1 回だけ** |
+| user_id | uuid → profiles | 本人 |
+| submission_id | uuid → submissions | AI が不合格にした最後の提出 |
+| reason | text | 合格だと思う理由（`min_explanation_chars`〜1000 字） |
+| status | text | `under_review`（判定中） / `accepted`（全員が認めた → 達成） / `rejected`（理由付きで認めない人がいた・期限切れ → 未達成） / `cancelled`（本人が抜けた・その日がほかの理由で終わった） |
+| review_due_at | timestamptz | 頼んでから `review_hours` |
+| created_at | timestamptz | 週の回数（`appeals_per_week`）はこれで数える |
+| resolved_at | timestamptz null | `under_review` のあいだだけ null |
+
+判定中のあいだ、その日は `pending` のまま。ただし次の日の宣言を止めない（`private.unfinished_day`）、提出締切で閉じない（`close_overdue_logs`）、「できなかった」を押せない（`appeal_open`）。審査は `peer_reviews('appeal')`。追記だけ（DELETE 禁止、UPDATE は `status`・`resolved_at` だけ）。
+
+### peer_reviews（審査。理由申告・休会・疑義の最終審査・判定の依頼で共通）
 | 列 | 型 | 説明 |
 |---|---|---|
 | id | uuid PK | |
-| subject_type | text | `excuse`（理由申告） / `leave`（休会） / `dispute`（疑義の最終審査） |
-| subject_id | uuid | `excuse`・`dispute` は study_log_id、`leave` は leave_request_id |
+| subject_type | text | `excuse`（理由申告） / `leave`（休会） / `dispute`（疑義の最終審査） / `appeal`（判定の依頼。F5c） |
+| subject_id | uuid | `excuse`・`dispute`・`appeal` は study_log_id、`leave` は leave_request_id |
 | reviewer_id | uuid → profiles | 対象の本人は除く（RPC で検査） |
 | verdict | text null | null = まだ押していない / `accept` / `reject` |
-| comment | text | `dispute` の `reject` では必須（`check`）。ほかは任意 |
+| comment | text | `dispute` の `reject` では必須（`check`）。`appeal` の `reject` も必須（RPC で検査）。ほかは任意 |
 | decided_at | timestamptz | |
 
 `unique (subject_type, subject_id, reviewer_id)`。審査が始まった時点で、休会中でないほかのメンバーぶんの行を作って固定する。
-`reject` が 1 行でもあれば即却下。全行 `accept` なら承認。**期限切れのとき**: `excuse`・`leave` は却下、`dispute` は承認（達成で確定）。
+`reject` が 1 行でもあれば即却下。全行 `accept` なら承認。**期限切れのとき**: `excuse`・`leave`・`appeal` は却下、`dispute` は承認（達成で確定）。
 `subject_id` は種類によって参照先が変わるので外部キーは張らず、審査を始める RPC が整合を保証する。
 
 ### penalties（ペナルティ台帳）
@@ -424,8 +440,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 宣言・休み
 | 関数 | 処理 |
 |---|---|
-| `declare_goal(user_id, declaration, end_time, passphrase)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。**前の日が終わっていなければ拒否**（`private.unfinished_day`: まだ `pending` なら `previous_day_open`、未達成で理由が未申告なら `previous_report_due`）。`target_end_time` は **明日の `declaration_cutoff`**（`end_time` は互換のために残して無視。ADR-032）。合言葉はサーバー（`lib/passphrase.ts`）が作って渡す。`declared` を記録 |
-| `give_up_day(user_id, study_log_id)` | 「できなかった」。本人の `pending` で判定中の提出がないか検査 → `missed` + `failure_reports(awaiting_report, 期限 = 学習日の翌日の report_deadline)`。`missed`（`gave_up: true`）を記録 |
+| `declare_goal(user_id, declaration, end_time, passphrase)` | 今日 (JST)、宣言締切前、休息日・休会でない、未宣言であることを検査。**前の日が終わっていなければ拒否**（`private.unfinished_day`: まだ `pending` なら `previous_day_open`〔メンバーに判定を頼んでいる日は除く。F5c〕、未達成で理由が未申告なら `previous_report_due`）。`target_end_time` は **明日の `declaration_cutoff`**（`end_time` は互換のために残して無視。ADR-032）。合言葉はサーバー（`lib/passphrase.ts`）が作って渡す。`declared` を記録 |
+| `give_up_day(user_id, study_log_id)` | 「できなかった」。本人の `pending` で判定中の提出がなく、メンバーに判定を頼んでいないか（`appeal_open`）検査 → `missed` + `failure_reports(awaiting_report, 期限 = 学習日の翌日の report_deadline)`。`missed`（`gave_up: true`）を記録 |
 | `register_rest_day(user_id, date)` / `cancel_rest_day` | 明日以降（60 日先まで）か、週（日〜土）の上限内か、休会と重ならないかを検査（人ごとの advisory lock で同時登録を防ぐ）。取り消しも明日以降の日だけ |
 | `request_leave(user_id, start, end, reason)` | 開始日は明日以降、理由は `min_explanation_chars` 以上、自分の休会と重ならないかを検査。審査者（`reviewers_for`）ぶんの `peer_reviews('leave')` を作って固定し、期限は申請した日の `review_deadline`。審査者がいなければその場で承認 |
 | `cancel_leave(user_id, leave_request_id)` | 審査中なら取り下げ、承認済みなら明日以降（開始前なら全部）を取り消す（`cancelled_from`） |
@@ -443,13 +459,16 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `withdraw_flag(flagger_id, study_log_id)` | `resending` の間だけ、自分の指摘を取り下げる。全員取り下げたら `upheld` → log を `completed` |
 | `advance_disputes()`（定期実行） | 送り直しの 1 時間前のリマインド。`resend_due_at` を過ぎた `resending` → `final_review`（期限は今 + `review_hours`、審査者を `peer_reviews('dispute')` に固定。審査者がいなければ `upheld`）。`review_due_at` を過ぎた `final_review` → `upheld` |
 | `cast_review(..., 'dispute', ...)` | 最終審査。却下は理由が必須（`comment_required`）。却下 1 件で `invalidated` + P8、全員が認めたら `upheld` |
+| `appeal_judgement(user_id, study_log_id, reason)` | メンバーに判定を頼む（F5c）。本人の `pending` で提出締切前か、まだ頼んでいないか（`already_appealed`）、書き直し待ちでないか（`revision_pending`）、最後の通常の提出が `rejected` か（`appeal_not_rejected`）、提出回数（`error` を除く）を使い切ったか（`attempts_remaining`）、理由が `min_explanation_chars`〜1000 字か、今週（日〜土）の回数が `appeals_per_week` 未満か（`appeal_limit`。人ごとの advisory lock）を検査。`judge_appeals` と審査者（`reviewers_for`）ぶんの `peer_reviews('appeal')` を作り、`appeal_requested` を記録。審査者がいなければその場で認める |
+| `cast_review(..., 'appeal', ...)` | 認めないときは理由が必須（`comment_required`）。1 件で `private.resolve_appeal(却下)`、全員が認めたら `resolve_appeal(承認)` |
+| `private.resolve_appeal(study_log_id, accepted, expired, by, comment)` | 承認: その日を `completed`（`passed_at`・`dispute_window_ends_at`・`completed_at` を今に。「怪しい」の窓はない）にして `appeal_accepted`。却下: `missed` にして、学習日なら `failure_reports(awaiting_report)`（期限は `report_due_for` と今から 6 時間の遅いほう）、`appeal_rejected`。その日がもう `pending` でなければ `cancelled` にするだけ |
 
 ### 未達成・審査
 | 関数 | 処理 |
 |---|---|
 | `file_failure_report(user_id, study_log_id, category, text)` | 本人の `awaiting_report` か、期限内か、`slacked` 以外は `min_explanation_chars` 以上かを検査（1 回だけ）。<br>・`unrealistic`: `text` を次の計画にして、`private.unrealistic_streak()` で連続回数を計算 → しきい値以上なら P3、`resolved`<br>・`slacked`: P2、`resolved`（`text` は任意のひとこと）<br>・`sudden_plan` / `other`: `under_review`（期限は申告から `review_hours`）にして、審査者ぶんの `peer_reviews('excuse')` を作る（審査者がいなければその場で承認）。`reported`（と `review_requested`）を記録 |
 | `expire_reports()`（定期実行） | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + P5 |
-| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8）を行う。**`leave`（M4）・`dispute`（M5）・`excuse`（M7）に対応**。`excuse` は却下 1 件で P4、全員納得で 0 円 |
+| `cast_review(reviewer_id, subject_type, subject_id, verdict, comment)` | 審査者本人の未回答の行か、期限内か（`dispute` の `reject` は comment 必須）を検査。`reject` なら即却下、全員 `accept` なら承認として、種類ごとの後処理（excuse: penalty の有無 / leave: 休会の成立 / dispute: 達成で確定 or P8 / appeal: 達成 or 未達成）を行う。**`leave`（M4）・`dispute`（M5）・`excuse`（M7）・`appeal`（F5c）に対応**。`excuse` は却下 1 件で P4、全員納得で 0 円 |
 
 ### 精算
 | 関数 | 処理 |
@@ -487,7 +506,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 |---|---|
 | `leave_group(member_id)` | 自分で退会。精算が全部終わっていて（未完了の精算も、精算に入っていないペナルティもない）、終わっていない日（`pending`・`passed`・理由申告や審査の途中）がなく、ほかにメンバーがいるなら自分以外の管理者がいるときだけ（`leave_unsettled` / `leave_day_open` / `last_admin`） |
 | `remove_member(admin_id, member_id)` | 管理者が同じグループのほかの人を外す。お金や終わっていない日があっても外せる（未払いの精算は記録に残るが、P7 はもう付かない） |
-| `private.end_membership` | 共通の処理: `deactivated_at`・`left_reason` を入れて管理者を外す。`pending` の日はペナルティなしで `missed`、申告待ちは `no_penalty` で閉じる。その人を支払先にしていた人の支払先を空にして `payee_cleared`（本人と管理者へ）。まだ票を入れていなかった審査は、残りの人の票で決まれば決める（`private.review_tally` は退会した人の未投票を数えない） |
+| `private.end_membership` | 共通の処理: `deactivated_at`・`left_reason` を入れて管理者を外す。`pending` の日はペナルティなしで `missed`、申告待ちは `no_penalty` で閉じる。判定の依頼は `cancelled`。その人を支払先にしていた人の支払先を空にして `payee_cleared`（本人と管理者へ）。まだ票を入れていなかった審査は、残りの人の票で決まれば決める（`private.review_tally` は退会した人の未投票を数えない） |
 
 退会した人にはペナルティを付けない（`add_penalty`）。`join_group`・`create_group` の `p_user_id` はアカウントの id で、有効な所属がなければ**新しい profile を作る**。2 回目以降の所属にはお試し期間を付けない（`private.trial_for`）。
 
@@ -513,11 +532,13 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `expire_revisions()` | `revision_due_at` を過ぎて書き直していない → `no_declaration` + penalty (P6)。判定待ちの提出は取り消す（M5 で追加）。残り 15 分のリマインドも作る。**M4 で実装済み、定期実行は M6** |
 | `due_submit_reminders()` | 提出締切の 1 時間前で、まだ合格していない人にリマインドを作る |
 | `pass_unjudged()` | `pending` の日で、通常の提出が `judging` / `error` のまま `ai_fallback_minutes` たったか提出締切が来たら、いちばん早い 1 件を仮合格（`passed` + `unverified_at`、点数なし）にして、log を `passed`（「怪しい」は今から `dispute_window_hours`）。書き直し待ちの日は除く。`judged_unverified` を記録。`close_overdue_logs` より先に動く（ADR-033） |
-| `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がない → `missed` + `failure_reports(awaiting_report)` |
+| `close_overdue_logs()` | `pending` で `target_end_time` を過ぎ、締切前の提出で判定待ち・エラーのもの（猶予内）がなく、メンバーに判定を頼んでいない（F5c） → `missed` + `failure_reports(awaiting_report)` |
 | `confirm_passed_logs()` | `passed` で `dispute_window_ends_at` を過ぎ、疑義のないもの → `completed` |
 | `advance_disputes()` | `resend_due_at` を過ぎた `resending` → `final_review`（`peer_reviews('dispute')` を作る。期限は `review_hours`）。`review_due_at` を過ぎた `final_review` → `upheld`。送り直しの残り 1 時間のリマインドも作る |
 | `expire_reports()` | `report_due_at` を過ぎた `awaiting_report` → `not_reported` + penalty (P5) |
 | `expire_reviews()` | `review_due_at` を過ぎた `excuse`・`leave` の審査 → 却下（excuse は P4 `excuse_expired`） |
+| `expire_appeals()` | `review_due_at` を過ぎた `judge_appeals` → 却下（`resolve_appeal`、`expired: true`） |
+| `due_appeal_reminders()` | 判定の依頼の期限の 3 時間前・1 時間前に、まだ押していない審査者へ `reminder_review_due`（`subject_type: 'appeal'`） |
 | `due_deadline_reminders()` | 理由申告は期限の日の `report_reminder_times`、休会の審査は `review_reminder_times`、理由の審査と最終審査は期限の 3 時間前・1 時間前に、未対応の人へリマインドを作る |
 | `create_weekly_reviews()` | 土曜 23:59 以降（精算のあと）、その週に記録があれば 1 回だけ。全員の `weekly_reviews` を `stats`（達成・対象日・休み・達成率・平均点・平均時間・ペナルティと理由別・未達成の理由）付きで作り、本人に `weekly_review_created`。`ai_summary` は tick（Route Handler）が Gemini で 1 回 2 件まで埋める |
 | `record_weekly_summary(user_id, week_end, summary, model)` | まだ空の `ai_summary` だけを埋める |
@@ -544,7 +565,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `mark_notifications_pushed(ids)` | Push が届いた通知に `pushed_at` を付ける（1 回だけ） |
 
 ### 記録の保全（追記だけ）
-- 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`・`makeup_debts`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
+- 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`・`makeup_debts`・`judge_appeals`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
 - UPDATE は**状態と時刻の列だけ**を許すトリガーにする（例: `submissions` は `status`・`ai_*`・`judged_at`・`image_paths`（消すときの空配列）・`images_purged_at` だけ）。宣言・理由・コメントなど人が書いた文字は変えられない。書き直しは `original_declaration` に元を残す。
 - 外部キーは `on delete cascade` にしない（profiles を消しても記録が連鎖で消えないように）。
 
@@ -558,7 +579,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | groups | 自分のグループ | なし（名前の変更は `rename_group`） |
 | group_settings | 自分のグループの行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
 | profiles | 同じグループの人 | update: 本人の行の `display_name, avatar_url, paypay_link` **だけ**（列単位 GRANT）。`payee_id` は管理者が Server Action 経由で |
-| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews, makeup_debts | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
+| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews, makeup_debts, judge_appeals | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = private.my_member()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = private.my_member()` | なし（登録・確認・削除は Server Action） |
 | penalty_summary・daily_history・weekly_stats・received_objections・makeup_summary（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |

@@ -81,7 +81,11 @@ async function Today() {
         );
       }
       // Yesterday has to be finished first (ADR-032).
-      if (me.previous && (me.previous.status === "pending" || me.previous.report === "awaiting_report")) {
+      // A day the members are judging (F5c) doesn't hold today up.
+      if (
+        me.previous &&
+        ((me.previous.status === "pending" && me.previous.appeal !== "under_review") || me.previous.report === "awaiting_report")
+      ) {
         return <PreviousDay log={me.previous} cutoff={cutoff} />;
       }
       return (
@@ -99,7 +103,7 @@ async function Today() {
 
 function MyDeclaration({ log, now }: { log: TodayLog; now: number }) {
   const revising = Boolean(log.revision_due_at && !log.revised_at && now < new Date(log.revision_due_at).getTime());
-  const canGiveUp = log.status === "pending" && log.latest?.status !== "judging";
+  const canGiveUp = log.status === "pending" && log.latest?.status !== "judging" && log.appeal !== "under_review";
   return (
     <div className="grid gap-4">
       <PageTip
