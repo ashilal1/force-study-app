@@ -38,7 +38,7 @@ export const TIPS = {
       ? `合格です。${disputeHours} 時間「怪しい」が押されなければ達成で確定します。`
       : attemptsLeft > 0
         ? `合格点に届きませんでした。締切まで、あと ${attemptsLeft} 回出し直せます。講評を読んで撮り直しましょう。`
-        : "提出回数を使い切りました。宣言の画面で「できなかった」を押して、理由を申告してください。",
+        : "提出回数を使い切りました。ちゃんとやったのなら、この画面からメンバーに判定を頼めます。そうでなければ宣言の画面で「できなかった」を押して、理由を申告してください。",
   peer_buttons: "中身が軽すぎる・証拠が怪しいと思ったら押せます。理由を書く必要があります。",
   flagged: ({ target, dueAt }: { target: "declaration" | "submission"; dueAt: string }) =>
     target === "declaration"

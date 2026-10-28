@@ -49,7 +49,15 @@ export type LogDetail = {
   submissionFlags: DetailFlag[];
   dispute: { status: string; resendDueAt: string; reviewDueAt: string | null } | null;
   reviews: { reviewerId: string; name: string; verdict: string | null; comment: string | null }[];
-  can: { flag: boolean; withdraw: boolean; resend: boolean; review: boolean };
+  /** The owner asked the members to judge after the AI rejected every attempt (F5c). */
+  appeal: {
+    status: string;
+    reason: string;
+    reviewDueAt: string;
+    createdAt: string;
+    reviews: { reviewerId: string; name: string; verdict: string | null; comment: string | null }[];
+  } | null;
+  can: { flag: boolean; withdraw: boolean; resend: boolean; review: boolean; reviewAppeal: boolean };
 };
 
 export async function getLogDetail(logId: string): Promise<LogDetail | null> {
@@ -65,7 +73,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
   if (error) throw error;
   if (!log) return null;
 
-  const [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews] = await Promise.all([
+  const [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews, appeal, appealReviews] = await Promise.all([
     supabase.from("profiles").select("id, display_name"),
     supabase
       .from("submissions")
@@ -82,8 +90,10 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
       .order("created_at"),
     supabase.from("submission_disputes").select("status, resend_due_at, review_due_at").eq("study_log_id", logId).maybeSingle(),
     supabase.from("peer_reviews").select("reviewer_id, verdict, comment").eq("subject_type", "dispute").eq("subject_id", logId),
+    supabase.from("judge_appeals").select("status, reason, review_due_at, created_at").eq("study_log_id", logId).maybeSingle(),
+    supabase.from("peer_reviews").select("reviewer_id, verdict, comment").eq("subject_type", "appeal").eq("subject_id", logId),
   ]);
-  for (const result of [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews]) {
+  for (const result of [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews, appeal, appealReviews]) {
     if (result.error) throw result.error;
   }
 
@@ -111,6 +121,13 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
   const d = dispute.data;
   const resending = d?.status === "resending" && now < new Date(d.resend_due_at).getTime();
   const myReview = reviews.data!.find((review) => review.reviewer_id === me.id);
+  const myAppealReview = appealReviews.data!.find((review) => review.reviewer_id === me.id);
+  const toReview = (review: { reviewer_id: string; verdict: string | null; comment: string | null }) => ({
+    reviewerId: review.reviewer_id,
+    name: name(review.reviewer_id),
+    verdict: review.verdict,
+    comment: review.comment,
+  });
 
   return {
     now,
@@ -148,12 +165,16 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
     declarationFlags: declarationFlags.data!.map((flag) => ({ name: name(flag.flagger_id), comment: flag.comment })),
     submissionFlags: flags,
     dispute: d ? { status: d.status, resendDueAt: d.resend_due_at, reviewDueAt: d.review_due_at } : null,
-    reviews: reviews.data!.map((review) => ({
-      reviewerId: review.reviewer_id,
-      name: name(review.reviewer_id),
-      verdict: review.verdict,
-      comment: review.comment,
-    })),
+    reviews: reviews.data!.map(toReview),
+    appeal: appeal.data
+      ? {
+          status: appeal.data.status,
+          reason: appeal.data.reason,
+          reviewDueAt: appeal.data.review_due_at,
+          createdAt: appeal.data.created_at,
+          reviews: appealReviews.data!.map(toReview),
+        }
+      : null,
     can: {
       flag:
         !isOwner &&
@@ -170,6 +191,11 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
         now <= new Date(d.review_due_at).getTime() &&
         myReview !== undefined &&
         myReview.verdict === null,
+      reviewAppeal:
+        appeal.data?.status === "under_review" &&
+        now <= new Date(appeal.data.review_due_at).getTime() &&
+        myAppealReview !== undefined &&
+        myAppealReview.verdict === null,
     },
   };
 }

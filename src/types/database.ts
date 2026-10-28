@@ -304,6 +304,7 @@ export type Database = {
       group_settings: {
         Row: {
           ai_fallback_minutes: number
+          appeals_per_week: number
           declaration_cutoff: string
           dispute_cutoff: string
           dispute_window_hours: number
@@ -348,6 +349,7 @@ export type Database = {
         }
         Insert: {
           ai_fallback_minutes?: number
+          appeals_per_week?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -392,6 +394,7 @@ export type Database = {
         }
         Update: {
           ai_fallback_minutes?: number
+          appeals_per_week?: number
           declaration_cutoff?: string
           dispute_cutoff?: string
           dispute_window_hours?: number
@@ -571,6 +574,96 @@ export type Database = {
             foreignKeyName: "invites_used_by_fkey"
             columns: ["used_by"]
             isOneToOne: true
+            referencedRelation: "weekly_stats"
+            referencedColumns: ["user_id"]
+          },
+        ]
+      }
+      judge_appeals: {
+        Row: {
+          created_at: string
+          reason: string
+          resolved_at: string | null
+          review_due_at: string
+          status: string
+          study_log_id: string
+          submission_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          reason: string
+          resolved_at?: string | null
+          review_due_at: string
+          status?: string
+          study_log_id: string
+          submission_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          reason?: string
+          resolved_at?: string | null
+          review_due_at?: string
+          status?: string
+          study_log_id?: string
+          submission_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "judge_appeals_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: true
+            referencedRelation: "daily_history"
+            referencedColumns: ["study_log_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: true
+            referencedRelation: "study_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_submission_id_fkey"
+            columns: ["submission_id"]
+            isOneToOne: false
+            referencedRelation: "submissions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "daily_history"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "makeup_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "penalty_summary"
+            referencedColumns: ["user_id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "judge_appeals_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
             referencedRelation: "weekly_stats"
             referencedColumns: ["user_id"]
           },
@@ -1839,6 +1932,28 @@ export type Database = {
           isSetofReturn: true
         }
       }
+      appeal_judgement: {
+        Args: { p_reason: string; p_study_log_id: string; p_user_id: string }
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       assign_payee: {
         Args: { p_admin_id: string; p_payee_id: string; p_user_id: string }
         Returns: {
@@ -2264,6 +2379,28 @@ export type Database = {
         Args: { p_endpoint: string; p_user_id?: string }
         Returns: undefined
       }
+      due_appeal_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       due_deadline_reminders: {
         Args: never
         Returns: {
@@ -2316,6 +2453,28 @@ export type Database = {
         }
       }
       due_submit_reminders: {
+        Args: never
+        Returns: {
+          actor_id: string | null
+          created_at: string
+          dedupe_key: string | null
+          group_id: string
+          id: string
+          leave_request_id: string | null
+          payload: Json
+          settlement_id: string | null
+          study_log_id: string | null
+          submission_id: string | null
+          type: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "activity_events"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      expire_appeals: {
         Args: never
         Returns: {
           actor_id: string | null

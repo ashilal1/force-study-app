@@ -29,6 +29,7 @@ export const SETTING_FIELDS: SettingField[] = [
   { key: "makeup_hours", label: "補習の提出期限（宣言から）", type: "number", unit: "時間", section: "補習" },
   { key: "passing_score", label: "合格点", type: "number", unit: "点", section: "判定と指摘" },
   { key: "max_attempts", label: "1 日の提出回数", type: "number", unit: "回", section: "判定と指摘" },
+  { key: "appeals_per_week", label: "メンバーに判定を頼める回数（週。0 なら使わない）", type: "number", unit: "回", section: "判定と指摘" },
   { key: "judge_grace_minutes", label: "判定待ちの猶予", type: "number", unit: "分", section: "判定と指摘" },
   { key: "ai_fallback_minutes", label: "AI が判定できないとき、仮合格にするまで", type: "number", unit: "分", section: "判定と指摘" },
   { key: "flag_window_hours", label: "「軽すぎる」を押せる時間", type: "number", unit: "時間", section: "判定と指摘" },

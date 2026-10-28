@@ -246,8 +246,8 @@ const RULES: Record<string, Rule> = {
           left > 0
             ? `残り ${left} 回（締切 ${formatJstDateTime(text(event.payload.deadline))}）`
             : event.makeup
-              ? "提出回数を使い切りました。この補習は数えられないので、別の日にもう一度宣言してください"
-              : "提出回数を使い切りました。宣言の画面で「できなかった」を押して、理由を申告してください"
+              ? "提出回数を使い切りました。ちゃんとやったのなら、提出の画面からメンバーに判定を頼めます"
+              : "提出回数を使い切りました。ちゃんとやったのなら、提出の画面からメンバーに判定を頼めます。そうでなければ「できなかった」を押して理由を申告してください"
         }`,
         ownUrl(event, "/submit"),
         left > 0,
@@ -257,6 +257,51 @@ const RULES: Record<string, Rule> = {
         `${name} さんの${submissionWord(event)}は不合格（${event.payload.score} 点）`,
         left > 0 ? `残り ${left} 回` : "提出回数を使い切りました",
         "/",
+      ),
+    ];
+  },
+
+  // --- Asking the members to judge (F5c) ------------------------------------------------------
+  appeal_requested: (event, members) => {
+    const reviewers = Array.isArray(event.payload.reviewer_ids) ? event.payload.reviewer_ids : [];
+    return draft(
+      members.filter((member) => reviewers.includes(member.id)),
+      `${nameOf(members, event.actor_id)} さんの${submissionWord(event)}を判定してください（${formatJstDateTime(text(event.payload.review_due_at))} まで）`,
+      `AI は不合格（${event.payload.score} 点）。本人の理由: ${text(event.payload.reason)}`,
+      logUrl(event),
+      true,
+    );
+  },
+
+  appeal_accepted: (event, members) => [
+    ...draft(self(members, event), "メンバーに認められました", event.makeup ? "補習を 1 回返しました" : "この日は達成です", logUrl(event)),
+    ...draft(
+      everyoneExcept(members, event.actor_id),
+      `${nameOf(members, event.actor_id)} さんの${submissionWord(event)}は、みんなの判定で合格になりました`,
+      "",
+      logUrl(event),
+    ),
+  ],
+
+  appeal_rejected: (event, members) => {
+    const why = event.payload.expired
+      ? "期限までに全員の「認める」がそろいませんでした。"
+      : `${nameOf(members, event.payload.rejected_by)} さん: ${text(event.payload.comment)}`;
+    return [
+      ...draft(
+        self(members, event),
+        "メンバーに認められませんでした",
+        event.makeup
+          ? `${why} この補習は数えません`
+          : `${why} ${formatJstDateTime(text(event.payload.report_due_at))} までに理由を申告してください`,
+        event.makeup ? MAKEUP_URL : reportUrl(event),
+        !event.makeup,
+      ),
+      ...draft(
+        everyoneExcept(members, event.actor_id, event.payload.rejected_by),
+        `${nameOf(members, event.actor_id)} さんの${submissionWord(event)}は認められませんでした`,
+        why,
+        logUrl(event),
       ),
     ];
   },
@@ -458,6 +503,9 @@ const RULES: Record<string, Rule> = {
     const due = formatJstDateTime(text(event.payload.review_due_at));
     if (event.payload.subject_type === "excuse") {
       return draft(self(members, event), `${owner} さんの理由の審査の期限が近づいています`, `${due} まで`, reportUrl(event), true);
+    }
+    if (event.payload.subject_type === "appeal") {
+      return draft(self(members, event), `${owner} さんの提出の判定の期限が近づいています`, `${due} まで`, logUrl(event), true);
     }
     return event.payload.subject_type === "dispute"
       ? draft(self(members, event), `${owner} さんの最終審査の期限が近づいています`, `${due} まで`, logUrl(event), true)
@@ -726,6 +774,15 @@ const RULES: Record<string, Rule> = {
         `${nameOf(members, event.actor_id)} さんが${verdict}（${event.payload.accepted}/${event.payload.total}）`,
         text(event.payload.comment),
         reportUrl(event),
+      );
+    }
+    if (event.payload.subject_type === "appeal") {
+      const verdict = event.payload.verdict === "accept" ? "認めました" : "認めませんでした";
+      return draft(
+        members.filter((member) => member.id === event.payload.owner_id),
+        `${nameOf(members, event.actor_id)} さんが判定で${verdict}（${event.payload.accepted}/${event.payload.total}）`,
+        text(event.payload.comment),
+        logUrl(event),
       );
     }
     if (event.payload.subject_type === "dispute") {

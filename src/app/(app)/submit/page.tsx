@@ -5,13 +5,14 @@ import { PageLoading } from "@/components/app/page-loading";
 import { actionButtonVariants } from "@/components/brand/action-button";
 import { Countdown } from "@/components/brand/countdown";
 import { Sticker } from "@/components/brand/sticker";
+import { AppealForm } from "@/components/appeal/appeal-actions";
 import { PageTip } from "@/components/onboarding/page-tip";
 import { JudgeKarte } from "@/components/submit/judge-karte";
 import { RejudgeButton } from "@/components/submit/rejudge-button";
 import { SubmitForm } from "@/components/submit/submit-form";
 import { getMakeupBoard } from "@/lib/makeup";
 import { createClient } from "@/lib/supabase/server";
-import { formatJstDateTime, formatJstDay } from "@/lib/time";
+import { formatJstDateTime, formatJstDay, jstDateString, weekStartOf } from "@/lib/time";
 import { TIPS } from "@/lib/tips";
 import { getTodayBoard } from "@/lib/today";
 
@@ -63,8 +64,14 @@ async function findTarget(makeup: boolean): Promise<{ target: Target | null; use
     };
   }
   const { me, now } = await getTodayBoard();
-  // Yesterday's day while it is still open (ADR-032), otherwise today's.
-  const log = me.previous?.status === "pending" ? me.previous : me.state.kind === "declared" ? me.state.log : null;
+  // Yesterday's day while it is still open (ADR-032), otherwise today's. A day the members are
+  // judging (F5c) takes no more submissions.
+  const log =
+    me.previous?.status === "pending" && me.previous.appeal !== "under_review"
+      ? me.previous
+      : me.state.kind === "declared"
+        ? me.state.log
+        : null;
   return {
     userId: me.id,
     now,
@@ -125,8 +132,14 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
   }
 
   const supabase = await createClient();
-  const [{ data: settings, error: settingsError }, { data: submissions, error }] = await Promise.all([
-    supabase.from("group_settings").select("max_attempts, dispute_window_hours").single(),
+  const weekStart = new Date(`${weekStartOf(jstDateString(new Date(now)))}T00:00:00+09:00`).toISOString();
+  const [
+    { data: settings, error: settingsError },
+    { data: submissions, error },
+    { data: appeal, error: appealError },
+    { count: appealsThisWeek, error: countError },
+  ] = await Promise.all([
+    supabase.from("group_settings").select("max_attempts, dispute_window_hours, appeals_per_week, min_explanation_chars").single(),
     supabase
       .from("submissions")
       .select(
@@ -135,9 +148,13 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
       .eq("study_log_id", log.id)
       .eq("kind", "regular")
       .order("submitted_at", { ascending: false }),
+    supabase.from("judge_appeals").select("status, review_due_at").eq("study_log_id", log.id).maybeSingle(),
+    supabase.from("judge_appeals").select("study_log_id", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", weekStart),
   ]);
   if (settingsError) throw settingsError;
   if (error) throw error;
+  if (appealError) throw appealError;
+  if (countError) throw countError;
 
   const photos = await signedUrls(submissions.flatMap((submission) => submission.image_paths));
   const used = submissions.filter((submission) => submission.status !== "error").length;
@@ -183,7 +200,19 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
           </span>
           <RejudgeButton submissionId={open.id} />
         </Sticker>
-      ) : log.status !== "pending" ? null : !beforeDeadline ? (
+      ) : log.status !== "pending" ? null : appeal?.status === "under_review" ? (
+        <Sticker tone="tape" className="grid gap-1 px-4 py-3">
+          <b>メンバーが判定しています</b>
+          <span className="text-sm font-medium">
+            {formatJstDateTime(appeal.review_due_at)} までにほかの全員が「認める」を押したら
+            {log.makeup ? "補習を 1 回返したことになります" : "達成です"}。1 人でも認めないか、期限までにそろわなければ
+            {log.makeup ? "この補習は数えられません。" : "未達成になり、理由を申告します。"}
+          </span>
+          <Link href={`/logs/${log.id}`} className="text-sm font-bold underline underline-offset-2">
+            判定の様子を見る →
+          </Link>
+        </Sticker>
+      ) : !beforeDeadline ? (
         <Sticker tone="alert" className="grid gap-1 px-4 py-3">
           <b className="text-red">提出締切を過ぎました</b>
           <span className="text-sm font-medium">
@@ -191,14 +220,28 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
           </span>
         </Sticker>
       ) : attemptsLeft === 0 ? (
-        <Sticker tone="alert" className="grid gap-1 px-4 py-3">
-          <b className="text-red">{log.makeup ? "この補習の提出回数を使い切りました" : "この日の提出回数を使い切りました"}</b>
-          <span className="text-sm font-medium">
-            <Link href={declareHref} className="font-bold underline">
-              {log.makeup ? "補習の画面" : "宣言の画面"}
-            </Link>
-            {log.makeup ? "で「できなかった」を押して、別の日にもう一度宣言してください。" : "で「できなかった」を押して、理由を申告してください。"}
-          </span>
+        <Sticker tone="alert" className="grid gap-3 px-4 py-3">
+          <div className="grid gap-1">
+            <b className="text-red">{log.makeup ? "この補習の提出回数を使い切りました" : "この日の提出回数を使い切りました"}</b>
+            <span className="text-sm font-medium">
+              <Link href={declareHref} className="font-bold underline">
+                {log.makeup ? "補習の画面" : "宣言の画面"}
+              </Link>
+              {log.makeup ? "で「できなかった」を押して、別の日にもう一度宣言してください。" : "で「できなかった」を押して、理由を申告してください。"}
+            </span>
+          </div>
+          {latest?.status === "rejected" && !appeal && settings.appeals_per_week > 0 ? (
+            <div className="grid gap-2 border-t-2 border-dashed border-ink/40 pt-3">
+              <b className="text-sm">ちゃんとやったのに AI に落とされたときは</b>
+              <span className="text-sm font-medium">
+                ほかのメンバーに判定を頼めます。全員が「認める」を押したら{log.makeup ? "補習を返したことになります" : "達成です"}（今週あと{" "}
+                {Math.max(0, settings.appeals_per_week - (appealsThisWeek ?? 0))} 回）。
+              </span>
+              {settings.appeals_per_week - (appealsThisWeek ?? 0) > 0 ? (
+                <AppealForm logId={log.id} minChars={settings.min_explanation_chars} />
+              ) : null}
+            </div>
+          ) : null}
         </Sticker>
       ) : log.revision_due_at && !log.revised_at ? (
         <Sticker tone="alert" className="grid gap-1 px-4 py-3">
