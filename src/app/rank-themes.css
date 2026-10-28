@@ -2,7 +2,8 @@
    Rank themes (F14, ADR-042). The whole screen — every card, button and field — follows the
    VIEWER's rank: 天才 gold, 優等生 silver, やればできる bronze (ADR-044), 三日坊主 slack paper (the
    usual paper with a crease, ADR-044), どうしようもない worn concrete. Members
-   tell each other's ranks apart by the badge and the crown.
+   tell each other's ranks apart by the badge and the crown, and by their own cards: a member card
+   (home) and the rank panel (振り返り) wear THAT member's look (ADR-049).
    ThemeLayer (components/standing/theme-layer.tsx) renders the marker
    [data-viewer-theme="gold|silver|bronze|slack|worn"] with [data-viewer-finish="polished|slack|worn"] and the
    background decorations; the shared parts carry the hooks:
@@ -14,6 +15,9 @@
      receipt            .th-receipt .th-rule          karte          .th-karte[data-karte]
      timeline           .th-tl .th-tl-dot             avatar         .th-avatar
      bottom menu        .th-nav .th-nav-link          home title     .brand-title
+   Member cards: [data-card-theme=<theme>][data-card-finish=<finish>] on the Sticker (cardTheme() in
+     theme-layer.tsx). The card's own surface — and its avatar — follow it; what sits inside keeps
+     the viewer's look but takes the card's palette. Not under a seasonal theme ([data-ui-theme]).
    Rules kept from the design: text is always dark ink on a light surface (4.5:1 or more); cracks,
    stains and confetti sit behind text or in margins; tape and stamps only on corners and edges;
    buttons keep their shape, shadow and press; decorations never take taps.
@@ -22,7 +26,8 @@
 
 /* Palettes ------------------------------------------------------------------------------------ */
 
-body:has([data-viewer-theme="gold"]) {
+body:has([data-viewer-theme="gold"]),
+:root:not(:has([data-ui-theme])) [data-card-theme="gold"] {
   --th-line: #b8912a;
   --th-deep: #8a6d1d;
   --th-btn-line: #7a520c;
@@ -45,10 +50,13 @@ body:has([data-viewer-theme="gold"]) {
     radial-gradient(ellipse 90% 30% at 50% 0%, rgba(255, 232, 160, 0.75), transparent 70%),
     radial-gradient(ellipse 70% 30% at 50% 100%, rgba(240, 214, 140, 0.5), transparent 70%),
     linear-gradient(#fcf8ee, #f5ecd4 60%, #f2e6c6);
+}
+body:has([data-viewer-theme="gold"]) {
   background: #f5ecd4;
 }
 
-body:has([data-viewer-theme="silver"]) {
+body:has([data-viewer-theme="silver"]),
+:root:not(:has([data-ui-theme])) [data-card-theme="silver"] {
   --th-line: #8a929c;
   --th-deep: #5d646e;
   --th-btn-line: #4f565f;
@@ -71,10 +79,13 @@ body:has([data-viewer-theme="silver"]) {
     radial-gradient(ellipse 90% 30% at 50% 0%, rgba(225, 232, 242, 0.95), transparent 70%),
     radial-gradient(ellipse 70% 30% at 50% 100%, rgba(210, 216, 226, 0.6), transparent 70%),
     linear-gradient(#f8f9fb, #eef0f4 60%, #e7eaef);
+}
+body:has([data-viewer-theme="silver"]) {
   background: #eef0f4;
 }
 
-body:has([data-viewer-theme="bronze"]) {
+body:has([data-viewer-theme="bronze"]),
+:root:not(:has([data-ui-theme])) [data-card-theme="bronze"] {
   --th-line: #a8693a;
   --th-deep: #6e4220;
   --th-btn-line: #5a3417;
@@ -93,10 +104,13 @@ body:has([data-viewer-theme="bronze"]) {
   --th-dot: radial-gradient(circle at 35% 30%, #ffe6cc, #d39a62 60%, #8f5a2b);
   --th-rcpt: linear-gradient(180deg, #fffefb, #fff8f1);
   --th-rcpt-fill: #fffefb;
+}
+body:has([data-viewer-theme="bronze"]) {
   background: #f4e9dd;
 }
 
-body:has([data-viewer-theme="worn"]) {
+body:has([data-viewer-theme="worn"]),
+:root:not(:has([data-ui-theme])) [data-card-theme="worn"] {
   --grain: url("/theme/grain.png") 0 0 / 180px 180px;
   --grain-light: url("/theme/grain-light.png") 0 0 / 180px 180px;
   --blotch: url("/theme/blotch.png") 0 0 / 360px 360px;
@@ -112,7 +126,9 @@ body:has([data-viewer-theme="worn"]) {
   --torn-1: polygon(0% 1.4px,5% 2.1px,10% 1.8px,15% 0.7px,20% 2.8px,25% 1.9px,30% 2.5px,35% 0.7px,40% 0.5px,45% 1.9px,50% 1.4px,55% 1.8px,60% 0.7px,65% 1.6px,70% 2.2px,75% 0.3px,80% 3.3px,85% 2.4px,90% 3.1px,95% 1.7px,100% 0.4px,calc(100% - 1.9px) 10%,calc(100% - 0.6px) 30%,calc(100% - 2.2px) 50%,calc(100% - 0.5px) 70%,calc(100% - 1.5px) 90%,100% calc(100% - 0.8px),95% calc(100% - 0.8px),90% calc(100% - 3.2px),85% calc(100% - 1.1px),80% calc(100% - 1.2px),75% calc(100% - 1.6px),70% calc(100% - 3.8px),65% calc(100% - 1px),60% calc(100% - 3.3px),55% calc(100% - 3.4px),50% calc(100% - 2.4px),45% calc(100% - 3.6px),40% calc(100% - 1.5px),35% calc(100% - 3.4px),30% calc(100% - 2.1px),25% calc(100% - 0.4px),20% calc(100% - 2px),15% calc(100% - 3px),10% calc(100% - 2.2px),5% calc(100% - 1.6px),0% calc(100% - 1.2px),2.1px 90%,2.4px 70%,0.3px 50%,2.4px 30%,1.6px 10%);
   --torn-2: polygon(0% 2.1px,5% 2.9px,10% 2px,15% 2.6px,20% 1px,25% 0.4px,30% 1.5px,35% 1.6px,40% 1.2px,45% 0.9px,50% 0.9px,55% 0.2px,60% 1.8px,65% 0.6px,70% 2.6px,75% 1px,80% 0.8px,85% 1.4px,calc(100% - 26px) 2px,calc(100% - 14px) 9px,100% 20px,calc(100% - 1.1px) 10%,calc(100% - 2.3px) 30%,calc(100% - 2.2px) 50%,calc(100% - 2.3px) 70%,calc(100% - 2px) 90%,100% calc(100% - 3.7px),95% calc(100% - 0.2px),90% calc(100% - 0.6px),85% calc(100% - 1.2px),80% calc(100% - 2.2px),75% calc(100% - 0.5px),70% calc(100% - 0.8px),65% calc(100% - 2.7px),60% calc(100% - 0.4px),55% calc(100% - 3.9px),50% calc(100% - 1.5px),45% calc(100% - 3.3px),40% calc(100% - 1.7px),35% calc(100% - 1px),30% calc(100% - 1.4px),25% calc(100% - 3.6px),20% calc(100% - 0.7px),15% calc(100% - 1.8px),10% calc(100% - 2.3px),5% calc(100% - 3.1px),0% calc(100% - 3.6px),0.8px 90%,2.3px 70%,1.5px 50%,1.5px 30%,2px 10%);
   --torn-3: polygon(0% 1.4px,5% 2.8px,10% 0.9px,15% 3px,20% 2px,25% 1.6px,30% 0,35% 2px,40% 2.7px,45% 3px,50% 1px,55% 0.4px,60% 0.7px,65% 2.5px,70% 1.8px,75% 1.1px,80% 0.9px,85% 1px,90% 2.3px,95% 2.1px,100% 1.3px,calc(100% - 1.3px) 10%,calc(100% - 0.5px) 30%,calc(100% - 2.3px) 50%,calc(100% - 2.2px) 70%,calc(100% - 0.6px) 90%,100% calc(100% - 1px),95% calc(100% - 1.9px),90% calc(100% - 3.9px),85% calc(100% - 3.1px),80% calc(100% - 3.3px),75% calc(100% - 0.5px),70% calc(100% - 1.8px),65% calc(100% - 3.6px),60% calc(100% - 3.6px),55% calc(100% - 2.6px),50% calc(100% - 3.3px),45% calc(100% - 3.1px),40% calc(100% - 0.2px),35% calc(100% - 0.1px),30% calc(100% - 0.9px),25% calc(100% - 1.8px),20% calc(100% - 3px),15% calc(100% - 2.7px),10% calc(100% - 0.3px),5% calc(100% - 2.8px),0% calc(100% - 2.9px),2.3px 90%,1.6px 70%,1.7px 50%,1.3px 30%,0.6px 10%);
-  /* Concrete wall: grain, a long crack down the page and soft blotches. Scrolls with the page. */
+}
+/* Concrete wall: grain, a long crack down the page and soft blotches. Scrolls with the page. */
+body:has([data-viewer-theme="worn"]) {
   background-color: #9c978c;
   background-image:
     url("/theme/grain.png"),
@@ -144,9 +160,32 @@ body:has([data-viewer-theme="worn"]) :is([data-surface], li):nth-child(4n + 4) {
   --th-tape-img: url("/theme/tape-a.svg") right 4px bottom 2px / 84px 60px no-repeat;
 }
 
+/* A member card in another rank's look first drops the viewer's look (back to the Sticker's own
+   classes); the blocks below then dress it in its own. Member cards are white, big stickers. */
+:root:not(:has([data-ui-theme])) [data-card-theme][data-surface][data-shadow] {
+  position: revert-layer;
+  isolation: revert-layer;
+  border-color: revert-layer;
+  border-radius: revert-layer;
+  background: revert-layer;
+  box-shadow: revert-layer;
+  rotate: revert-layer;
+  filter: revert-layer;
+}
+:root:not(:has([data-ui-theme])) [data-card-theme][data-surface][data-shadow]::before,
+:root:not(:has([data-ui-theme])) [data-card-theme][data-surface][data-shadow]::after {
+  content: none;
+}
+:root:not(:has([data-ui-theme])) [data-card-theme] .th-avatar {
+  border-color: revert-layer;
+  box-shadow: revert-layer;
+  filter: revert-layer;
+}
+
 /* Cards: polished (gold / silver) ------------------------------------------------------------- */
 
-body:has([data-viewer-finish="polished"]) [data-surface] {
+body:has([data-viewer-finish="polished"]) [data-surface],
+:root:not(:has([data-ui-theme])) [data-card-finish="polished"][data-surface][data-shadow] {
   border-color: var(--th-line);
   background: var(--th-card-a);
   box-shadow:
@@ -196,7 +235,8 @@ body:has([data-viewer-finish="polished"]) [data-surface="alert"][data-shadow] {
    (behind the text). The curled corner was dropped (2026-10-23, ADR-044); position stays relative so
    parts placed inside keep the card as their reference. ------------------------------------- */
 
-body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"] {
+body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"],
+:root:not(:has([data-ui-theme])) [data-card-finish="slack"][data-surface][data-shadow="md"] {
   --crease-at: 58%;
   --crease-angle: 177deg;
   position: relative;
@@ -217,7 +257,8 @@ body:has([data-viewer-finish="slack"]) [data-surface][data-shadow="md"]:nth-chil
 
 /* Cards: worn (どうしようもない) — torn paper with a crack, grubby, slightly crooked, taped down. -- */
 
-body:has([data-viewer-theme="worn"]) [data-surface] {
+body:has([data-viewer-theme="worn"]) [data-surface],
+:root:not(:has([data-ui-theme])) [data-card-theme="worn"][data-surface][data-shadow] {
   --fill: linear-gradient(165deg, #ece8e0, #dfdad0);
   --stain: radial-gradient(ellipse 34% 26% at 86% 24%, rgba(95, 72, 40, 0.15), transparent 70%);
   --edge: var(--ink);
@@ -233,7 +274,8 @@ body:has([data-viewer-theme="worn"]) [data-surface] {
   filter: drop-shadow(1.5px 0 0 var(--edge)) drop-shadow(-1.5px 0 0 var(--edge)) drop-shadow(0 1.5px 0 var(--edge))
     drop-shadow(0 -1.5px 0 var(--edge)) drop-shadow(var(--drop) var(--drop) 0 rgb(20 20 22 / 0.88));
 }
-body:has([data-viewer-theme="worn"]) [data-surface]::before {
+body:has([data-viewer-theme="worn"]) [data-surface]::before,
+:root:not(:has([data-ui-theme])) [data-card-theme="worn"][data-surface][data-shadow]::before {
   content: "";
   position: absolute;
   inset: -3px;
@@ -243,7 +285,8 @@ body:has([data-viewer-theme="worn"]) [data-surface]::before {
   background: var(--grain), var(--crack) 0 0 / 100% 100% no-repeat, var(--stain), var(--blotch), var(--fill);
 }
 /* Big cards are taped down at one corner (never where the crown sits, top-left). */
-body:has([data-viewer-theme="worn"]) [data-surface][data-shadow="md"]::after {
+body:has([data-viewer-theme="worn"]) [data-surface][data-shadow="md"]::after,
+:root:not(:has([data-ui-theme])) [data-card-theme="worn"][data-surface][data-shadow="md"]::after {
   content: "";
   position: absolute;
   /* Room for the tape to stick out past the corner (backgrounds are cut at the box). */
@@ -488,7 +531,8 @@ body:has([data-viewer-theme="worn"]) .th-box {
 
 /* Red text: a deeper red on the gold, silver and concrete surfaces (4.5:1); an urgent deadline on
    the yellow concrete tape goes to ink, as red on it can't be read. */
-body:has([data-viewer-theme]:not([data-viewer-theme="slack"])) .text-red {
+body:has([data-viewer-theme]:not([data-viewer-theme="slack"])) .text-red,
+:root:not(:has([data-ui-theme])) [data-card-theme]:not([data-card-theme="slack"]) .text-red {
   color: #b3241d;
 }
 body:has([data-viewer-theme="worn"]) .th-due-urgent {
@@ -562,11 +606,13 @@ body:has([data-viewer-theme="worn"]) .th-tl-dot {
   background: #b8b2a6;
 }
 
-body:has([data-viewer-finish="polished"]) .th-avatar {
+body:has([data-viewer-finish="polished"]) .th-avatar,
+:root:not(:has([data-ui-theme])) [data-card-finish="polished"] .th-avatar {
   border-color: var(--th-deep);
   box-shadow: 0 0 0 2px var(--th-av-ring);
 }
-body:has([data-viewer-theme="worn"]) .th-avatar {
+body:has([data-viewer-theme="worn"]) .th-avatar,
+:root:not(:has([data-ui-theme])) [data-card-theme="worn"] .th-avatar {
   filter: saturate(0.55) contrast(0.95);
 }
 

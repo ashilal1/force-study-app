@@ -3,16 +3,20 @@ import { TITLES, xpWindowDates, type Standing, type TitleId } from "@/lib/standi
 import { formatJstDay } from "@/lib/time";
 import { Crown } from "./crown";
 import { RankGauge } from "./rank-badge";
+import { cardTheme } from "./theme-layer";
 import { TitleBadge } from "./title-badges";
 import { XpTrendChart } from "./xp-trend-chart";
 
-/** A member's rank, XP and its last 8 weeks, titles and the last 28 days of XP (F13, F14), on their retrospective. */
+/**
+ * A member's rank, XP and its last 8 weeks, titles and the last 28 days of XP (F13, F14), on their
+ * retrospective. The panel wears the member's rank look (ADR-049).
+ */
 export function StandingPanel({ standing, name, pastTitles = [] }: { standing: Standing; name: string; pastTitles?: TitleId[] }) {
   const earlier = pastTitles.filter((id) => TITLES[id] && !standing.titles.some((title) => title.id === id));
   const window = xpWindowDates(standing);
   const recent = standing.events.filter((event) => window.has(event.date)).reverse();
   return (
-    <Sticker className="grid gap-3 px-4 py-4">
+    <Sticker className="grid gap-3 px-4 py-4" {...cardTheme(standing.rank.id)}>
       <div className="flex flex-wrap items-center justify-between gap-2">
         <RankGauge standing={standing} />
         {standing.crown ? (
