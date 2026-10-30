@@ -53,6 +53,10 @@ const MESSAGES: Record<string, string> = {
   invalid_images: "写真を 1〜3 枚選んでください",
   invalid_reflection: "学んだこと・できなかったことを書いてください",
   invalid_rating: "自己評価を選んでください",
+  // Photos while studying (F4c)
+  start_photo_missing: "このグループでは、始めの写真を撮ってから提出します",
+  photo_too_soon: "前の写真からまだ時間がたっていません。スマホを置いて、勉強に戻りましょう",
+  photo_limit: "写真はこの日はもう撮れません（6 枚まで）",
   // Asking the members to judge (F5c)
   already_appealed: "この日はもうメンバーに判定を頼んでいます",
   appeal_not_rejected: "AI の判定で不合格になった提出のあとに頼めます",

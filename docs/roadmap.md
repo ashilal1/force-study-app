@@ -133,5 +133,7 @@
 - [x] メンバーに判定を頼む（F5c・ADR-048）: マイグレーション `20261028000001_judge_appeals.sql`、RPC `appeal_judgement` / `cast_review('appeal')` / `expire_appeals` / `due_appeal_reminders`、提出画面のフォーム、その日の詳細の判定、「あなたがやること」、通知、設定「メンバーに判定を頼める回数」、不合格の講評に撮り直しのコツ（テスト `tests/db/appeals.test.ts`）
 - [ ] Supabase に push して `supabase gen types` で型を作り直す（今は手で足した型）
 - [ ] メンバーのカードと /members/[id] の上の箱を、そのメンバーのランクの見た目にする（ADR-042 を一部置き換え）
-- [ ] 始めの写真（任意の途中経過は 25 分あける）と理解度チェック
+- [x] 始めの写真と途中の写真（F4c・ADR-050）: マイグレーション `20261030000001_study_photos.sql`、RPC `add_study_photo` / `due_photo_purges` / `mark_photos_purged`、`create_submission` の `start_photo_missing`、提出画面・ホームのカード・その日の詳細、AI 判定に勉強中の写真を渡す、設定「始めの写真がないと提出できない」「勉強中の写真の間隔」（テスト `tests/db/study-photos.test.ts`）
+- [ ] Supabase に push して型を作り直し、テスト用 URL で始めの写真 → 提出まで通す。そのあと管理者が「始めの写真がないと提出できない」をオンにするか決める
+- [ ] 理解度チェック（提出したものの中からだけ 3 問。「ここはやってない」で 1 回差し替え、3 問中 2 問で通す。グループ設定でオン・オフ）
 - [ ] お金を払えない人向けのペナルティ（メンバーごと。罰ゲーム・反省文）

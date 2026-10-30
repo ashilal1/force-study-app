@@ -323,6 +323,7 @@ export type Database = {
           max_members: number
           min_explanation_chars: number
           passing_score: number
+          photo_gap_minutes: number
           penalty_excuse_rejected: number
           penalty_fake_evidence: number
           penalty_late_payment: number
@@ -342,6 +343,7 @@ export type Database = {
           settlement_time: string
           settlement_weekday: number
           slack_streak_threshold: number
+          start_photo_required: boolean
           storage_soft_limit_mb: number
           submit_deadline_max: string
           unrealistic_streak_threshold: number
@@ -368,6 +370,7 @@ export type Database = {
           max_members?: number
           min_explanation_chars?: number
           passing_score?: number
+          photo_gap_minutes?: number
           penalty_excuse_rejected?: number
           penalty_fake_evidence?: number
           penalty_late_payment?: number
@@ -387,6 +390,7 @@ export type Database = {
           settlement_time?: string
           settlement_weekday?: number
           slack_streak_threshold?: number
+          start_photo_required?: boolean
           storage_soft_limit_mb?: number
           submit_deadline_max?: string
           unrealistic_streak_threshold?: number
@@ -413,6 +417,7 @@ export type Database = {
           max_members?: number
           min_explanation_chars?: number
           passing_score?: number
+          photo_gap_minutes?: number
           penalty_excuse_rejected?: number
           penalty_fake_evidence?: number
           penalty_late_payment?: number
@@ -432,6 +437,7 @@ export type Database = {
           settlement_time?: string
           settlement_weekday?: number
           slack_streak_threshold?: number
+          start_photo_required?: boolean
           storage_soft_limit_mb?: number
           submit_deadline_max?: string
           unrealistic_streak_threshold?: number
@@ -1563,6 +1569,54 @@ export type Database = {
           },
         ]
       }
+      study_photos: {
+        Row: {
+          id: string
+          image_path: string | null
+          images_purged_at: string | null
+          kind: string
+          study_log_id: string
+          taken_at: string
+          thumb_path: string | null
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          image_path?: string | null
+          images_purged_at?: string | null
+          kind: string
+          study_log_id: string
+          taken_at?: string
+          thumb_path?: string | null
+          user_id: string
+        }
+        Update: {
+          id?: string
+          image_path?: string | null
+          images_purged_at?: string | null
+          kind?: string
+          study_log_id?: string
+          taken_at?: string
+          thumb_path?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "study_photos_study_log_id_fkey"
+            columns: ["study_log_id"]
+            isOneToOne: false
+            referencedRelation: "study_logs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "study_photos_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       submission_disputes: {
         Row: {
           first_flagged_at: string
@@ -1910,6 +1964,30 @@ export type Database = {
     }
     Functions: {
       accept_rules: { Args: { p_user_id: string }; Returns: string }
+      add_study_photo: {
+        Args: {
+          p_image_path: string
+          p_study_log_id: string
+          p_thumb_path: string
+          p_user_id: string
+        }
+        Returns: {
+          id: string
+          image_path: string | null
+          images_purged_at: string | null
+          kind: string
+          study_log_id: string
+          taken_at: string
+          thumb_path: string | null
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "study_photos"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       advance_disputes: {
         Args: never
         Returns: {
@@ -2430,6 +2508,13 @@ export type Database = {
           submission_id: string
         }[]
       }
+      due_photo_purges: {
+        Args: { p_limit?: number }
+        Returns: {
+          image_path: string
+          photo_id: string
+        }[]
+      }
       due_makeup_reminders: {
         Args: never
         Returns: {
@@ -2744,6 +2829,10 @@ export type Database = {
       }
       mark_images_purged: {
         Args: { p_submission_ids: string[] }
+        Returns: number
+      }
+      mark_photos_purged: {
+        Args: { p_photo_ids: string[] }
         Returns: number
       }
       mark_notifications_pushed: {

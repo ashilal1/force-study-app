@@ -11,10 +11,13 @@ import { SETTING_FIELDS, type SettingField } from "@/lib/group-settings";
 export function GroupSettingsForm({
   current,
   makeupEnabled,
+  startPhotoRequired,
 }: {
   current: Record<string, string | number>;
   /** Makeup study (補習) is on: group_settings.makeup_since is set. */
   makeupEnabled: boolean;
+  /** F4c: submitting needs the start photo. */
+  startPhotoRequired: boolean;
 }) {
   const [state, formAction] = useActionState<FormState, FormData>(updateGroupSettings, {});
   const sections = [...new Set(SETTING_FIELDS.map((field) => field.section))];
@@ -29,6 +32,20 @@ export function GroupSettingsForm({
           補習を使う
           <span className="block text-xs font-medium text-sub">
             サボりが続いたら追加の学習（補習）を科します。オンにした日からのサボりだけを数えます。
+          </span>
+        </span>
+      </label>
+      <label className="flex items-start gap-3 text-sm font-bold">
+        <input
+          type="checkbox"
+          name="start_photo_required"
+          defaultChecked={startPhotoRequired}
+          className="mt-0.5 size-5 shrink-0 accent-ink"
+        />
+        <span>
+          始めの写真がないと提出できないようにする
+          <span className="block text-xs font-medium text-sub">
+            勉強を始めるときに、合言葉とノート・教材を一緒に撮ってもらいます。オフでも撮れます。
           </span>
         </span>
       </label>

@@ -403,6 +403,14 @@ describe("draftNotifications (M8a)", () => {
     );
     expect(draft.body).toBe("サボり・申告なし（P2・P5）: 1000、宣言の締切（前の日の提出締切）: 11:30、合格点: 75点");
   });
+
+  it("words the start photo switch and the photo gap (F4c)", () => {
+    const [draft] = draftNotifications(
+      { id: "e", type: "settings_changed", actor_id: "aki", payload: { changes: { start_photo_required: true, photo_gap_minutes: 30 } } },
+      members,
+    );
+    expect(draft.body).toBe("始めの写真: 撮らないと提出できない、勉強中の写真の間隔（前の写真から）: 30分");
+  });
 });
 
 describe("draftNotifications (M8c)", () => {

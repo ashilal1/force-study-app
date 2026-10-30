@@ -9,6 +9,7 @@ import { AppealForm } from "@/components/appeal/appeal-actions";
 import { PageTip } from "@/components/onboarding/page-tip";
 import { JudgeKarte } from "@/components/submit/judge-karte";
 import { RejudgeButton } from "@/components/submit/rejudge-button";
+import { StudyPhotos } from "@/components/submit/study-photos";
 import { SubmitForm } from "@/components/submit/submit-form";
 import { getMakeupBoard } from "@/lib/makeup";
 import { createClient } from "@/lib/supabase/server";
@@ -138,8 +139,12 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
     { data: submissions, error },
     { data: appeal, error: appealError },
     { count: appealsThisWeek, error: countError },
+    { data: studyPhotos, error: photosError },
   ] = await Promise.all([
-    supabase.from("group_settings").select("max_attempts, dispute_window_hours, appeals_per_week, min_explanation_chars").single(),
+    supabase
+      .from("group_settings")
+      .select("max_attempts, dispute_window_hours, appeals_per_week, min_explanation_chars, start_photo_required, photo_gap_minutes")
+      .single(),
     supabase
       .from("submissions")
       .select(
@@ -150,19 +155,27 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
       .order("submitted_at", { ascending: false }),
     supabase.from("judge_appeals").select("status, review_due_at").eq("study_log_id", log.id).maybeSingle(),
     supabase.from("judge_appeals").select("study_log_id", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", weekStart),
+    supabase.from("study_photos").select("id, kind, image_path, taken_at").eq("study_log_id", log.id).order("taken_at"),
   ]);
   if (settingsError) throw settingsError;
   if (error) throw error;
   if (appealError) throw appealError;
   if (countError) throw countError;
+  if (photosError) throw photosError;
 
-  const photos = await signedUrls(submissions.flatMap((submission) => submission.image_paths));
+  const photos = await signedUrls([
+    ...submissions.flatMap((submission) => submission.image_paths),
+    ...studyPhotos.flatMap((photo) => (photo.image_path ? [photo.image_path] : [])),
+  ]);
   const used = submissions.filter((submission) => submission.status !== "error").length;
   const attemptsLeft = Math.max(0, settings.max_attempts - used);
   const open = submissions.find((submission) => submission.status === "judging" || submission.status === "error");
   const beforeDeadline = now < new Date(log.target_end_time).getTime();
   const declareHref = log.makeup ? "/makeup" : "/declare";
-  const showForm = log.status === "pending" && beforeDeadline && attemptsLeft > 0 && !open;
+  // Photos while studying (F4c): taken until the day is handed in for good.
+  const photosOpen = log.status === "pending" && beforeDeadline && !open && appeal?.status !== "under_review";
+  const startMissing = settings.start_photo_required && !studyPhotos.some((photo) => photo.kind === "start");
+  const showForm = log.status === "pending" && beforeDeadline && attemptsLeft > 0 && !open && !startMissing;
   const latest = submissions[0];
   const judged = latest && (latest.status === "passed" || (latest.status === "rejected" && beforeDeadline));
 
@@ -269,6 +282,21 @@ async function Submit({ searchParams }: Pick<PageProps<"/submit">, "searchParams
           showForm && ["submit_photos", TIPS.submit_photos],
         ]}
       />
+
+      {photosOpen || studyPhotos.length > 0 ? (
+        <StudyPhotos
+          live={{ logId: log.id, userId, date: log.date }}
+          photos={studyPhotos.map((photo) => ({
+            id: photo.id,
+            kind: photo.kind,
+            url: photo.image_path ? (photos.get(photo.image_path) ?? null) : null,
+            takenAt: photo.taken_at,
+          }))}
+          gapMinutes={settings.photo_gap_minutes}
+          required={settings.start_photo_required}
+          open={photosOpen && attemptsLeft > 0}
+        />
+      ) : null}
 
       {showForm ? (
         <SubmitForm

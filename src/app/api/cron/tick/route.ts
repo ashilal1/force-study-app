@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
 
   const rejudged = await rejudgeStuckSubmissions();
   const summarized = await fillWeeklySummaries();
-  const purged = await purgeOriginalImages();
+  const purged = (await purgeOriginalImages()) + (await purgeStudyPhotos());
   return NextResponse.json({ events: events.length, standings: standings.length, rejudged, summarized, purged });
 }
 
@@ -162,6 +162,29 @@ async function purgeOriginalImages(): Promise<number> {
   });
   if (markError) {
     console.error("recording image purges failed", markError);
+    return 0;
+  }
+  return purged;
+}
+
+/** The same for photos taken while studying (F4c, rpc due_photo_purges). Thumbnails stay. */
+async function purgeStudyPhotos(): Promise<number> {
+  const admin = createAdminClient();
+  const { data: due, error } = await admin.rpc("due_photo_purges", { p_limit: PURGE_LIMIT });
+  if (error) {
+    console.error("listing study photo purges failed", error);
+    return 0;
+  }
+  if (due.length === 0) return 0;
+
+  const { error: removeError } = await admin.storage.from("study-evidence").remove(due.map((row) => row.image_path));
+  if (removeError) {
+    console.error("removing study photos failed", removeError);
+    return 0;
+  }
+  const { data: purged, error: markError } = await admin.rpc("mark_photos_purged", { p_photo_ids: due.map((row) => row.photo_id) });
+  if (markError) {
+    console.error("recording study photo purges failed", markError);
     return 0;
   }
   return purged;

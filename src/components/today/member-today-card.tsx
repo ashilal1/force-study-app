@@ -9,7 +9,7 @@ import { TitleBadges } from "@/components/standing/title-badges";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import Link from "next/link";
 import { actionButtonVariants } from "@/components/brand/action-button";
-import { formatJstDateTime, formatJstDay } from "@/lib/time";
+import { formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 import type { RankId, Standing } from "@/lib/standing/rules";
 import type { TodayLog, TodayMember } from "@/lib/today";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,7 @@ export function MemberTodayCard({
               </p>
             ) : null}
             <PassphraseCard value={state.log.passphrase!} compact />
+            <PhotosLine log={state.log} isMe={member.isMe} />
             <SubmissionLine log={state.log} />
             {state.log.dispute === "resending" || state.log.dispute === "final_review" ? (
               <p className="m-0 text-xs font-bold text-red">
@@ -169,6 +170,25 @@ function PreviousLine({ member, log }: { member: TodayMember; log: TodayLog }) {
           {link}
         </Link>
       ) : null}
+    </p>
+  );
+}
+
+/** Photos taken while studying (F4c): when they started, or a nudge to take the start photo. */
+function PhotosLine({ log, isMe }: { log: TodayLog; isMe: boolean }) {
+  const { startedAt, count } = log.photos;
+  if (count === 0) {
+    return isMe && log.status === "pending" && !log.latest ? (
+      <Link href="/submit" className="text-sm font-bold underline underline-offset-2">
+        始めの写真を撮る（合言葉とノートを一緒に）→
+      </Link>
+    ) : null;
+  }
+  const more = count - (startedAt ? 1 : 0);
+  return (
+    <p className="m-0 text-xs font-bold text-sub">
+      {startedAt ? `${formatJstTime(startedAt)} に始めた` : "勉強の途中の写真"}
+      {more > 0 ? ` ・ 途中の写真 ${more} 枚` : ""}
     </p>
   );
 }

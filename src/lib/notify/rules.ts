@@ -737,6 +737,7 @@ const RULES: Record<string, Rule> = {
     const changes = (event.payload.changes ?? {}) as Record<string, unknown>;
     const lines = Object.entries(changes).map(([key, value]) => {
       if (key === "makeup_since") return value ? `補習: 使う（${formatJstDay(String(value))} から）` : "補習: 使わない";
+      if (key === "start_photo_required") return value ? "始めの写真: 撮らないと提出できない" : "始めの写真: なくても提出できる";
       const field = SETTING_FIELDS.find((candidate) => candidate.key === key);
       const shown = field?.type === "time" ? String(value).slice(0, 5) : `${value}${field?.unit ?? ""}`;
       return `${field?.label ?? key}: ${shown}`;

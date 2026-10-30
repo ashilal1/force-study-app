@@ -136,6 +136,8 @@ async function Log({ params }: Pick<PageProps<"/logs/[id]">, "params">) {
         </Sticker>
       ) : null}
 
+      {detail.studyPhotos.length > 0 ? <StudyPhotoSection detail={detail} /> : null}
+
       <section className="grid gap-4">
         <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">提出</h2>
         {detail.submissions.length === 0 ? <p className="m-0 text-sm text-sub">まだ提出はありません</p> : null}
@@ -261,6 +263,43 @@ function DisputeSection({ detail }: { detail: LogDetail }) {
         </div>
       ) : null}
     </Sticker>
+  );
+}
+
+/** Photos taken while studying (F4c), with the server's time and how long after declaring. */
+function StudyPhotoSection({ detail }: { detail: LogDetail }) {
+  const declaredAt = detail.log.declaredAt ? new Date(detail.log.declaredAt).getTime() : null;
+  return (
+    <section className="grid gap-2.5">
+      <h2 className="m-0 font-heading text-[1.2rem] leading-tight font-normal">勉強の記録</h2>
+      <p className="m-0 text-xs font-medium text-sub">勉強しながら撮った写真です。時刻はサーバーが記録しています。最後の提出と比べてみてください。</p>
+      <div className="grid grid-cols-3 gap-2">
+        {detail.studyPhotos.map((photo) => (
+          <figure key={photo.id} className="m-0 grid gap-1">
+            {photo.url ? (
+              <a href={photo.url} target="_blank" rel="noreferrer" className="block">
+                <Sticker shadow="sm" className="aspect-square overflow-hidden">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- short-lived signed URL from Supabase Storage */}
+                  <img src={photo.url} alt={photo.kind === "start" ? "始めの写真" : "途中の写真"} className="size-full object-cover" />
+                </Sticker>
+              </a>
+            ) : (
+              <Sticker shadow="sm" className="grid aspect-square place-items-center text-xs text-sub">
+                削除済み
+              </Sticker>
+            )}
+            <figcaption className="text-center text-xs font-bold">
+              {photo.kind === "start" ? "始め" : "途中"} {formatJstTime(photo.takenAt)}
+              {declaredAt !== null ? (
+                <span className="block font-medium text-sub">
+                  宣言から {Math.max(0, Math.floor((new Date(photo.takenAt).getTime() - declaredAt) / 60_000))} 分
+                </span>
+              ) : null}
+            </figcaption>
+          </figure>
+        ))}
+      </div>
+    </section>
   );
 }
 

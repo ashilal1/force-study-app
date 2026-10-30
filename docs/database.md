@@ -11,6 +11,7 @@ erDiagram
     profiles ||--o{ study_logs : "has"
     study_logs ||--o{ declaration_flags : "軽すぎる"
     study_logs ||--o{ submissions : "提出・送り直し"
+    study_logs ||--o{ study_photos : "勉強中の写真（F4c）"
     study_logs ||--o{ submission_flags : "怪しい"
     study_logs ||--o| submission_disputes : "疑義"
     study_logs ||--o| failure_reports : "未達成なら"
@@ -69,6 +70,8 @@ RLS は有効、GRANT なし。運営者が SQL で変える。
 | passing_score | int | 70 | 合格点 |
 | max_attempts | int | 3 | 1 学習日の最大提出回数（送り直しは数えない） |
 | appeals_per_week | int | 2 | メンバーに判定を頼める回数（週。日〜土。0 なら使わない。F5c・ADR-048） |
+| start_photo_required | boolean | false | 始めの写真がないと提出できない（F4c・ADR-050） |
+| photo_gap_minutes | int | 25 | 勉強中の写真の間隔（前の写真から。5〜180。F4c） |
 | judge_grace_minutes | int | 60 | 締切後、判定待ちの提出を待つ時間 |
 | flag_window_hours | int | 3 | 宣言から何時間「軽すぎる」を押せるか |
 | revision_minutes | int | 60 | 「軽すぎる」から書き直すまでの期限 |
@@ -218,6 +221,18 @@ Google でログインしただけでは作らない。招待コードを確か�
 | judged_at | timestamptz | |
 
 Gemini がエラーのときは同じ提出を `error` → 再判定するので、新しい attempt は使わない。
+
+### study_photos（勉強中の写真。F4c・ADR-050）
+| 列 | 型 | 説明 |
+|---|---|---|
+| id | uuid PK | |
+| study_log_id | uuid → study_logs | |
+| user_id | uuid → profiles | 非正規化（RLS と Storage パスの検査用） |
+| kind | text | `start`（始めの写真。1 日 1 枚、`unique (study_log_id) where kind = 'start'`） / `progress`（途中の写真） |
+| image_path | text null | Storage のパス `{user_id}/{date}/{uuid}.webp`。保持期間を過ぎたら null |
+| thumb_path | text null | サムネイル。**永久に残す** |
+| taken_at | timestamptz | サーバーの時刻（`private.now()`） |
+| images_purged_at | timestamptz null | 原寸を消した時刻（`image_path is null` と一致） |
 
 ### submission_flags（合格した提出への「怪しい」。複数人が押せる）
 | 列 | 型 | 説明 |
@@ -451,10 +466,11 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 ### 提出・疑義
 | 関数 | 処理 |
 |---|---|
-| `create_submission(user_id, study_log_id, image_paths[], thumb_path, learned, struggled, self_rating)` | 本人の今日の `pending` か、`now() < target_end_time` か（提出時刻で判定）、判定中の提出がないか、試行回数（`error` を除く）が上限未満か、パスが `{user_id}/{学習日}/{uuid}.webp` の形か（1〜3 枚）を検査 → `regular` / `judging` で insert。経過時間を計算して `submitted` を記録 |
+| `create_submission(user_id, study_log_id, image_paths[], thumb_path, learned, struggled, self_rating)` | 本人の今日の `pending` か、`now() < target_end_time` か（提出時刻で判定）、判定中の提出がないか、`start_photo_required` なら始めの写真があるか（`start_photo_missing`）、試行回数（`error` を除く）が上限未満か、パスが `{user_id}/{学習日}/{uuid}.webp` の形か（1〜3 枚）を検査 → `regular` / `judging` で insert。経過時間を計算して `submitted` を記録 |
 | `record_judgement(submission_id, score, passphrase_found, feedback, model)` | `judging` か `error` の提出だけ。書き直し待ちなら `revision_pending`、`regular` で log が `pending` でなければ `not_open`。合格 = 点数 >= 合格点 かつ 合言葉あり。`regular` の合格なら log を `passed` にして `dispute_window_ends_at = その提出の submitted_at + dispute_window_hours`（24 時間）。`judged_passed` / `judged_rejected`（残り回数つき）を記録 |
 | `record_judge_error(submission_id, message)` | `error` にする（試行回数に数えない。あとで判定し直せる） |
 | `flag_submission(flagger_id, study_log_id, comment)` | 本人以外か、`passed` で `dispute_window_ends_at` 前か、疑義があれば `resending` で `resend_due_at` 前か、同じ人の二度押しでないかを検査。最初の 1 件なら `submission_disputes(resending, resend_due_at = 今 + resend_minutes)`（24 時間）を作る |
+| `add_study_photo(user_id, study_log_id, image_path, thumb_path)` | 勉強中の写真（F4c）。本人の `pending` で提出締切前か、判定中の提出がないか、メンバーに判定を頼んでいないか（`not_open`）、パスの形、1 日 6 枚まで（`photo_limit`）、前の写真から `photo_gap_minutes` たったか（`photo_too_soon`）を検査。写真も提出もまだなら `start`、それ以外は `progress` で insert。`taken_at` はサーバーの時刻 |
 | `resend_evidence(user_id, study_log_id, image_paths[], thumb_path, explanation)` | 本人の `resending` で `resend_due_at` 前か、判定中の提出がないかを検査 → `resend` の提出を作る（回数制限なし。判定は `lib/judging`）。判定が出たら `record_judgement` が `evidence_resent`（点数・合言葉・まだ取り下げていない指摘者）を記録する |
 | `withdraw_flag(flagger_id, study_log_id)` | `resending` の間だけ、自分の指摘を取り下げる。全員取り下げたら `upheld` → log を `completed` |
 | `advance_disputes()`（定期実行） | 送り直しの 1 時間前のリマインド。`resend_due_at` を過ぎた `resending` → `final_review`（期限は今 + `review_hours`、審査者を `peer_reviews('dispute')` に固定。審査者がいなければ `upheld`）。`review_due_at` を過ぎた `final_review` → `upheld` |
@@ -545,6 +561,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `save_weekly_note(user_id, week_end, note)` | 本人の振り返りメモ（4000 字まで）。あとから何度でも書き換えられる唯一の列 |
 | `due_image_purges(limit)` | 原寸の写真を消す対象を古い順に返す: `submitted_at` が `image_retention_days` を過ぎたもの、またはバケットの合計（`storage.objects.metadata.size`）が 800MB を超えているあいだの古いもの。判定中の提出と、まだ決着していない日（`pending`・`passed`）は除く。**tick とは別に** Route Handler が呼ぶ（Storage の削除は Storage API でしかできないため） |
 | `mark_images_purged(submission_ids)` | Storage API でファイルを消したあとに、`image_paths` を空にして `images_purged_at` を記録する。`thumb_path` は残す |
+| `due_photo_purges(limit)` / `mark_photos_purged(photo_ids)` | 勉強中の写真（`study_photos`）について同じことをする（`taken_at` で数える。`image_path` を null に） |
 | `run_weekly_settlement()` | 土曜 23:59 以降、その週に 1 回だけ。まず前の週までの `open` の精算に P7 を付け、`waived` でない未精算の penalties を人ごとに束ね、`payee_id` へ settlements を作る |
 | `award_makeups()` | P9（M11）。`makeup_since` が入っているグループの有効なメンバーごとに、その日以降の学習日を日付順に見て、サボり（`no_declaration`、または `missed` で理由が `slacked` / `not_reported` に決まった日）の連続を数え、`slack_streak_threshold` 回目から 1 日ごとに `makeup_per_streak` 回の借りを作る（`streak:{log}` で 1 日 1 回）。達成した日と、**まだ決着していない日**（`pending`・`passed`・理由申告や審査の途中）で 0 に戻す。決着したら次の tick で数え直すので、決着の順が日付と前後しても、あとの日に P9 が付く。P3・P4・P8・承認された理由の日は数えず、戻しもしない。お試し期間の日はお試しの日だけで数え（本番の日と続けない）、借りは `waived = 'trial'` |
 | `close_makeup_week()` | P10（M11）。`run_weekly_settlement` のあと、締めごとに 1 回。締めの時刻の時点で期限が来ていて返していない借り（`overdue > 0`）があれば、`makeup_per_overdue` 回の借りを足す（期限は 1 週後。`overdue:{user}:{締め日}`）。締めの日に休会中ならその週は足さない（期限を延ばす）。そのあと残りがある人に `makeup_due` |
@@ -565,8 +582,8 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | `mark_notifications_pushed(ids)` | Push が届いた通知に `pushed_at` を付ける（1 回だけ） |
 
 ### 記録の保全（追記だけ）
-- 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`・`makeup_debts`・`judge_appeals`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
-- UPDATE は**状態と時刻の列だけ**を許すトリガーにする（例: `submissions` は `status`・`ai_*`・`judged_at`・`image_paths`（消すときの空配列）・`images_purged_at` だけ）。宣言・理由・コメントなど人が書いた文字は変えられない。書き直しは `original_declaration` に元を残す。
+- 履歴のテーブル（`study_logs`・`declaration_flags`・`submissions`・`submission_flags`・`submission_disputes`・`failure_reports`・`peer_reviews`・`leave_requests`・`penalties`・`settlements`・`activity_events`・`weekly_reviews`・`makeup_debts`・`judge_appeals`・`study_photos`）は、**DELETE を禁止**するトリガーを付ける（service role でも不可。直すときはマイグレーションで明示的に外す）。
+- UPDATE は**状態と時刻の列だけ**を許すトリガーにする（例: `submissions` は `status`・`ai_*`・`judged_at`・`image_paths`（消すときの空配列）・`images_purged_at` だけ）。`study_photos` は `image_path`（消すときの null）・`images_purged_at` だけ。宣言・理由・コメントなど人が書いた文字は変えられない。書き直しは `original_declaration` に元を残す。
 - 外部キーは `on delete cascade` にしない（profiles を消しても記録が連鎖で消えないように）。
 
 ### 検索
@@ -579,7 +596,7 @@ type（requirements N1 の表の 1 行 = 1 種類）:
 | groups | 自分のグループ | なし（名前の変更は `rename_group`） |
 | group_settings | 自分のグループの行 | なし（管理者の更新は Server Action が `is_admin` を確認して service role で） |
 | profiles | 同じグループの人 | update: 本人の行の `display_name, avatar_url, paypay_link` **だけ**（列単位 GRANT）。`payee_id` は管理者が Server Action 経由で |
-| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews, makeup_debts, judge_appeals | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
+| rest_days, leave_requests, study_logs, declaration_flags, submissions, submission_flags, submission_disputes, failure_reports, peer_reviews, penalties, settlements, activity_events, weekly_reviews, makeup_debts, judge_appeals, study_photos | 同じグループの人の行（`private.in_my_group(user_id)`・`log_in_my_group`、`activity_events` は `group_id`） | なし（申告・審査・送金・振り返りメモも Server Action 経由） |
 | notifications | `recipient_id = private.my_member()` | update: 本人の行の `read_at` だけ |
 | push_subscriptions | `user_id = private.my_member()` | なし（登録・確認・削除は Server Action） |
 | penalty_summary・daily_history・weekly_stats・received_objections・makeup_summary（ビュー、`security_invoker`） | 全行（元のテーブルの RLS で） | なし |
