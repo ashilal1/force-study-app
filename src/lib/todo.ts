@@ -29,7 +29,12 @@ export async function getTodos(): Promise<Todo[]> {
 
   // Yesterday's day, still open until today's cutoff (ADR-032): it comes before today's declaration.
   const previous = board.me.previous;
-  if (previous?.status === "pending" && future(previous.target_end_time) && previous.latest?.status !== "judging") {
+  if (
+    previous?.status === "pending" &&
+    previous.appeal !== "under_review" &&
+    future(previous.target_end_time) &&
+    previous.latest?.status !== "judging"
+  ) {
     todos.push({
       key: "submit-previous",
       label: `${formatJstDay(previous.date)} の分を提出する`,
@@ -44,7 +49,9 @@ export async function getTodos(): Promise<Todo[]> {
   const cutoff = new Date(`${board.date}T${board.settings.declaration_cutoff}+09:00`).toISOString();
   const state = board.me.state;
   if (state.kind === "undeclared" && future(cutoff)) {
-    const blocked = previous !== null && (previous.status === "pending" || previous.report === "awaiting_report");
+    const blocked =
+      previous !== null &&
+      ((previous.status === "pending" && previous.appeal !== "under_review") || previous.report === "awaiting_report");
     todos.push({
       key: "declare",
       label: "今日の宣言をする",
@@ -59,7 +66,7 @@ export async function getTodos(): Promise<Todo[]> {
     if (log.revision_due_at && !log.revised_at && future(log.revision_due_at)) {
       todos.push({ key: "revise", label: "宣言を書き直す", detail: "「軽すぎる」と指摘されました", dueAt: log.revision_due_at, href: "/declare", urgent: true });
     }
-    if (log.status === "pending" && future(log.target_end_time) && log.latest?.status !== "judging") {
+    if (log.status === "pending" && log.appeal !== "under_review" && future(log.target_end_time) && log.latest?.status !== "judging") {
       todos.push({ key: "submit", label: "成果物を提出する", dueAt: log.target_end_time, href: "/submit", urgent: false });
     }
   }
@@ -111,7 +118,7 @@ export async function getTodos(): Promise<Todo[]> {
 
   // Reviews: look up each subject's deadline and owner.
   const byType = (type: string) => reviews.data!.filter((review) => review.subject_type === type).map((review) => review.subject_id);
-  const [excuses, leaves, disputes, flagged] = await Promise.all([
+  const [excuses, leaves, disputes, flagged, appeals] = await Promise.all([
     byType("excuse").length
       ? supabase.from("failure_reports").select("study_log_id, user_id, review_due_at").in("study_log_id", byType("excuse")).eq("status", "under_review")
       : { data: [], error: null },
@@ -132,8 +139,11 @@ export async function getTodos(): Promise<Todo[]> {
           .in("study_log_id", myFlags.data!.map((flag) => flag.study_log_id))
           .eq("status", "resending")
       : { data: [], error: null },
+    byType("appeal").length
+      ? supabase.from("judge_appeals").select("study_log_id, user_id, review_due_at").in("study_log_id", byType("appeal")).eq("status", "under_review")
+      : { data: [], error: null },
   ]);
-  for (const result of [excuses, leaves, disputes, flagged]) if (result.error) throw result.error;
+  for (const result of [excuses, leaves, disputes, flagged, appeals]) if (result.error) throw result.error;
 
   for (const excuse of excuses.data!) {
     if (!future(excuse.review_due_at)) continue;
@@ -146,6 +156,10 @@ export async function getTodos(): Promise<Todo[]> {
   for (const dispute of disputes.data!) {
     if (!future(dispute.review_due_at)) continue;
     todos.push({ key: `dispute:${dispute.study_log_id}`, label: `${name(dispute.study_logs.user_id)} さんの提出を最終審査する`, dueAt: dispute.review_due_at, href: `/logs/${dispute.study_log_id}`, urgent: true });
+  }
+  for (const appeal of appeals.data!) {
+    if (!future(appeal.review_due_at)) continue;
+    todos.push({ key: `appeal:${appeal.study_log_id}`, label: `${name(appeal.user_id)} さんの提出を判定する`, detail: "AI が不合格にした提出です", dueAt: appeal.review_due_at, href: `/logs/${appeal.study_log_id}`, urgent: true });
   }
   for (const dispute of flagged.data!) {
     todos.push({ key: `withdraw:${dispute.study_log_id}`, label: `${name(dispute.study_logs.user_id)} さんの送り直した証拠を確かめる`, detail: "納得したら取り下げる", dueAt: dispute.resend_due_at, href: `/logs/${dispute.study_log_id}`, urgent: false });

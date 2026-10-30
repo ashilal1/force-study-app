@@ -9,7 +9,7 @@ import { TitleBadges } from "@/components/standing/title-badges";
 import { PassphraseCard } from "@/components/declare/passphrase-card";
 import Link from "next/link";
 import { actionButtonVariants } from "@/components/brand/action-button";
-import { formatJstDateTime, formatJstDay } from "@/lib/time";
+import { formatJstDateTime, formatJstDay, formatJstTime } from "@/lib/time";
 import type { RankId, Standing } from "@/lib/standing/rules";
 import type { TodayLog, TodayMember } from "@/lib/today";
 import { cn } from "@/lib/utils";
@@ -85,6 +85,7 @@ export function MemberTodayCard({
               </p>
             ) : null}
             <PassphraseCard value={state.log.passphrase!} compact />
+            <PhotosLine log={state.log} isMe={member.isMe} />
             <SubmissionLine log={state.log} />
             {state.log.dispute === "resending" || state.log.dispute === "final_review" ? (
               <p className="m-0 text-xs font-bold text-red">
@@ -118,7 +119,7 @@ export function MemberTodayCard({
                   : "証拠と判定を見る →"}
               </Link>
             ) : null}
-            {member.isMe && state.log.status === "pending" ? (
+            {member.isMe && state.log.status === "pending" && state.log.appeal !== "under_review" ? (
               <Link href="/submit" className={actionButtonVariants({ tone: "mint" })}>
                 {viewerRank === "doushiyou-mo-nai" ? "提出して罪を償う" : "提出する"}
               </Link>
@@ -144,7 +145,9 @@ function PreviousLine({ member, log }: { member: TodayMember; log: TodayLog }) {
   const day = formatJstDay(log.date);
   const disputed = log.dispute === "resending" || log.dispute === "final_review";
   const [text, href, link] =
-    log.status === "pending"
+    log.status === "pending" && log.appeal === "under_review"
+      ? [`${day} の分は AI が不合格・メンバーが判定中`, `/logs/${log.id}`, member.isMe ? "様子を見る →" : "判定する →"]
+      : log.status === "pending"
       ? [`${day} の分は提出待ち（${formatJstDateTime(log.target_end_time!)} まで）`, member.isMe ? "/submit" : `/logs/${log.id}`, member.isMe ? "提出する →" : null]
       : log.status === "missed"
         ? [
@@ -171,6 +174,25 @@ function PreviousLine({ member, log }: { member: TodayMember; log: TodayLog }) {
   );
 }
 
+/** Photos taken while studying (F4c): when they started, or a nudge to take the start photo. */
+function PhotosLine({ log, isMe }: { log: TodayLog; isMe: boolean }) {
+  const { startedAt, count } = log.photos;
+  if (count === 0) {
+    return isMe && log.status === "pending" && !log.latest ? (
+      <Link href="/submit" className="text-sm font-bold underline underline-offset-2">
+        始めの写真を撮る（合言葉とノートを一緒に）→
+      </Link>
+    ) : null;
+  }
+  const more = count - (startedAt ? 1 : 0);
+  return (
+    <p className="m-0 text-xs font-bold text-sub">
+      {startedAt ? `${formatJstTime(startedAt)} に始めた` : "勉強の途中の写真"}
+      {more > 0 ? ` ・ 途中の写真 ${more} 枚` : ""}
+    </p>
+  );
+}
+
 function SubmissionLine({ log }: { log: TodayLog }) {
   if (!log.latest) return null;
   const text =
@@ -178,9 +200,11 @@ function SubmissionLine({ log }: { log: TodayLog }) {
       ? "提出しました。AI が判定中"
       : log.latest.status === "error"
         ? "提出しました。判定待ち"
-        : log.latest.status === "rejected"
-          ? `${log.attempts} 回目は不合格（${log.latest.score} 点）`
-          : null;
+        : log.latest.status === "rejected" && log.appeal === "under_review"
+          ? `AI は不合格（${log.latest.score} 点）。メンバーが判定中`
+          : log.latest.status === "rejected"
+            ? `${log.attempts} 回目は不合格（${log.latest.score} 点）`
+            : null;
   return text ? <p className="m-0 text-xs font-bold text-sub">{text}</p> : null;
 }
 
@@ -219,6 +243,9 @@ function Badge({ member }: { member: TodayMember }) {
       }
       if (member.state.log.dispute === "resending" || member.state.log.dispute === "final_review") {
         return <Stamp tone="blue" label="審査中" sub="怪しい" className="text-base" />;
+      }
+      if (member.state.log.status === "pending" && member.state.log.appeal === "under_review") {
+        return <Stamp tone="blue" label="判定中" sub="メンバー" className="text-base" />;
       }
       if (member.state.log.status === "passed" && member.state.log.unverified) {
         return <Stamp tone="mint" label="仮合格" sub="AI未判定" className="text-base" />;

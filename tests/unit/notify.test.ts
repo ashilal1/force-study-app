@@ -69,9 +69,68 @@ describe("makeup notifications (補習)", () => {
     };
     const [own, other] = draftNotifications(event, members);
     expect(own).toMatchObject({ title: "補習は不合格でした（40 点）", url: "/makeup" });
-    expect(own.body).toContain("別の日にもう一度宣言してください");
+    expect(own.body).toContain("メンバーに判定を頼めます");
     expect(other.title).toBe("あき さんの補習の提出は不合格（40 点）");
     expect(draftNotifications({ ...event, makeup: false }, members)[0].url).toBe("/submit");
+  });
+});
+
+describe("asking the members to judge (F5c)", () => {
+  it("asks the reviewers, tells the owner each vote, and everyone the outcome", () => {
+    const requested = draftNotifications(
+      {
+        id: "e",
+        type: "appeal_requested",
+        actor_id: "aki",
+        study_log_id: "log",
+        payload: { reason: "暗くて合言葉が読めなかった", score: 40, review_due_at: "2026-10-21T03:00:00Z", reviewer_ids: ["ben", "cho"] },
+      },
+      members,
+    );
+    expect(requested.map((d) => [d.recipientId, d.title, d.url, d.requiresAction])).toEqual([
+      ["ben", "あき さんの提出を判定してください（10/21(水) 12:00 まで）", "/logs/log", true],
+      ["cho", "あき さんの提出を判定してください（10/21(水) 12:00 まで）", "/logs/log", true],
+    ]);
+    expect(requested[0].body).toBe("AI は不合格（40 点）。本人の理由: 暗くて合言葉が読めなかった");
+
+    const vote = draftNotifications(
+      {
+        id: "e",
+        type: "review_vote_cast",
+        actor_id: "ben",
+        study_log_id: "log",
+        payload: { subject_type: "appeal", owner_id: "aki", verdict: "accept", accepted: 1, total: 2 },
+      },
+      members,
+    );
+    expect(vote).toEqual([
+      { recipientId: "aki", title: "べん さんが判定で認めました（1/2）", body: "", url: "/logs/log", requiresAction: false },
+    ]);
+
+    const accepted = draftNotifications({ id: "e", type: "appeal_accepted", actor_id: "aki", study_log_id: "log", payload: {} }, members);
+    expect(accepted.map((d) => [d.recipientId, d.title])).toEqual([
+      ["aki", "メンバーに認められました"],
+      ["ben", "あき さんの提出は、みんなの判定で合格になりました"],
+      ["cho", "あき さんの提出は、みんなの判定で合格になりました"],
+    ]);
+  });
+
+  it("sends the owner to the reason report when rejected, and not the one who rejected", () => {
+    const drafts = draftNotifications(
+      {
+        id: "e",
+        type: "appeal_rejected",
+        actor_id: "aki",
+        study_log_id: "log",
+        payload: { expired: false, rejected_by: "ben", comment: "3 章が写っていない", report_due_at: "2026-10-21T14:00:00Z" },
+      },
+      members,
+    );
+    expect(drafts.map((d) => [d.recipientId, d.url, d.requiresAction])).toEqual([
+      ["aki", "/reports/log", true],
+      ["cho", "/logs/log", false],
+    ]);
+    expect(drafts[0].body).toBe("べん さん: 3 章が写っていない 10/21(水) 23:00 までに理由を申告してください");
   });
 });
 
@@ -343,6 +402,14 @@ describe("draftNotifications (M8a)", () => {
       members,
     );
     expect(draft.body).toBe("サボり・申告なし（P2・P5）: 1000、宣言の締切（前の日の提出締切）: 11:30、合格点: 75点");
+  });
+
+  it("words the start photo switch and the photo gap (F4c)", () => {
+    const [draft] = draftNotifications(
+      { id: "e", type: "settings_changed", actor_id: "aki", payload: { changes: { start_photo_required: true, photo_gap_minutes: 30 } } },
+      members,
+    );
+    expect(draft.body).toBe("始めの写真: 撮らないと提出できない、勉強中の写真の間隔（前の写真から）: 30分");
   });
 });
 

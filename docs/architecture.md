@@ -189,7 +189,7 @@ tick は以下を順に実行する。各ステップは冪等なので、重複
 | 10 | 理由申告（期限の日の 22:00・22:45）、休会の審査（22:00・23:00・23:30）、理由・最終審査（期限の 3 時間前・1 時間前）のリマインド | `rpc due_deadline_reminders()` |
 | 11 | 毎週土曜 23:59 の精算と、未払いへの P7。同じ tick の 2〜10 のあとに実行し、その時点で決まっているペナルティだけを束ねる（まだ決着していない日の分は次の週。ADR-032） | `rpc run_weekly_settlement()` |
 | 11b | 週の振り返りを作り、Gemini で要約を書く（1 回 2 件まで。失敗したら次の tick で再試行） | `rpc create_weekly_reviews()` + `lib/gemini/weekly-summary.ts` |
-| 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す。1 回 100 件まで。消せなかったら次の tick で再試行） | `rpc due_image_purges()` → Storage API `remove` → `rpc mark_images_purged()` |
+| 12 | 保持期間を過ぎた原寸の画像、800MB を超えたぶんの古い原寸を削除（サムネイルは残す。1 回 100 件まで。消せなかったら次の tick で再試行）。勉強中の写真（F4c）も同じ | `rpc due_image_purges()` → Storage API `remove` → `rpc mark_images_purged()`、`rpc due_photo_purges()` → `remove` → `rpc mark_photos_purged()` |
 | 13 | 2〜11 で返ってきたイベントを通知に回す | `lib/notify` |
 
 tick は 5 分ごとなので、「23:59」の処理（土曜の精算・週の振り返り）は実際には日付が変わった直後の 0:00〜0:05 の tick で、**前の学習日に対して**行う。どの期限も記録された時刻で判定するので、結果は変わらない。

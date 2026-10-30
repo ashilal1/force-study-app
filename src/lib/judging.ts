@@ -19,7 +19,7 @@ export async function judgeSubmission(submissionId: string): Promise<JudgeOutcom
   const { data: submission, error } = await admin
     .from("submissions")
     .select(
-      "id, kind, status, image_paths, learned_text, struggled_text, explanation, self_rating, elapsed_minutes, study_logs!inner(status, declaration, passphrase, revision_due_at, revised_at)",
+      "id, study_log_id, kind, status, image_paths, learned_text, struggled_text, explanation, self_rating, elapsed_minutes, submitted_at, study_logs!inner(status, declaration, passphrase, declared_at, revision_due_at, revised_at)",
     )
     .eq("id", submissionId)
     .single();
@@ -30,13 +30,32 @@ export async function judgeSubmission(submissionId: string): Promise<JudgeOutcom
   if (log.revision_due_at && !log.revised_at && log.status === "pending") return { status: "waiting_revision" };
 
   try {
-    const images = await Promise.all(
-      submission.image_paths.map(async (path) => {
-        const { data, error: downloadError } = await admin.storage.from(BUCKET).download(path);
-        if (downloadError) throw downloadError;
-        return { mimeType: data.type || "image/webp", base64: Buffer.from(await data.arrayBuffer()).toString("base64") };
-      }),
-    );
+    const download = async (path: string) => {
+      const { data, error: downloadError } = await admin.storage.from(BUCKET).download(path);
+      if (downloadError) throw downloadError;
+      return { mimeType: data.type || "image/webp", base64: Buffer.from(await data.arrayBuffer()).toString("base64") };
+    };
+    // Photos taken while studying before this submission (F4c): the AI compares them with the work.
+    const { data: studyPhotos, error: photosError } = await admin
+      .from("study_photos")
+      .select("kind, image_path, taken_at")
+      .eq("study_log_id", submission.study_log_id)
+      .lte("taken_at", submission.submitted_at)
+      .not("image_path", "is", null)
+      .order("taken_at");
+    if (photosError) throw photosError;
+    const declaredAt = log.declared_at ? new Date(log.declared_at).getTime() : null;
+    const [images, checkpoints] = await Promise.all([
+      Promise.all(submission.image_paths.map(download)),
+      Promise.all(
+        studyPhotos.map(async (photo) => ({
+          kind: photo.kind as "start" | "progress",
+          minutesAfterDeclaration:
+            declaredAt === null ? null : Math.max(0, Math.floor((new Date(photo.taken_at).getTime() - declaredAt) / 60_000)),
+          image: await download(photo.image_path!),
+        })),
+      ),
+    ]);
 
     const verdict = await judgeWithGemini({
       kind: submission.kind as "regular" | "resend",
@@ -48,6 +67,7 @@ export async function judgeSubmission(submissionId: string): Promise<JudgeOutcom
       selfRating: submission.self_rating,
       explanation: submission.explanation,
       images,
+      checkpoints,
     });
 
     const { data: events, error: recordError } = await admin.rpc("record_judgement", {

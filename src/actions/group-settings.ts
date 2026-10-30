@@ -13,7 +13,11 @@ export async function updateGroupSettings(_prev: FormState, formData: FormData):
   const member = await requireMember();
   const values: Record<string, string> = {};
   // Makeup study (補習) on or off: turning it on counts study days from today (no retroactive debts).
-  const changes: Record<string, string | number | boolean> = { makeup_enabled: formData.get("makeup_enabled") === "on" };
+  const changes: Record<string, string | number | boolean> = {
+    makeup_enabled: formData.get("makeup_enabled") === "on",
+    // F4c: the start photo is needed before submitting.
+    start_photo_required: formData.get("start_photo_required") === "on",
+  };
   for (const field of SETTING_FIELDS) {
     const raw = String(formData.get(field.key) ?? "").trim();
     values[field.key] = raw;

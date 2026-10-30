@@ -45,11 +45,21 @@ export type LogDetail = {
     isMakeup: boolean;
   };
   submissions: DetailSubmission[];
+  /** Photos taken while studying (F4c), oldest first. `url` is the thumbnail once the original is gone. */
+  studyPhotos: { id: string; kind: string; url: string | null; takenAt: string }[];
   declarationFlags: { name: string; comment: string }[];
   submissionFlags: DetailFlag[];
   dispute: { status: string; resendDueAt: string; reviewDueAt: string | null } | null;
   reviews: { reviewerId: string; name: string; verdict: string | null; comment: string | null }[];
-  can: { flag: boolean; withdraw: boolean; resend: boolean; review: boolean };
+  /** The owner asked the members to judge after the AI rejected every attempt (F5c). */
+  appeal: {
+    status: string;
+    reason: string;
+    reviewDueAt: string;
+    createdAt: string;
+    reviews: { reviewerId: string; name: string; verdict: string | null; comment: string | null }[];
+  } | null;
+  can: { flag: boolean; withdraw: boolean; resend: boolean; review: boolean; reviewAppeal: boolean };
 };
 
 export async function getLogDetail(logId: string): Promise<LogDetail | null> {
@@ -65,7 +75,7 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
   if (error) throw error;
   if (!log) return null;
 
-  const [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews] = await Promise.all([
+  const [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews, appeal, appealReviews, studyPhotos] = await Promise.all([
     supabase.from("profiles").select("id, display_name"),
     supabase
       .from("submissions")
@@ -82,8 +92,11 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
       .order("created_at"),
     supabase.from("submission_disputes").select("status, resend_due_at, review_due_at").eq("study_log_id", logId).maybeSingle(),
     supabase.from("peer_reviews").select("reviewer_id, verdict, comment").eq("subject_type", "dispute").eq("subject_id", logId),
+    supabase.from("judge_appeals").select("status, reason, review_due_at, created_at").eq("study_log_id", logId).maybeSingle(),
+    supabase.from("peer_reviews").select("reviewer_id, verdict, comment").eq("subject_type", "appeal").eq("subject_id", logId),
+    supabase.from("study_photos").select("id, kind, image_path, thumb_path, taken_at").eq("study_log_id", logId).order("taken_at"),
   ]);
-  for (const result of [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews]) {
+  for (const result of [profiles, submissions, declarationFlags, submissionFlags, dispute, reviews, appeal, appealReviews, studyPhotos]) {
     if (result.error) throw result.error;
   }
 
@@ -91,7 +104,11 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
   // Originals are deleted after the retention period; the thumbnail stays forever (F12).
   const shown = (submission: { image_paths: string[]; thumb_path: string | null }) =>
     submission.image_paths.length > 0 ? submission.image_paths : submission.thumb_path ? [submission.thumb_path] : [];
-  const paths = submissions.data!.flatMap(shown);
+  const photoPath = (photo: { image_path: string | null; thumb_path: string | null }) => photo.image_path ?? photo.thumb_path;
+  const paths = [
+    ...submissions.data!.flatMap(shown),
+    ...studyPhotos.data!.flatMap((photo) => (photoPath(photo) ? [photoPath(photo)!] : [])),
+  ];
   const urls = new Map<string, string>();
   if (paths.length > 0) {
     const { data: signed, error: signError } = await supabase.storage.from("study-evidence").createSignedUrls(paths, 60 * 60);
@@ -111,6 +128,13 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
   const d = dispute.data;
   const resending = d?.status === "resending" && now < new Date(d.resend_due_at).getTime();
   const myReview = reviews.data!.find((review) => review.reviewer_id === me.id);
+  const myAppealReview = appealReviews.data!.find((review) => review.reviewer_id === me.id);
+  const toReview = (review: { reviewer_id: string; verdict: string | null; comment: string | null }) => ({
+    reviewerId: review.reviewer_id,
+    name: name(review.reviewer_id),
+    verdict: review.verdict,
+    comment: review.comment,
+  });
 
   return {
     now,
@@ -145,15 +169,25 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
       submittedAt: submission.submitted_at,
       unverified: submission.unverified_at !== null,
     })),
+    studyPhotos: studyPhotos.data!.map((photo) => ({
+      id: photo.id,
+      kind: photo.kind,
+      url: urls.get(photoPath(photo) ?? "") ?? null,
+      takenAt: photo.taken_at,
+    })),
     declarationFlags: declarationFlags.data!.map((flag) => ({ name: name(flag.flagger_id), comment: flag.comment })),
     submissionFlags: flags,
     dispute: d ? { status: d.status, resendDueAt: d.resend_due_at, reviewDueAt: d.review_due_at } : null,
-    reviews: reviews.data!.map((review) => ({
-      reviewerId: review.reviewer_id,
-      name: name(review.reviewer_id),
-      verdict: review.verdict,
-      comment: review.comment,
-    })),
+    reviews: reviews.data!.map(toReview),
+    appeal: appeal.data
+      ? {
+          status: appeal.data.status,
+          reason: appeal.data.reason,
+          reviewDueAt: appeal.data.review_due_at,
+          createdAt: appeal.data.created_at,
+          reviews: appealReviews.data!.map(toReview),
+        }
+      : null,
     can: {
       flag:
         !isOwner &&
@@ -170,6 +204,11 @@ export async function getLogDetail(logId: string): Promise<LogDetail | null> {
         now <= new Date(d.review_due_at).getTime() &&
         myReview !== undefined &&
         myReview.verdict === null,
+      reviewAppeal:
+        appeal.data?.status === "under_review" &&
+        now <= new Date(appeal.data.review_due_at).getTime() &&
+        myAppealReview !== undefined &&
+        myAppealReview.verdict === null,
     },
   };
 }

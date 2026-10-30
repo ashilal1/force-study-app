@@ -130,6 +130,7 @@ async function AdminSettings() {
           <GroupSettingsForm
             current={data as unknown as Record<string, string | number>}
             makeupEnabled={data.makeup_since !== null}
+            startPhotoRequired={data.start_photo_required}
           />
         </Sticker>
       </details>
